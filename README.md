@@ -1,13 +1,13 @@
-# nTimes - 네이버 뉴스 크롤러
+# nTimes - n 뉴스 크롤러
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 
-> Rust 기반 고성능 네이버 뉴스 크롤러 + Vector DB + 온톨로지 시스템
+> Rust 기반 고성능 n 뉴스 크롤러 + Vector DB + 온톨로지 시스템
 
 ## 개요
 
-nTimes는 네이버 뉴스에서 기사와 댓글을 수집하여 벡터 데이터베이스에 저장하고, 온톨로지(지식 그래프)를 구축하는 시스템입니다.
+nTimes는 n 뉴스에서 기사와 댓글을 수집하여 벡터 데이터베이스에 저장하고, 온톨로지(지식 그래프)를 구축하는 시스템입니다.
 
 ### 주요 기능
 
@@ -107,7 +107,7 @@ index_name = "naver-news"
 
 ## 저작권
 
-Copyright (c) 2024 hephaex@gmail.com
+Copyright (c) 2025 hephaex@gmail.com
 
 ## 기여
 
