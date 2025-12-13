@@ -1,9 +1,9 @@
-# nTimes - Naverニュースクローラー
+# nTimes - Naニュースクローラー
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 
-> Rustベースの高性能Naverニュースクローラー + Vector DB + オントロジーシステム
+> Rustベースの高性能Nニュースクローラー + Vector DB + オントロジーシステム
 
 ## 概要
 
@@ -107,7 +107,7 @@ index_name = "naver-news"
 
 ## 著作権
 
-Copyright (c) 2024 hephaex@gmail.com
+Copyright (c) 2025 hephaex@gmail.com
 
 ## コントリビューション
 
