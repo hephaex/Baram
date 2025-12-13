@@ -1,13 +1,13 @@
-# nTimes - Naver新闻爬虫
+# nTimes - N新闻爬虫
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 
-> 基于Rust的高性能Naver新闻爬虫 + Vector DB + 本体系统
+> 基于Rust的高性能N新闻爬虫 + Vector DB + 本体系统
 
 ## 概述
 
-nTimes是一个从Naver新闻收集文章和评论，存储到向量数据库，并构建本体（知识图谱）的系统。
+nTimes是一个从N新闻收集文章和评论，存储到向量数据库，并构建本体（知识图谱）的系统。
 
 ### 主要功能
 
@@ -107,7 +107,7 @@ index_name = "naver-news"
 
 ## 版权
 
-Copyright (c) 2024 hephaex@gmail.com
+Copyright (c) 2025 hephaex@gmail.com
 
 ## 贡献
 
