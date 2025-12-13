@@ -1,4 +1,4 @@
-# nTimes - Naニュースクローラー
+# nTimes - Nニュースクローラー
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
