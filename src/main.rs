@@ -316,13 +316,13 @@ async fn crawl(
             println!("\nCrawling category: {} ({})", cat.korean_name(), cat.as_str());
 
             // Calculate max pages needed (roughly 20 articles per page)
-            let max_pages = ((max_articles + 19) / 20) as u32;
+            let max_pages = max_articles.div_ceil(20) as u32;
 
             // Get list of article URLs
             let urls = list_crawler
                 .collect_urls(cat, &today, max_pages)
                 .await
-                .map_err(|e| anyhow::anyhow!("Failed to collect URLs: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to collect URLs: {e}"))?;
 
             println!("Found {} article URLs", urls.len());
 
@@ -424,7 +424,7 @@ fn parse_category(s: &str) -> Result<NewsCategory> {
         "culture" | "생활/문화" | "생활" | "문화" => Ok(NewsCategory::Culture),
         "world" | "세계" => Ok(NewsCategory::World),
         "it" | "과학" | "it/과학" => Ok(NewsCategory::IT),
-        _ => anyhow::bail!("Unknown category: {}. Valid: politics, economy, society, culture, world, it", s),
+        _ => anyhow::bail!("Unknown category: {s}. Valid: politics, economy, society, culture, world, it"),
     }
 }
 
@@ -468,7 +468,7 @@ async fn resume(checkpoint: PathBuf, max_articles: Option<usize>, output: PathBu
     let config = Config::default();
     let max = max_articles.unwrap_or(100);
 
-    println!("\nContinuing crawl with max {} articles...", max);
+    println!("\nContinuing crawl with max {max} articles...");
     println!("Output directory: {}", output.display());
 
     // For now, just restart the crawl with the existing database
