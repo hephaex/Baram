@@ -453,6 +453,9 @@ pub mod api {
     /// Base URL for comment API
     pub const COMMENT_API_BASE: &str = "https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json";
 
+    /// Base URL for reply API (nested replies)
+    pub const REPLY_API_BASE: &str = "https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json";
+
     /// Default ticket ID
     pub const TICKET: &str = "news";
 
@@ -473,6 +476,138 @@ pub mod api {
 
     /// Maximum pages to fetch (safety limit)
     pub const MAX_PAGES: u32 = 100;
+
+    /// Maximum recursion depth for nested replies (safety limit)
+    pub const MAX_REPLY_DEPTH: u32 = 10;
+
+    /// Maximum replies per comment to fetch
+    pub const MAX_REPLIES_PER_COMMENT: u32 = 1000;
+}
+
+// ============================================================================
+// Comment Filter
+// ============================================================================
+
+/// Filter options for comments
+#[derive(Debug, Clone, Default)]
+pub struct CommentFilter {
+    /// Include deleted comments (default: false)
+    pub include_deleted: bool,
+
+    /// Include hidden/invisible comments (default: false)
+    pub include_hidden: bool,
+
+    /// Minimum likes threshold (0 = no filter)
+    pub min_likes: i64,
+
+    /// Include only best comments (default: false)
+    pub only_best: bool,
+
+    /// Include replies (default: true)
+    pub include_replies: bool,
+
+    /// Maximum reply depth to fetch (0 = unlimited up to API limit)
+    pub max_reply_depth: u32,
+}
+
+impl CommentFilter {
+    /// Create a new filter with default settings (visible, non-deleted only)
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Include all comments (deleted, hidden, etc.)
+    pub fn include_all() -> Self {
+        Self {
+            include_deleted: true,
+            include_hidden: true,
+            min_likes: 0,
+            only_best: false,
+            include_replies: true,
+            max_reply_depth: 0,
+        }
+    }
+
+    /// Only best comments
+    pub fn best_only() -> Self {
+        Self {
+            only_best: true,
+            ..Default::default()
+        }
+    }
+
+    /// Check if a comment passes this filter
+    pub fn matches(&self, comment: &Comment) -> bool {
+        // Check deleted status
+        if comment.is_deleted && !self.include_deleted {
+            return false;
+        }
+
+        // Check likes threshold
+        if comment.likes < self.min_likes {
+            return false;
+        }
+
+        // Check best only
+        if self.only_best && !comment.is_best {
+            return false;
+        }
+
+        true
+    }
+
+    /// Check if a raw comment passes this filter
+    pub fn matches_raw(&self, raw: &RawComment) -> bool {
+        // Check visibility
+        if !raw.visible && !self.include_hidden {
+            return false;
+        }
+
+        // Check deleted status
+        if raw.deleted && !self.include_deleted {
+            return false;
+        }
+
+        // Check likes threshold
+        if raw.sympathy_count < self.min_likes {
+            return false;
+        }
+
+        // Check best only
+        if self.only_best && !raw.best {
+            return false;
+        }
+
+        true
+    }
+}
+
+/// Statistics about fetched comments
+#[derive(Debug, Clone, Default)]
+pub struct CommentStats {
+    /// Total comments fetched (before filtering)
+    pub total_fetched: usize,
+
+    /// Comments after filtering
+    pub after_filter: usize,
+
+    /// Top-level comments count
+    pub top_level: usize,
+
+    /// Reply comments count
+    pub replies: usize,
+
+    /// Deleted comments (if include_deleted was true)
+    pub deleted: usize,
+
+    /// Best comments count
+    pub best: usize,
+
+    /// Pages fetched
+    pub pages_fetched: u32,
+
+    /// Maximum depth of reply nesting
+    pub max_depth: u32,
 }
 
 /// Comment API client
@@ -642,6 +777,290 @@ impl CommentClient {
         let flat_comments = self.fetch_all_comments(oid, aid, max_pages).await?;
         Ok(build_comment_tree(flat_comments))
     }
+
+    /// Fetch replies for a specific parent comment
+    ///
+    /// This method fetches all replies to a given comment, including nested replies
+    /// up to the maximum depth limit.
+    ///
+    /// # Arguments
+    /// * `oid` - News outlet ID
+    /// * `aid` - Article ID
+    /// * `parent_comment_no` - Parent comment number to fetch replies for
+    /// * `max_pages` - Maximum pages to fetch (0 = all)
+    ///
+    /// # Returns
+    /// List of reply comments (flat, not nested)
+    pub async fn fetch_replies(
+        &self,
+        oid: &str,
+        aid: &str,
+        parent_comment_no: i64,
+        max_pages: u32,
+    ) -> Result<Vec<Comment>> {
+        let mut all_replies = Vec::new();
+        let mut page = 1;
+        let max = if max_pages == 0 { api::MAX_PAGES } else { max_pages };
+
+        loop {
+            if page > max {
+                tracing::debug!(page, max, "Reached maximum page limit for replies");
+                break;
+            }
+
+            // Fetch comments and filter for replies to this parent
+            let response = self.fetch_comments(oid, aid, page, "new").await?;
+
+            let result = match response.result {
+                Some(r) => r,
+                None => break,
+            };
+
+            if result.comment_list.is_empty() {
+                break;
+            }
+
+            // Filter only replies to the specified parent
+            let replies: Vec<Comment> = result
+                .comment_list
+                .iter()
+                .filter(|c| c.parent_comment_no == parent_comment_no && c.visible && !c.deleted)
+                .map(convert_comment)
+                .collect();
+
+            all_replies.extend(replies);
+
+            // Check if there are more pages
+            if let Some(page_info) = &result.page_info {
+                if page >= page_info.total_pages as u32 {
+                    break;
+                }
+            }
+
+            page += 1;
+        }
+
+        tracing::debug!(
+            parent_comment_no,
+            reply_count = all_replies.len(),
+            "Fetched replies for comment"
+        );
+
+        Ok(all_replies)
+    }
+
+    /// Recursively fetch all comments with their nested replies
+    ///
+    /// This method fetches all top-level comments and recursively fetches
+    /// nested replies up to the specified depth.
+    ///
+    /// # Arguments
+    /// * `oid` - News outlet ID
+    /// * `aid` - Article ID
+    /// * `filter` - Comment filter options
+    ///
+    /// # Returns
+    /// Tuple of (comments tree, statistics)
+    ///
+    /// # Warning
+    /// ⚠️ This can make many API calls for articles with many nested replies.
+    /// Use `max_reply_depth` in the filter to limit API calls.
+    pub async fn fetch_with_replies_recursive(
+        &self,
+        oid: &str,
+        aid: &str,
+        filter: &CommentFilter,
+    ) -> Result<(Vec<Comment>, CommentStats)> {
+        let mut stats = CommentStats::default();
+        let mut all_comments = Vec::new();
+        let mut page = 1;
+
+        // Fetch all comments first
+        loop {
+            if page > api::MAX_PAGES {
+                break;
+            }
+
+            let response = self.fetch_comments(oid, aid, page, "new").await?;
+            stats.pages_fetched = page;
+
+            let result = match response.result {
+                Some(r) => r,
+                None => break,
+            };
+
+            if result.comment_list.is_empty() {
+                break;
+            }
+
+            stats.total_fetched += result.comment_list.len();
+
+            // Apply filter and convert
+            for raw in &result.comment_list {
+                if filter.matches_raw(raw) {
+                    let comment = convert_comment(raw);
+
+                    if raw.deleted {
+                        stats.deleted += 1;
+                    }
+                    if raw.best {
+                        stats.best += 1;
+                    }
+                    if raw.parent_comment_no == 0 {
+                        stats.top_level += 1;
+                    } else {
+                        stats.replies += 1;
+                    }
+
+                    all_comments.push(comment);
+                }
+            }
+
+            // Check if there are more pages
+            if let Some(page_info) = &result.page_info {
+                if page >= page_info.total_pages as u32 {
+                    break;
+                }
+            }
+
+            page += 1;
+        }
+
+        stats.after_filter = all_comments.len();
+
+        // Build tree with recursive reply fetching if needed
+        let tree = if filter.include_replies {
+            let tree = build_comment_tree(all_comments);
+            stats.max_depth = calculate_max_depth(&tree);
+            tree
+        } else {
+            // Filter out replies if not wanted
+            all_comments
+                .into_iter()
+                .filter(|c| c.parent_id.is_none())
+                .collect()
+        };
+
+        tracing::info!(
+            oid = %oid,
+            aid = %aid,
+            total = stats.total_fetched,
+            filtered = stats.after_filter,
+            top_level = stats.top_level,
+            replies = stats.replies,
+            "Fetched comments with filter"
+        );
+
+        Ok((tree, stats))
+    }
+
+    /// Fetch comments with default filter (visible, non-deleted only)
+    pub async fn fetch_filtered(
+        &self,
+        oid: &str,
+        aid: &str,
+    ) -> Result<(Vec<Comment>, CommentStats)> {
+        self.fetch_with_replies_recursive(oid, aid, &CommentFilter::default())
+            .await
+    }
+
+    /// Build reply API URL for fetching nested replies
+    ///
+    /// # Arguments
+    /// * `oid` - News outlet ID
+    /// * `aid` - Article ID
+    /// * `parent_comment_no` - Parent comment number
+    /// * `page` - Page number (1-based)
+    pub fn build_reply_url(
+        oid: &str,
+        aid: &str,
+        parent_comment_no: i64,
+        page: u32,
+    ) -> String {
+        let object_id = format!("news{oid},{aid}");
+
+        format!(
+            "{}?ticket={}&templateId={}&pool={}&lang={}&country={}&objectId={}&pageSize={}&page={}&parentCommentNo={}&sort=new&_callback=_callback",
+            api::REPLY_API_BASE,
+            api::TICKET,
+            api::TEMPLATE_ID,
+            api::POOL,
+            api::LANG,
+            api::COUNTRY,
+            object_id,
+            api::PAGE_SIZE,
+            page,
+            parent_comment_no
+        )
+    }
+}
+
+/// Calculate maximum depth of comment tree
+fn calculate_max_depth(comments: &[Comment]) -> u32 {
+    fn depth_of(comment: &Comment) -> u32 {
+        if comment.replies.is_empty() {
+            1
+        } else {
+            1 + comment
+                .replies
+                .iter()
+                .map(depth_of)
+                .max()
+                .unwrap_or(0)
+        }
+    }
+
+    comments.iter().map(depth_of).max().unwrap_or(0)
+}
+
+/// Filter comments by various criteria
+pub fn filter_comments(comments: Vec<Comment>, filter: &CommentFilter) -> Vec<Comment> {
+    comments
+        .into_iter()
+        .filter(|c| filter.matches(c))
+        .map(|mut c| {
+            // Recursively filter replies
+            if !c.replies.is_empty() {
+                c.replies = filter_comments(c.replies, filter);
+            }
+            c
+        })
+        .collect()
+}
+
+/// Extract article IDs (oid, aid) from Naver news URL
+///
+/// # Arguments
+/// * `url` - Naver news article URL
+///
+/// # Returns
+/// Tuple of (oid, aid) if successful
+///
+/// # Example
+/// ```
+/// use ntimes::crawler::comment::extract_article_ids;
+///
+/// let url = "https://n.news.naver.com/mnews/article/001/0014000001";
+/// let (oid, aid) = extract_article_ids(url).unwrap();
+/// assert_eq!(oid, "001");
+/// assert_eq!(aid, "0014000001");
+/// ```
+pub fn extract_article_ids(url: &str) -> Result<(String, String)> {
+    // Pattern: /article/{oid}/{aid} or /mnews/article/{oid}/{aid}
+    static ARTICLE_ID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"/(?:mnews/)?article/(\d+)/(\d+)").unwrap()
+    });
+
+    if let Some(captures) = ARTICLE_ID_REGEX.captures(url) {
+        let oid = captures.get(1).map(|m| m.as_str().to_string());
+        let aid = captures.get(2).map(|m| m.as_str().to_string());
+
+        if let (Some(oid), Some(aid)) = (oid, aid) {
+            return Ok((oid, aid));
+        }
+    }
+
+    anyhow::bail!("Failed to extract article IDs from URL: {url}")
 }
 
 // ============================================================================
@@ -956,5 +1375,406 @@ mod tests {
         assert_eq!(result.count.comment, 150);
         assert_eq!(result.comment_list.len(), 1);
         assert_eq!(result.comment_list[0].comment_no, 12345);
+    }
+
+    // ========================================================================
+    // CommentFilter Tests
+    // ========================================================================
+
+    #[test]
+    fn test_comment_filter_default() {
+        let filter = CommentFilter::default();
+        assert!(!filter.include_deleted);
+        assert!(!filter.include_hidden);
+        assert_eq!(filter.min_likes, 0);
+        assert!(!filter.only_best);
+        assert!(!filter.include_replies); // Default is false
+    }
+
+    #[test]
+    fn test_comment_filter_include_all() {
+        let filter = CommentFilter::include_all();
+        assert!(filter.include_deleted);
+        assert!(filter.include_hidden);
+        assert!(filter.include_replies);
+    }
+
+    #[test]
+    fn test_comment_filter_best_only() {
+        let filter = CommentFilter::best_only();
+        assert!(filter.only_best);
+    }
+
+    #[test]
+    fn test_filter_matches_visible_comment() {
+        let filter = CommentFilter::default();
+
+        let visible_comment = Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Test".to_string(),
+            author: "User".to_string(),
+            author_id: "u***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 5,
+            dislikes: 0,
+            reply_count: 0,
+            is_best: false,
+            is_deleted: false,
+            replies: vec![],
+        };
+
+        assert!(filter.matches(&visible_comment));
+    }
+
+    #[test]
+    fn test_filter_rejects_deleted_comment() {
+        let filter = CommentFilter::default();
+
+        let deleted_comment = Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Test".to_string(),
+            author: "User".to_string(),
+            author_id: "u***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 5,
+            dislikes: 0,
+            reply_count: 0,
+            is_best: false,
+            is_deleted: true,
+            replies: vec![],
+        };
+
+        assert!(!filter.matches(&deleted_comment));
+    }
+
+    #[test]
+    fn test_filter_include_deleted() {
+        let filter = CommentFilter {
+            include_deleted: true,
+            ..Default::default()
+        };
+
+        let deleted_comment = Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Test".to_string(),
+            author: "User".to_string(),
+            author_id: "u***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 0,
+            dislikes: 0,
+            reply_count: 0,
+            is_best: false,
+            is_deleted: true,
+            replies: vec![],
+        };
+
+        assert!(filter.matches(&deleted_comment));
+    }
+
+    #[test]
+    fn test_filter_min_likes() {
+        let filter = CommentFilter {
+            min_likes: 10,
+            ..Default::default()
+        };
+
+        let low_likes = Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Test".to_string(),
+            author: "User".to_string(),
+            author_id: "u***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 5,
+            dislikes: 0,
+            reply_count: 0,
+            is_best: false,
+            is_deleted: false,
+            replies: vec![],
+        };
+
+        let high_likes = Comment {
+            id: "2".to_string(),
+            parent_id: None,
+            content: "Test".to_string(),
+            author: "User".to_string(),
+            author_id: "u***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 15,
+            dislikes: 0,
+            reply_count: 0,
+            is_best: false,
+            is_deleted: false,
+            replies: vec![],
+        };
+
+        assert!(!filter.matches(&low_likes));
+        assert!(filter.matches(&high_likes));
+    }
+
+    #[test]
+    fn test_filter_matches_raw_visible() {
+        let filter = CommentFilter::default();
+
+        let raw = RawComment {
+            comment_no: 1,
+            visible: true,
+            deleted: false,
+            ..Default::default()
+        };
+
+        assert!(filter.matches_raw(&raw));
+    }
+
+    #[test]
+    fn test_filter_matches_raw_hidden() {
+        let filter = CommentFilter::default();
+
+        let raw = RawComment {
+            comment_no: 1,
+            visible: false,
+            deleted: false,
+            ..Default::default()
+        };
+
+        assert!(!filter.matches_raw(&raw));
+    }
+
+    // ========================================================================
+    // extract_article_ids Tests
+    // ========================================================================
+
+    #[test]
+    fn test_extract_article_ids_mnews() {
+        let url = "https://n.news.naver.com/mnews/article/001/0014000001";
+        let (oid, aid) = extract_article_ids(url).unwrap();
+        assert_eq!(oid, "001");
+        assert_eq!(aid, "0014000001");
+    }
+
+    #[test]
+    fn test_extract_article_ids_article() {
+        let url = "https://news.naver.com/article/052/0001234567";
+        let (oid, aid) = extract_article_ids(url).unwrap();
+        assert_eq!(oid, "052");
+        assert_eq!(aid, "0001234567");
+    }
+
+    #[test]
+    fn test_extract_article_ids_with_query() {
+        let url = "https://n.news.naver.com/mnews/article/003/0012345678?sid=100";
+        let (oid, aid) = extract_article_ids(url).unwrap();
+        assert_eq!(oid, "003");
+        assert_eq!(aid, "0012345678");
+    }
+
+    #[test]
+    fn test_extract_article_ids_invalid() {
+        let url = "https://news.naver.com/main/read.naver";
+        assert!(extract_article_ids(url).is_err());
+    }
+
+    // ========================================================================
+    // calculate_max_depth Tests
+    // ========================================================================
+
+    #[test]
+    fn test_calculate_max_depth_empty() {
+        let comments: Vec<Comment> = vec![];
+        assert_eq!(calculate_max_depth(&comments), 0);
+    }
+
+    #[test]
+    fn test_calculate_max_depth_flat() {
+        let comments = vec![
+            Comment {
+                id: "1".to_string(),
+                parent_id: None,
+                content: "Top".to_string(),
+                author: "A".to_string(),
+                author_id: "a***".to_string(),
+                created_at: Utc::now(),
+                modified_at: None,
+                likes: 0,
+                dislikes: 0,
+                reply_count: 0,
+                is_best: false,
+                is_deleted: false,
+                replies: vec![],
+            },
+        ];
+        assert_eq!(calculate_max_depth(&comments), 1);
+    }
+
+    #[test]
+    fn test_calculate_max_depth_nested() {
+        let comments = vec![Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Top".to_string(),
+            author: "A".to_string(),
+            author_id: "a***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 0,
+            dislikes: 0,
+            reply_count: 1,
+            is_best: false,
+            is_deleted: false,
+            replies: vec![Comment {
+                id: "2".to_string(),
+                parent_id: Some("1".to_string()),
+                content: "Reply".to_string(),
+                author: "B".to_string(),
+                author_id: "b***".to_string(),
+                created_at: Utc::now(),
+                modified_at: None,
+                likes: 0,
+                dislikes: 0,
+                reply_count: 1,
+                is_best: false,
+                is_deleted: false,
+                replies: vec![Comment {
+                    id: "3".to_string(),
+                    parent_id: Some("2".to_string()),
+                    content: "Nested Reply".to_string(),
+                    author: "C".to_string(),
+                    author_id: "c***".to_string(),
+                    created_at: Utc::now(),
+                    modified_at: None,
+                    likes: 0,
+                    dislikes: 0,
+                    reply_count: 0,
+                    is_best: false,
+                    is_deleted: false,
+                    replies: vec![],
+                }],
+            }],
+        }];
+        assert_eq!(calculate_max_depth(&comments), 3);
+    }
+
+    // ========================================================================
+    // filter_comments Tests
+    // ========================================================================
+
+    #[test]
+    fn test_filter_comments_removes_deleted() {
+        let comments = vec![
+            Comment {
+                id: "1".to_string(),
+                parent_id: None,
+                content: "Visible".to_string(),
+                author: "A".to_string(),
+                author_id: "a***".to_string(),
+                created_at: Utc::now(),
+                modified_at: None,
+                likes: 0,
+                dislikes: 0,
+                reply_count: 0,
+                is_best: false,
+                is_deleted: false,
+                replies: vec![],
+            },
+            Comment {
+                id: "2".to_string(),
+                parent_id: None,
+                content: "Deleted".to_string(),
+                author: "B".to_string(),
+                author_id: "b***".to_string(),
+                created_at: Utc::now(),
+                modified_at: None,
+                likes: 0,
+                dislikes: 0,
+                reply_count: 0,
+                is_best: false,
+                is_deleted: true,
+                replies: vec![],
+            },
+        ];
+
+        let filter = CommentFilter::default();
+        let filtered = filter_comments(comments, &filter);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "1");
+    }
+
+    #[test]
+    fn test_filter_comments_recursive() {
+        let comments = vec![Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Top".to_string(),
+            author: "A".to_string(),
+            author_id: "a***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 0,
+            dislikes: 0,
+            reply_count: 2,
+            is_best: false,
+            is_deleted: false,
+            replies: vec![
+                Comment {
+                    id: "2".to_string(),
+                    parent_id: Some("1".to_string()),
+                    content: "Visible Reply".to_string(),
+                    author: "B".to_string(),
+                    author_id: "b***".to_string(),
+                    created_at: Utc::now(),
+                    modified_at: None,
+                    likes: 0,
+                    dislikes: 0,
+                    reply_count: 0,
+                    is_best: false,
+                    is_deleted: false,
+                    replies: vec![],
+                },
+                Comment {
+                    id: "3".to_string(),
+                    parent_id: Some("1".to_string()),
+                    content: "Deleted Reply".to_string(),
+                    author: "C".to_string(),
+                    author_id: "c***".to_string(),
+                    created_at: Utc::now(),
+                    modified_at: None,
+                    likes: 0,
+                    dislikes: 0,
+                    reply_count: 0,
+                    is_best: false,
+                    is_deleted: true,
+                    replies: vec![],
+                },
+            ],
+        }];
+
+        let filter = CommentFilter::default();
+        let filtered = filter_comments(comments, &filter);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].replies.len(), 1);
+        assert_eq!(filtered[0].replies[0].id, "2");
+    }
+
+    // ========================================================================
+    // build_reply_url Tests
+    // ========================================================================
+
+    #[test]
+    fn test_build_reply_url() {
+        let url = CommentClient::build_reply_url("001", "0014000001", 12345, 1);
+
+        assert!(url.contains("objectId=news001,0014000001"));
+        assert!(url.contains("parentCommentNo=12345"));
+        assert!(url.contains("page=1"));
     }
 }
