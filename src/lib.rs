@@ -45,7 +45,7 @@ pub mod prelude {
     pub use crate::crawler::Crawler;
     pub use crate::models::{CrawlState, CrawlStats, NewsCategory, ParsedArticle};
     pub use crate::parser::Article;
-    pub use crate::storage::Database;
+    pub use crate::storage::{ArticleStorage, Database, MarkdownWriter};
 }
 
 // Direct re-exports for convenience
