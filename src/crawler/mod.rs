@@ -2,12 +2,24 @@
 //!
 //! This module implements the core crawling logic for fetching news articles
 //! from Naver News with proper rate limiting and error handling.
+//!
+//! # Pipeline Architecture
+//!
+//! The crawler uses an Actor Model based pipeline for high-performance
+//! concurrent processing:
+//!
+//! ```text
+//! URL Producer → Fetcher Workers → Parser Workers → Storage Workers
+//! ```
 
 pub mod comment;
 pub mod fetcher;
 pub mod headers;
 pub mod list;
+pub mod pipeline;
 pub mod url;
+
+pub use pipeline::{CrawlerPipeline, PipelineBuilder, PipelineConfig, PipelineStats, StatsSnapshot};
 
 use anyhow::{Context, Result};
 use governor::{Quota, RateLimiter};
