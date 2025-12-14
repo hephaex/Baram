@@ -156,7 +156,7 @@ checkpoint_interval = 100
 # Ontology Extraction Configuration (optional)
 # Uncomment to enable knowledge graph extraction
 # [ontology]
-# # LLM provider: openai, anthropic, local
+# # LLM provider: openai, gemini, local
 # provider = "openai"
 # # API key (use environment variable)
 # # api_key = "${LLM_API_KEY}"

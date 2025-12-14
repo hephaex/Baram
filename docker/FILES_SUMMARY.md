@@ -70,7 +70,7 @@ nTimes/
 - Crawler parameters
 - Storage paths
 - Embedding model settings
-- LLM configuration (OpenAI, Anthropic, Ollama)
+- LLM configuration (OpenAI, gemini, Ollama)
 - Logging configuration
 - Feature flags
 - Performance tuning
