@@ -7,7 +7,10 @@
 
 pub mod markdown;
 
-pub use markdown::{ArticleStorage, BatchSaveResult, MarkdownWriter};
+pub use markdown::{
+    ArticleStorage, ArticleWithCommentsData, ArticleWithCommentsWriter, BatchSaveResult,
+    CommentRenderConfig, CommentRenderer, MarkdownWriter,
+};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
