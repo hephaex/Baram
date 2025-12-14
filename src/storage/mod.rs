@@ -4,9 +4,15 @@
 //! - SQLite for crawl metadata and deduplication
 //! - PostgreSQL for raw article data (optional)
 //! - Markdown files for article output
+//! - Checkpointing for resumable crawls
 
+pub mod checkpoint;
 pub mod markdown;
 
+pub use checkpoint::{
+    AsyncCheckpointManager, CheckpointManager, CheckpointStats, ConcurrencyConfig,
+    ConcurrencyMonitor, CrawlState, FailedUrl,
+};
 pub use markdown::{
     ArticleStorage, ArticleWithCommentsData, ArticleWithCommentsWriter, BatchSaveResult,
     CommentRenderConfig, CommentRenderer, MarkdownWriter,
