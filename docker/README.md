@@ -1,0 +1,376 @@
+# Docker Environment for nTimes
+
+This directory contains Docker configurations for running the nTimes Naver News Crawler infrastructure.
+
+## Quick Start
+
+### 1. Environment Setup
+
+Copy the example environment file and configure it:
+
+```bash
+cp docker/.env.example docker/.env
+```
+
+Edit `docker/.env` and set secure passwords:
+
+```bash
+# Required: Change these passwords!
+POSTGRES_PASSWORD=your_secure_password_here
+OPENSEARCH_INITIAL_ADMIN_PASSWORD=Admin123!SecurePassword
+```
+
+### 2. Start Services
+
+Start core services (PostgreSQL, OpenSearch, Redis):
+
+```bash
+cd docker
+docker-compose up -d
+```
+
+Start with development tools (pgAdmin, OpenSearch Dashboards):
+
+```bash
+docker-compose --profile development up -d
+```
+
+### 3. Verify Services
+
+Check that all services are healthy:
+
+```bash
+docker-compose ps
+```
+
+Test PostgreSQL connection:
+
+```bash
+docker-compose exec postgres psql -U ntimes -d ntimes -c "SELECT version();"
+```
+
+Test OpenSearch:
+
+```bash
+curl -u admin:YOUR_PASSWORD http://localhost:9200/_cluster/health?pretty
+```
+
+Test Redis:
+
+```bash
+docker-compose exec redis redis-cli ping
+```
+
+## Services Overview
+
+### PostgreSQL 18
+
+- **Port**: 5432
+- **Database**: ntimes
+- **Purpose**: Primary storage for articles, comments, and ontology triples
+- **Features**: Full-text search, UUID support, trigram matching
+
+**Access pgAdmin** (development profile):
+- URL: http://localhost:5050
+- Email: admin@ntimes.local (configurable in .env)
+- Password: admin (configurable in .env)
+
+### OpenSearch 2.11+
+
+- **Port**: 9200 (REST API), 9600 (Performance Analyzer)
+- **Purpose**: Vector database with Korean (Nori) text analysis
+- **Features**: k-NN search, full-text search with Korean language support
+
+**Access OpenSearch Dashboards** (development profile):
+- URL: http://localhost:5601
+- Username: admin
+- Password: YOUR_OPENSEARCH_PASSWORD
+
+### Redis 7
+
+- **Port**: 6379
+- **Purpose**: Distributed crawling coordination, caching
+- **Configuration**: LRU eviction, AOF persistence
+
+## Database Schema
+
+The PostgreSQL database is initialized with the following tables:
+
+- **articles_raw**: Crawled news articles with full-text search
+- **comments_raw**: Article comments with hierarchical structure
+- **ontology_triples**: Knowledge graph (Subject-Predicate-Object)
+- **crawl_jobs**: Job tracking for distributed crawling
+- **embedding_metadata**: Vector embedding metadata
+
+See `init.sql` for complete schema definition.
+
+## OpenSearch Index Setup
+
+After starting OpenSearch, create the index for Korean text:
+
+```bash
+curl -X PUT "localhost:9200/naver-news" \
+  -u admin:YOUR_PASSWORD \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "analysis": {
+        "tokenizer": {
+          "nori_mixed": {
+            "type": "nori_tokenizer",
+            "decompound_mode": "mixed"
+          }
+        },
+        "analyzer": {
+          "nori_analyzer": {
+            "type": "custom",
+            "tokenizer": "nori_mixed",
+            "filter": ["nori_posfilter", "lowercase"]
+          }
+        },
+        "filter": {
+          "nori_posfilter": {
+            "type": "nori_part_of_speech",
+            "stoptags": ["E", "IC", "J", "MAG", "MM", "SP", "SSC", "SSO", "SC", "SE", "XPN", "XSA", "XSN", "XSV", "UNA", "NA", "VSV"]
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "title": {
+          "type": "text",
+          "analyzer": "nori_analyzer"
+        },
+        "content": {
+          "type": "text",
+          "analyzer": "nori_analyzer"
+        },
+        "embedding": {
+          "type": "knn_vector",
+          "dimension": 1024,
+          "method": {
+            "name": "hnsw",
+            "space_type": "cosinesimil",
+            "engine": "nmslib"
+          }
+        },
+        "category": {
+          "type": "keyword"
+        },
+        "publisher": {
+          "type": "keyword"
+        },
+        "published_at": {
+          "type": "date"
+        }
+      }
+    }
+  }'
+```
+
+## Volume Management
+
+Data is persisted in Docker volumes:
+
+```bash
+# List volumes
+docker volume ls | grep ntimes
+
+# Backup PostgreSQL data
+docker-compose exec postgres pg_dump -U ntimes ntimes > backup.sql
+
+# Backup OpenSearch data
+docker-compose exec opensearch tar czf /tmp/opensearch-backup.tar.gz /usr/share/opensearch/data
+docker cp ntimes-opensearch:/tmp/opensearch-backup.tar.gz ./opensearch-backup.tar.gz
+
+# Restore PostgreSQL data
+docker-compose exec -T postgres psql -U ntimes ntimes < backup.sql
+```
+
+## Maintenance
+
+### View Logs
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f postgres
+docker-compose logs -f opensearch
+docker-compose logs -f redis
+```
+
+### Restart Services
+
+```bash
+# Restart all
+docker-compose restart
+
+# Restart specific service
+docker-compose restart postgres
+```
+
+### Stop Services
+
+```bash
+# Stop all (keeps data)
+docker-compose down
+
+# Stop and remove volumes (WARNING: deletes all data)
+docker-compose down -v
+```
+
+## Performance Tuning
+
+### PostgreSQL
+
+The configuration in `docker-compose.yml` is optimized for development. For production:
+
+1. Increase `shared_buffers` to 25% of RAM
+2. Set `effective_cache_size` to 75% of RAM
+3. Adjust `work_mem` based on concurrent connections
+4. Enable connection pooling (e.g., PgBouncer)
+
+### OpenSearch
+
+For production deployments:
+
+1. Increase heap size: `-Xms4g -Xmx4g` (adjust based on RAM)
+2. Enable security plugin with SSL/TLS
+3. Set `number_of_replicas` >= 1 for high availability
+4. Use dedicated master nodes for clusters
+5. Configure snapshot repository for backups
+
+### Redis
+
+For production:
+
+1. Increase `maxmemory` based on cache needs
+2. Consider RDB snapshots for persistence
+3. Enable Redis Sentinel for high availability
+4. Use Redis Cluster for horizontal scaling
+
+## Security Checklist
+
+Before deploying to production:
+
+- [ ] Change all default passwords in `.env`
+- [ ] Enable SSL/TLS for PostgreSQL
+- [ ] Enable SSL/TLS for OpenSearch
+- [ ] Configure firewall rules (only expose necessary ports)
+- [ ] Enable OpenSearch security plugin
+- [ ] Set up proper authentication and authorization
+- [ ] Configure audit logging
+- [ ] Review and restrict network access
+- [ ] Implement secrets management (e.g., HashiCorp Vault)
+- [ ] Set up automated backups
+- [ ] Configure monitoring and alerting
+- [ ] Review container security (scan images, use non-root users)
+
+## Troubleshooting
+
+### PostgreSQL Won't Start
+
+Check logs:
+```bash
+docker-compose logs postgres
+```
+
+Common issues:
+- Port 5432 already in use
+- Insufficient disk space
+- Permission issues with volumes
+
+### OpenSearch Won't Start
+
+Check memory lock settings:
+```bash
+# On Linux, increase vm.max_map_count
+sudo sysctl -w vm.max_map_count=262144
+```
+
+Make it permanent:
+```bash
+echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+```
+
+### Connection Refused Errors
+
+Ensure services are healthy:
+```bash
+docker-compose ps
+```
+
+Wait for health checks to pass (especially OpenSearch takes 30-60s to start).
+
+## Development Tools
+
+### Connect to PostgreSQL
+
+Using psql:
+```bash
+docker-compose exec postgres psql -U ntimes -d ntimes
+```
+
+Using pgAdmin:
+1. Open http://localhost:5050
+2. Add server:
+   - Host: postgres (Docker network name)
+   - Port: 5432
+   - Database: ntimes
+   - Username: ntimes
+   - Password: from .env file
+
+### Query OpenSearch
+
+Using curl:
+```bash
+# Search
+curl -u admin:PASSWORD "http://localhost:9200/naver-news/_search?q=반도체&pretty"
+
+# Get index stats
+curl -u admin:PASSWORD "http://localhost:9200/naver-news/_stats?pretty"
+```
+
+Using OpenSearch Dashboards:
+1. Open http://localhost:5601
+2. Dev Tools → Console
+3. Run queries interactively
+
+## Integration with Rust Application
+
+Update your `config.toml`:
+
+```toml
+[postgresql]
+host = "localhost"  # or "postgres" if running in Docker network
+port = 5432
+database = "ntimes"
+username = "ntimes"
+password = "your_password_from_env"
+
+[opensearch]
+hosts = ["http://localhost:9200"]
+username = "admin"
+password = "your_opensearch_password"
+
+[redis]
+url = "redis://localhost:6379"
+```
+
+Or use environment variables (recommended):
+
+```bash
+export DATABASE_URL="postgresql://ntimes:password@localhost:5432/ntimes"
+export OPENSEARCH_URL="http://localhost:9200"
+export OPENSEARCH_PASSWORD="your_password"
+export REDIS_URL="redis://localhost:6379"
+```
+
+## License
+
+GPL v3 - Copyright (c) 2024 hephaex@gmail.com

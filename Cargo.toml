@@ -1,0 +1,89 @@
+[package]
+name = "ntimes"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["nTimes Contributors"]
+description = "Advanced Naver News crawler with vector search and ontology extraction"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["cookies", "gzip", "json"] }
+
+# HTML parsing
+scraper = "0.20"
+
+# Rate limiting
+governor = "0.7"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Database - SQLite
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Database - PostgreSQL
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-uuid-1", "with-serde_json-1"] }
+deadpool-postgres = "0.14"
+
+# Vector search - OpenSearch
+opensearch = "2.2"
+
+# Template engine
+handlebars = "6.1"
+
+# Date and time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+# Encoding
+encoding_rs = "0.8"
+
+# UUID generation
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Regular expressions
+regex = "1.11"
+
+# Cryptographic hashing
+sha2 = "0.10"
+
+# Additional utilities
+futures = "0.3"
+bytes = "1.8"
+url = "2.5"
+rand = "0.8"
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.5"
+tokio-test = "0.4"
+tempfile = "3.13"
+wiremock = "0.6"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+
+[profile.test]
+opt-level = 1

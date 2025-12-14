@@ -1,0 +1,159 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "index": {
+      "codec": "best_compression",
+      "refresh_interval": "5s",
+      "max_result_window": 10000
+    },
+    "analysis": {
+      "tokenizer": {
+        "nori_mixed": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed",
+          "discard_punctuation": true
+        }
+      },
+      "analyzer": {
+        "nori_analyzer": {
+          "type": "custom",
+          "tokenizer": "nori_mixed",
+          "filter": [
+            "lowercase",
+            "nori_posfilter",
+            "nori_readingform"
+          ]
+        },
+        "nori_search_analyzer": {
+          "type": "custom",
+          "tokenizer": "nori_mixed",
+          "filter": [
+            "lowercase",
+            "nori_posfilter"
+          ]
+        }
+      },
+      "filter": {
+        "nori_posfilter": {
+          "type": "nori_part_of_speech",
+          "stoptags": [
+            "E",
+            "IC",
+            "J",
+            "MAG",
+            "MM",
+            "SP",
+            "SSC",
+            "SSO",
+            "SC",
+            "SE",
+            "XPN",
+            "XSA",
+            "XSN",
+            "XSV",
+            "UNA",
+            "NA",
+            "VSV"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "oid": {
+        "type": "keyword"
+      },
+      "aid": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "nori_analyzer",
+        "search_analyzer": "nori_search_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "exact": {
+            "type": "text",
+            "analyzer": "standard"
+          }
+        }
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "nori_analyzer",
+        "search_analyzer": "nori_search_analyzer"
+      },
+      "category": {
+        "type": "keyword"
+      },
+      "publisher": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "nori_analyzer"
+          }
+        }
+      },
+      "author": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "nori_analyzer"
+          }
+        }
+      },
+      "url": {
+        "type": "keyword",
+        "index": false
+      },
+      "published_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "crawled_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "comment_count": {
+        "type": "integer"
+      },
+      "view_count": {
+        "type": "long"
+      },
+      "like_count": {
+        "type": "integer"
+      },
+      "embedding": {
+        "type": "knn_vector",
+        "dimension": 1024,
+        "method": {
+          "name": "hnsw",
+          "space_type": "cosinesimil",
+          "engine": "nmslib",
+          "parameters": {
+            "ef_construction": 128,
+            "m": 16
+          }
+        }
+      },
+      "chunk_index": {
+        "type": "integer"
+      },
+      "chunk_text": {
+        "type": "text",
+        "analyzer": "nori_analyzer",
+        "search_analyzer": "nori_search_analyzer"
+      }
+    }
+  }
+}

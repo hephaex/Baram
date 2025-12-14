@@ -1,0 +1,208 @@
+# nTimes Naver News Crawler Configuration
+# Copyright (c) 2024 hephaex@gmail.com
+# License: GPL v3
+
+[app]
+name = "nTimes"
+version = "0.1.0"
+# Environment: development, staging, production
+environment = "development"
+
+[crawler]
+# Base URL for Naver News
+base_url = "https://news.naver.com"
+
+# Rate limiting: requests per second
+requests_per_second = 5
+
+# Maximum retry attempts for failed requests
+max_retries = 3
+
+# Request timeout in seconds
+timeout_secs = 30
+
+# User-Agent rotation pool (anti-bot)
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0",
+]
+
+# Maximum concurrent workers (Actor Model)
+max_concurrent_workers = 10
+
+# Channel buffer size for tokio::mpsc
+channel_buffer_size = 1000
+
+# Enable cookie jar for session persistence
+enable_cookie_jar = true
+
+# Enable response compression (gzip, deflate)
+enable_compression = true
+
+# Follow HTTP redirects
+follow_redirects = true
+
+# Maximum redirect hops
+max_redirects = 10
+
+# Exponential backoff configuration
+backoff_base_ms = 1000    # 1 second
+backoff_max_ms = 60000    # 60 seconds
+
+[crawler.comments]
+# Enable comment crawling
+enabled = true
+
+# Maximum comment pages per article
+max_pages = 100
+
+# Maximum recursive depth for reply chains
+max_reply_depth = 10
+
+# Include deleted/hidden comments
+include_deleted = false
+
+# Comment API endpoint template
+# Available variables: {oid}, {aid}, {page}
+api_template = "https://apis.naver.com/commentBox/cbox/web_neo_list_jsonp.json?ticket=news&templateId=default_society&pool=cbox5&lang=ko&country=KR&objectId=news{oid},{aid}&categoryId=&pageSize=20&indexSize=10&groupId=&listType=OBJECT&pageType=more&page={page}&refresh=false&sort=FAVORITE"
+
+[storage]
+# Output directory for markdown files
+output_dir = "./output/raw"
+
+# Checkpoint directory for resume functionality
+checkpoint_dir = "./output/checkpoints"
+
+# SQLite database path (for deduplication)
+sqlite_path = "./output/crawler.db"
+
+# Enable file compression (gzip)
+enable_compression = false
+
+# Organize files by date hierarchy (YYYY/MM/DD)
+organize_by_date = true
+
+# File naming template
+# Available variables: {category}, {oid}, {aid}, {date}, {title_slug}
+file_template = "{category}_{oid}_{aid}.md"
+
+# Checkpoint interval (number of articles)
+checkpoint_interval = 100
+
+# PostgreSQL Configuration (optional)
+# Uncomment to enable PostgreSQL storage
+# [postgres]
+# host = "localhost"
+# port = 5432
+# database = "naver_news"
+# username = "crawler"
+# # Use environment variable: export DB_PASSWORD="your_password"
+# password = "${DB_PASSWORD}"
+# max_connections = 20
+# min_idle_connections = 5
+# connection_timeout_secs = 10
+# ssl_mode = "prefer"  # disable, prefer, require
+# application_name = "nTimes-crawler"
+
+# OpenSearch Configuration (optional)
+# Uncomment to enable vector search
+# [opensearch]
+# hosts = [
+#     "https://localhost:9200",
+# ]
+# index_name = "naver_news"
+# # Optional authentication
+# # username = "admin"
+# # password = "${OPENSEARCH_PASSWORD}"
+# verify_ssl = false  # Set to true in production
+# timeout_secs = 30
+
+# [opensearch.bulk]
+# # Maximum documents per bulk request
+# size = 500
+# # Maximum bytes per bulk request (5MB)
+# max_bytes = 5242880
+# # Flush interval in seconds
+# flush_interval_secs = 30
+
+# [opensearch.index_settings]
+# number_of_shards = 3
+# number_of_replicas = 1
+# refresh_interval = "30s"
+# # Use Korean analyzer (nori)
+# use_nori_analyzer = true
+
+# Embedding Model Configuration (optional)
+# Uncomment to enable semantic search
+# [embedding]
+# # Model path (local or HuggingFace model ID)
+# model_path = "./models/klue-bert-base"
+# tokenizer_path = "./models/klue-bert-base/tokenizer.json"
+# # Vector dimension (BERT-base: 768)
+# vector_dim = 768
+# # Maximum sequence length
+# max_seq_length = 512
+# # Text chunking configuration
+# chunk_size = 500
+# chunk_overlap = 50
+# # Device: cpu, cuda, mps
+# device = "cpu"
+# # Batch size for embedding generation
+# batch_size = 32
+
+# Ontology Extraction Configuration (optional)
+# Uncomment to enable knowledge graph extraction
+# [ontology]
+# # LLM provider: openai, anthropic, local
+# provider = "openai"
+# # API key (use environment variable)
+# # api_key = "${LLM_API_KEY}"
+# # Model name
+# model_name = "gpt-4-turbo-preview"
+# # Prompt template path
+# prompt_template_path = "./templates/ontology_extraction.hbs"
+# # Maximum tokens for completion
+# max_tokens = 2048
+# # Temperature for sampling (0.0 = deterministic)
+# temperature = 0.3
+# # Minimum confidence score for extracted triples
+# min_confidence = 0.7
+# # Enable hallucination detection
+# enable_hallucination_check = true
+# # Batch size for ontology extraction
+# batch_size = 10
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Log format: json, pretty, compact
+format = "pretty"
+
+# Log output file (optional)
+# file = "./logs/crawler.log"
+
+# Enable console output
+console = true
+
+# Enable distributed tracing (OpenTelemetry)
+enable_tracing = false
+
+# Environment-specific overrides
+# To use: export NTIMES_ENV=production
+
+# Development settings (default)
+# - Verbose logging
+# - Small batch sizes
+# - Local storage only
+
+# Production settings
+# When environment = "production":
+# - Set logging.level = "warn"
+# - Enable PostgreSQL and OpenSearch
+# - Increase max_concurrent_workers to 50
+# - Enable SSL verification
+# - Set requests_per_second based on your IP allowance

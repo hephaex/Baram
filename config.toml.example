@@ -1,0 +1,125 @@
+# nTimes Configuration File
+# Copyright (c) 2024 hephaex@gmail.com
+# License: GPL v3
+#
+# Copy this file to config.toml and adjust settings as needed
+
+[crawler]
+# Rate limiting to avoid being blocked
+requests_per_second = 2
+max_retries = 3
+timeout_seconds = 30
+
+# Maximum items per crawl session
+max_articles = 1000
+max_comments_per_article = 500
+
+# User agents for rotation (randomly selected)
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+]
+
+[postgresql]
+host = "localhost"
+port = 5432
+database = "ntimes"
+username = "ntimes"
+password = "changeme_strong_password_here"
+
+# Connection pool settings
+max_connections = 20
+min_connections = 5
+connect_timeout_seconds = 30
+
+[opensearch]
+hosts = ["http://localhost:9200"]
+username = "admin"
+password = "Admin123!ChangeMeNow"
+
+# Index configuration
+index_name = "naver-news"
+bulk_size = 100
+timeout_seconds = 30
+
+# Refresh interval (affects search freshness vs indexing speed)
+refresh_interval = "5s"
+
+[redis]
+url = "redis://localhost:6379"
+db = 0
+pool_max_size = 10
+timeout_seconds = 5
+
+[storage]
+# Output directories
+output_dir = "./output"
+raw_dir = "./output/raw"
+markdown_dir = "./output/markdown"
+
+# SQLite for local metadata
+sqlite_path = "./ntimes.db"
+
+# Checkpoint directory for resuming crawls
+checkpoint_dir = "./checkpoints"
+
+[embedding]
+# Model for text embeddings
+model_name = "intfloat/multilingual-e5-large"
+dimension = 1024
+batch_size = 32
+
+# Text chunking
+chunk_size = 512
+chunk_overlap = 50
+
+# Model cache
+cache_dir = "./models"
+
+[ontology]
+# LLM provider: openai, anthropic, ollama
+provider = "ollama"
+
+# OpenAI configuration
+[ontology.openai]
+api_key = "sk-your-api-key-here"
+model = "gpt-4-turbo-preview"
+max_tokens = 2000
+temperature = 0.1
+
+# Anthropic configuration
+[ontology.anthropic]
+api_key = "sk-ant-your-api-key-here"
+model = "claude-3-sonnet-20240229"
+max_tokens = 2000
+temperature = 0.1
+
+# Ollama configuration (local)
+[ontology.ollama]
+url = "http://localhost:11434"
+model = "llama3:8b"
+timeout_seconds = 60
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+format = "pretty"  # pretty or json
+file = "./logs/ntimes.log"
+
+[features]
+# Enable/disable specific features
+comments_enabled = true
+ontology_enabled = true
+vector_search_enabled = true
+distributed_crawling = false
+
+[performance]
+# Tokio runtime threads (0 = auto-detect)
+worker_threads = 0
+
+# Channel buffer sizes
+channel_buffer_size = 1000
+
+# Batch processing
+batch_size = 100

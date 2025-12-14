@@ -1,0 +1,12 @@
+# HTML test fixtures directory
+# Store captured HTML files here for parser testing
+#
+# Naming convention:
+#   general_news_NNN.html      - Standard news articles
+#   entertainment_NNN.html     - Entertainment section articles
+#   sports_NNN.html            - Sports section articles
+#   card_news_NNN.html         - Card/photo news format
+#   euc_kr_NNN.html           - EUC-KR encoded articles
+#   deleted_article_NNN.html   - Deleted/unavailable articles
+#
+# IMPORTANT: Anonymize personal information before committing

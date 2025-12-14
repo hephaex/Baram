@@ -1,0 +1,13 @@
+# JSONP test fixtures directory
+# Store captured JSONP responses here for comment parser testing
+#
+# Naming convention:
+#   basic_response.json        - Standard comment response
+#   with_parentheses.json      - Comments containing parentheses
+#   with_quotes.json           - Comments containing quotes
+#   empty_comments.json        - Article with no comments
+#   large_comments.json        - 1000+ comments for stress testing
+#   deleted_comments.json      - Response with deleted/hidden comments
+#   nested_replies.json        - Deep reply threading
+#
+# IMPORTANT: Anonymize user information before committing
