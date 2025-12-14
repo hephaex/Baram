@@ -3,6 +3,7 @@
 //! This module implements the core crawling logic for fetching news articles
 //! from Naver News with proper rate limiting and error handling.
 
+pub mod comment;
 pub mod fetcher;
 pub mod headers;
 pub mod list;

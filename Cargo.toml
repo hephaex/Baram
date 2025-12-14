@@ -49,6 +49,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 
 # Encoding
 encoding_rs = "0.8"
+html-escape = "0.2"
 
 # UUID generation
 uuid = { version = "1.10", features = ["v4", "serde"] }

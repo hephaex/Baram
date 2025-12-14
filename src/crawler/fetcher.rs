@@ -142,6 +142,44 @@ impl NaverFetcher {
         Ok(fetcher)
     }
 
+    /// Simple fetch that returns raw Response
+    ///
+    /// This is useful for fetching JSON/JSONP APIs where you want to handle
+    /// the response body yourself.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL to fetch
+    ///
+    /// # Errors
+    ///
+    /// Returns `FetchError` on network or HTTP errors
+    pub async fn fetch(&self, url: &str) -> Result<Response, FetchError> {
+        // Wait for rate limiter
+        self.rate_limiter.until_ready().await;
+
+        // Build headers with default referer
+        let referer = "https://news.naver.com";
+        let headers = self.build_headers(referer);
+
+        // Construct full URL
+        let full_url = if let Some(base) = &self.base_url {
+            format!("{base}{url}")
+        } else {
+            url.to_string()
+        };
+
+        // Send request
+        let response = self.client.get(&full_url).headers(headers).send().await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            return Err(FetchError::ServerError(status.as_u16()));
+        }
+
+        Ok(response)
+    }
+
     /// Fetch an article with retry logic and rate limiting
     ///
     /// This is the main entry point for fetching articles. It handles:
