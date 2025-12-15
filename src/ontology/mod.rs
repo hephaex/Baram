@@ -1,24 +1,82 @@
 //! Knowledge graph and ontology extraction
 //!
-//! This module handles extracting structured knowledge from articles
-//! and building ontologies in various formats (JSON, RDF, Turtle).
+//! This module handles extracting structured knowledge from Korean news articles
+//! and building ontologies in various formats (JSON, RDF, Turtle, N-Triples, JSON-LD).
+//!
+//! # Features
+//!
+//! - **Entity Extraction**: Extract named entities (people, organizations, locations, etc.)
+//!   using regex patterns optimized for Korean text
+//! - **Relation Extraction**: Identify relationships between entities using LLM-based analysis
+//! - **Hallucination Verification**: Validate extracted relations against source text
+//! - **Entity Linking**: Link entities to external knowledge bases (Wikidata, DBpedia)
+//! - **RDF Export**: Export knowledge graphs in multiple formats (Turtle, N-Triples, JSON-LD, RDF/XML)
+//! - **Performance Profiling**: Track extraction statistics and memory usage
 //!
 //! # Submodules
 //!
 //! - [`extractor`] - Entity and relation extraction using regex patterns and LLM
-//! - [`linker`] - Entity linking and normalization with knowledge base
-//! - [`storage`] - Triple persistence and indexing
+//! - [`linker`] - Entity linking and normalization with Wikidata/DBpedia knowledge base
+//! - [`storage`] - Triple persistence and indexing with JSON storage
 //! - [`error`] - Custom error types for ontology operations
+//! - [`stats`] - Statistics and profiling for extraction pipelines
 //!
-//! # Usage
+//! # Quick Start
+//!
+//! ## Basic Extraction
 //!
 //! ```ignore
-//! use ntimes::ontology::{RelationExtractor, EntityLinker, TripleStore, OntologyError};
+//! use ntimes::ontology::{RelationExtractor, EntityLinker, TripleStore};
 //!
+//! // Extract entities and relations
 //! let extractor = RelationExtractor::new();
 //! let result = extractor.extract_from_article(&article)?;
+//!
+//! // Convert to triple store
 //! let store = TripleStore::from_extraction(&result, &article.title);
 //! println!("{}", store.to_turtle());
+//! ```
+//!
+//! ## Entity Linking with Wikidata
+//!
+//! ```ignore
+//! use ntimes::ontology::{EntityLinker, LinkerConfig};
+//!
+//! let linker = EntityLinker::with_config(LinkerConfig::strict());
+//! let linked = linker.link("삼성전자");
+//!
+//! if let Some(entity) = linked {
+//!     println!("Wikidata: {}", entity.wikidata_qid().unwrap_or_default());
+//!     println!("RDF URI: {}", entity.rdf_uri);
+//! }
+//! ```
+//!
+//! ## RDF Export Formats
+//!
+//! ```ignore
+//! use ntimes::ontology::{EntityLinker, LinkedTripleStore};
+//!
+//! let linker = EntityLinker::new();
+//! let linked_store = linker.apply_to_triple_store(&store);
+//!
+//! // Multiple export formats
+//! let turtle = linked_store.to_turtle();
+//! let ntriples = linked_store.to_ntriples();
+//! let jsonld = linked_store.to_json_ld()?;
+//! let rdfxml = linked_store.to_rdf_xml();
+//! ```
+//!
+//! ## Performance Profiling
+//!
+//! ```ignore
+//! use ntimes::ontology::{ExtractionStats, BatchStats, PipelineProfiler};
+//!
+//! let mut stats = ExtractionStats::new("article_001");
+//! stats.record_entity(EntityType::Person);
+//! stats.record_relation(RelationType::Said, 0.9, true);
+//! stats.estimate_memory();
+//!
+//! println!("{}", stats.summary());
 //! ```
 //!
 //! # Error Handling
@@ -32,6 +90,29 @@
 //!     // Returns OntologyError on failure with context
 //! }
 //! ```
+//!
+//! # Configuration
+//!
+//! All configuration structs support builder patterns with validation:
+//!
+//! ```ignore
+//! use ntimes::ontology::{ExtractionConfig, LinkerConfig, StorageConfig};
+//!
+//! let extraction_config = ExtractionConfig::builder()
+//!     .min_confidence(0.7)
+//!     .max_entities(100)
+//!     .build()?;
+//!
+//! let linker_config = LinkerConfig::builder()
+//!     .similarity_threshold(0.8)
+//!     .enable_external_linking(true)
+//!     .build()?;
+//!
+//! let storage_config = StorageConfig::builder()
+//!     .base_path("/data/ontology")
+//!     .enable_compression(true)
+//!     .build()?;
+//! ```
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -43,6 +124,7 @@ use crate::parser::Article;
 pub mod error;
 pub mod extractor;
 pub mod linker;
+pub mod stats;
 pub mod storage;
 
 // Re-export error types
@@ -71,6 +153,12 @@ pub use linker::{
 // Re-export storage types
 pub use storage::{
     IndexEntry, StorageConfig, StorageConfigBuilder, StorageIndex, StorageStats, TripleStorage,
+};
+
+// Re-export stats types
+pub use stats::{
+    format_bytes, parse_bytes, BatchStats, ExtractionStats, MemoryEstimator, PipelineProfiler,
+    ProfileSummary, StageTiming,
 };
 
 /// Legacy ontology entity (for backwards compatibility)
