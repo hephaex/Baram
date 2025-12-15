@@ -36,6 +36,7 @@ pub mod embedding;
 pub mod models;
 pub mod ontology;
 pub mod parser;
+pub mod scheduler;
 pub mod storage;
 pub mod utils;
 
