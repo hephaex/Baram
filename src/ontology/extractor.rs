@@ -48,6 +48,105 @@ impl Default for ExtractionConfig {
     }
 }
 
+impl ExtractionConfig {
+    /// Create a new builder for ExtractionConfig
+    pub fn builder() -> ExtractionConfigBuilder {
+        ExtractionConfigBuilder::default()
+    }
+
+    /// Validate the configuration
+    pub fn validate(&self) -> Result<(), super::error::OntologyError> {
+        if self.min_entity_length == 0 {
+            return Err(super::error::OntologyError::invalid_config(
+                "min_entity_length",
+                "0",
+                "Must be at least 1",
+            ));
+        }
+        if self.max_entities == 0 {
+            return Err(super::error::OntologyError::invalid_config(
+                "max_entities",
+                "0",
+                "Must be at least 1",
+            ));
+        }
+        if self.confidence_threshold < 0.0 || self.confidence_threshold > 1.0 {
+            return Err(super::error::OntologyError::invalid_config(
+                "confidence_threshold",
+                &self.confidence_threshold.to_string(),
+                "Must be between 0.0 and 1.0",
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Builder for ExtractionConfig with fluent API
+#[derive(Debug, Clone, Default)]
+pub struct ExtractionConfigBuilder {
+    min_entity_length: Option<usize>,
+    max_entities: Option<usize>,
+    max_relations: Option<usize>,
+    confidence_threshold: Option<f32>,
+    hallucination_check: Option<bool>,
+}
+
+impl ExtractionConfigBuilder {
+    /// Set minimum entity name length
+    pub fn min_entity_length(mut self, len: usize) -> Self {
+        self.min_entity_length = Some(len);
+        self
+    }
+
+    /// Set maximum entities per article
+    pub fn max_entities(mut self, max: usize) -> Self {
+        self.max_entities = Some(max);
+        self
+    }
+
+    /// Set maximum relations per article
+    pub fn max_relations(mut self, max: usize) -> Self {
+        self.max_relations = Some(max);
+        self
+    }
+
+    /// Set confidence threshold for relations
+    pub fn confidence_threshold(mut self, threshold: f32) -> Self {
+        self.confidence_threshold = Some(threshold);
+        self
+    }
+
+    /// Enable or disable hallucination check
+    pub fn hallucination_check(mut self, enable: bool) -> Self {
+        self.hallucination_check = Some(enable);
+        self
+    }
+
+    /// Build the config with validation
+    pub fn build(self) -> Result<ExtractionConfig, super::error::OntologyError> {
+        let config = ExtractionConfig {
+            min_entity_length: self.min_entity_length.unwrap_or(2),
+            max_entities: self.max_entities.unwrap_or(50),
+            max_relations: self.max_relations.unwrap_or(100),
+            confidence_threshold: self.confidence_threshold.unwrap_or(0.5),
+            hallucination_check: self.hallucination_check.unwrap_or(true),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Build without validation (for testing)
+    pub fn build_unchecked(self) -> ExtractionConfig {
+        ExtractionConfig {
+            min_entity_length: self.min_entity_length.unwrap_or(2),
+            max_entities: self.max_entities.unwrap_or(50),
+            max_relations: self.max_relations.unwrap_or(100),
+            confidence_threshold: self.confidence_threshold.unwrap_or(0.5),
+            hallucination_check: self.hallucination_check.unwrap_or(true),
+        }
+    }
+}
+
 // ============================================================================
 // Hallucination Verification
 // ============================================================================
@@ -1219,7 +1318,8 @@ pub struct RelationExtractor {
     /// Relation trigger patterns
     relation_patterns: HashMap<RelationType, Vec<Regex>>,
 
-    /// Known entity cache
+    /// Known entity cache (reserved for incremental extraction)
+    #[allow(dead_code)]
     known_entities: HashSet<String>,
 }
 
@@ -1669,6 +1769,49 @@ mod tests {
         let config = ExtractionConfig::default();
         assert_eq!(config.min_entity_length, 2);
         assert!(config.hallucination_check);
+    }
+
+    #[test]
+    fn test_extraction_config_builder() {
+        let config = ExtractionConfig::builder()
+            .min_entity_length(3)
+            .max_entities(100)
+            .confidence_threshold(0.7)
+            .hallucination_check(false)
+            .build()
+            .unwrap();
+
+        assert_eq!(config.min_entity_length, 3);
+        assert_eq!(config.max_entities, 100);
+        assert!((config.confidence_threshold - 0.7).abs() < 0.01);
+        assert!(!config.hallucination_check);
+    }
+
+    #[test]
+    fn test_extraction_config_builder_validation() {
+        // Invalid confidence threshold
+        let result = ExtractionConfig::builder()
+            .confidence_threshold(1.5)
+            .build();
+        assert!(result.is_err());
+
+        // Invalid min_entity_length
+        let result = ExtractionConfig::builder()
+            .min_entity_length(0)
+            .build();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extraction_config_validate() {
+        let valid_config = ExtractionConfig::default();
+        assert!(valid_config.validate().is_ok());
+
+        let invalid_config = ExtractionConfig {
+            confidence_threshold: -0.1,
+            ..Default::default()
+        };
+        assert!(invalid_config.validate().is_err());
     }
 
     #[test]

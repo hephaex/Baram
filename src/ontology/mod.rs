@@ -7,16 +7,30 @@
 //!
 //! - [`extractor`] - Entity and relation extraction using regex patterns and LLM
 //! - [`linker`] - Entity linking and normalization with knowledge base
+//! - [`storage`] - Triple persistence and indexing
+//! - [`error`] - Custom error types for ontology operations
 //!
 //! # Usage
 //!
 //! ```ignore
-//! use ntimes::ontology::{RelationExtractor, EntityLinker, TripleStore};
+//! use ntimes::ontology::{RelationExtractor, EntityLinker, TripleStore, OntologyError};
 //!
 //! let extractor = RelationExtractor::new();
-//! let result = extractor.extract_from_article(&article);
+//! let result = extractor.extract_from_article(&article)?;
 //! let store = TripleStore::from_extraction(&result, &article.title);
 //! println!("{}", store.to_turtle());
+//! ```
+//!
+//! # Error Handling
+//!
+//! This module uses [`OntologyError`] for specific error variants:
+//!
+//! ```ignore
+//! use ntimes::ontology::{OntologyError, OntologyResult};
+//!
+//! fn process_article(article: &Article) -> OntologyResult<TripleStore> {
+//!     // Returns OntologyError on failure with context
+//! }
 //! ```
 
 use anyhow::{Context, Result};
@@ -26,16 +40,20 @@ use std::collections::HashMap;
 use crate::parser::Article;
 
 // Submodules
+pub mod error;
 pub mod extractor;
 pub mod linker;
 pub mod storage;
 
+// Re-export error types
+pub use error::{OntologyError, OntologyResult};
+
 // Re-export commonly used types from extractor
 pub use extractor::{
-    EntitySource, EntityType, ExtractionConfig, ExtractionResult, ExtractedEntity,
-    ExtractedRelation, LlmEntityResponse, LlmExtractionResponse, LlmRelationResponse,
-    PromptTemplate, RelationExtractor, RelationType, Triple, TripleContext, TripleStats,
-    TripleStore,
+    EntitySource, EntityType, ExtractionConfig, ExtractionConfigBuilder, ExtractionResult,
+    ExtractedEntity, ExtractedRelation, LlmEntityResponse, LlmExtractionResponse,
+    LlmRelationResponse, PromptTemplate, RelationExtractor, RelationType, Triple, TripleContext,
+    TripleStats, TripleStore,
 };
 
 // Re-export verification types from extractor
@@ -47,11 +65,13 @@ pub use extractor::{
 // Re-export commonly used types from linker
 pub use linker::{
     EntityLinker, KnowledgeBaseEntry, LinkedEntity, LinkedExtractionResult, LinkedRelation,
-    LinkedTriple, LinkedTripleStore, LinkerConfig, LinkingStats,
+    LinkedTriple, LinkedTripleStore, LinkerConfig, LinkerConfigBuilder, LinkingStats,
 };
 
 // Re-export storage types
-pub use storage::{IndexEntry, StorageConfig, StorageIndex, StorageStats, TripleStorage};
+pub use storage::{
+    IndexEntry, StorageConfig, StorageConfigBuilder, StorageIndex, StorageStats, TripleStorage,
+};
 
 /// Legacy ontology entity (for backwards compatibility)
 /// Prefer using ExtractedEntity from extractor module

@@ -40,6 +40,102 @@ impl Default for LinkerConfig {
     }
 }
 
+impl LinkerConfig {
+    /// Create a new builder for LinkerConfig
+    pub fn builder() -> LinkerConfigBuilder {
+        LinkerConfigBuilder::default()
+    }
+
+    /// Validate the configuration
+    pub fn validate(&self) -> Result<(), super::error::OntologyError> {
+        if self.similarity_threshold < 0.0 || self.similarity_threshold > 1.0 {
+            return Err(super::error::OntologyError::invalid_config(
+                "similarity_threshold",
+                &self.similarity_threshold.to_string(),
+                "Must be between 0.0 and 1.0",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Create a strict config (higher thresholds)
+    pub fn strict() -> Self {
+        Self {
+            similarity_threshold: 0.9,
+            fuzzy_matching: false,
+            normalize_titles: true,
+            enable_cache: true,
+        }
+    }
+
+    /// Create a lenient config (lower thresholds)
+    pub fn lenient() -> Self {
+        Self {
+            similarity_threshold: 0.6,
+            fuzzy_matching: true,
+            normalize_titles: true,
+            enable_cache: true,
+        }
+    }
+}
+
+/// Builder for LinkerConfig with fluent API
+#[derive(Debug, Clone, Default)]
+pub struct LinkerConfigBuilder {
+    similarity_threshold: Option<f32>,
+    fuzzy_matching: Option<bool>,
+    normalize_titles: Option<bool>,
+    enable_cache: Option<bool>,
+}
+
+impl LinkerConfigBuilder {
+    /// Set similarity threshold (0.0 - 1.0)
+    pub fn similarity_threshold(mut self, threshold: f32) -> Self {
+        self.similarity_threshold = Some(threshold);
+        self
+    }
+
+    /// Enable or disable fuzzy matching
+    pub fn fuzzy_matching(mut self, enable: bool) -> Self {
+        self.fuzzy_matching = Some(enable);
+        self
+    }
+
+    /// Enable or disable title normalization
+    pub fn normalize_titles(mut self, enable: bool) -> Self {
+        self.normalize_titles = Some(enable);
+        self
+    }
+
+    /// Enable or disable caching
+    pub fn enable_cache(mut self, enable: bool) -> Self {
+        self.enable_cache = Some(enable);
+        self
+    }
+
+    /// Build the config with validation
+    pub fn build(self) -> Result<LinkerConfig, super::error::OntologyError> {
+        let config = LinkerConfig {
+            similarity_threshold: self.similarity_threshold.unwrap_or(0.8),
+            fuzzy_matching: self.fuzzy_matching.unwrap_or(true),
+            normalize_titles: self.normalize_titles.unwrap_or(true),
+            enable_cache: self.enable_cache.unwrap_or(true),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Build without validation
+    pub fn build_unchecked(self) -> LinkerConfig {
+        LinkerConfig {
+            similarity_threshold: self.similarity_threshold.unwrap_or(0.8),
+            fuzzy_matching: self.fuzzy_matching.unwrap_or(true),
+            normalize_titles: self.normalize_titles.unwrap_or(true),
+            enable_cache: self.enable_cache.unwrap_or(true),
+        }
+    }
+}
+
 /// Linked entity with canonical form
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LinkedEntity {
@@ -152,7 +248,8 @@ pub struct EntityLinker {
     /// Title suffixes to remove
     title_suffixes: Vec<&'static str>,
 
-    /// Organization suffixes
+    /// Organization suffixes (reserved for enhanced matching)
+    #[allow(dead_code)]
     org_suffixes: Vec<&'static str>,
 }
 
@@ -1161,6 +1258,47 @@ mod tests {
         let config = LinkerConfig::default();
         assert!(config.fuzzy_matching);
         assert!(config.normalize_titles);
+    }
+
+    #[test]
+    fn test_linker_config_builder() {
+        let config = LinkerConfig::builder()
+            .similarity_threshold(0.9)
+            .fuzzy_matching(false)
+            .normalize_titles(false)
+            .enable_cache(false)
+            .build()
+            .unwrap();
+
+        assert!((config.similarity_threshold - 0.9).abs() < 0.01);
+        assert!(!config.fuzzy_matching);
+        assert!(!config.normalize_titles);
+        assert!(!config.enable_cache);
+    }
+
+    #[test]
+    fn test_linker_config_builder_validation() {
+        // Invalid similarity threshold
+        let result = LinkerConfig::builder()
+            .similarity_threshold(1.5)
+            .build();
+        assert!(result.is_err());
+
+        let result = LinkerConfig::builder()
+            .similarity_threshold(-0.1)
+            .build();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_linker_config_presets() {
+        let strict = LinkerConfig::strict();
+        assert!((strict.similarity_threshold - 0.9).abs() < 0.01);
+        assert!(!strict.fuzzy_matching);
+
+        let lenient = LinkerConfig::lenient();
+        assert!((lenient.similarity_threshold - 0.6).abs() < 0.01);
+        assert!(lenient.fuzzy_matching);
     }
 
     #[test]

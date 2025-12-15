@@ -46,6 +46,110 @@ impl Default for StorageConfig {
     }
 }
 
+impl StorageConfig {
+    /// Create a new builder for StorageConfig
+    pub fn builder() -> StorageConfigBuilder {
+        StorageConfigBuilder::default()
+    }
+
+    /// Validate the configuration
+    pub fn validate(&self) -> Result<(), super::error::OntologyError> {
+        // Check if base_dir is not empty
+        if self.base_dir.as_os_str().is_empty() {
+            return Err(super::error::OntologyError::invalid_config(
+                "base_dir",
+                "",
+                "Base directory cannot be empty",
+            ));
+        }
+
+        // Check if base_dir exists or can be created
+        if !self.create_dirs && !self.base_dir.exists() {
+            return Err(super::error::OntologyError::StorageDirectoryNotFound {
+                path: self.base_dir.clone(),
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Get the index file path
+    pub fn index_path(&self) -> PathBuf {
+        self.base_dir.join("index.json")
+    }
+
+    /// Get the triples directory path
+    pub fn triples_dir(&self) -> PathBuf {
+        self.base_dir.join("triples")
+    }
+}
+
+/// Builder for StorageConfig with fluent API
+#[derive(Debug, Clone, Default)]
+pub struct StorageConfigBuilder {
+    base_dir: Option<PathBuf>,
+    create_dirs: Option<bool>,
+    pretty_json: Option<bool>,
+    compress: Option<bool>,
+    max_triples_per_file: Option<usize>,
+}
+
+impl StorageConfigBuilder {
+    /// Set base directory for storage
+    pub fn base_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.base_dir = Some(path.into());
+        self
+    }
+
+    /// Enable or disable directory creation
+    pub fn create_dirs(mut self, enable: bool) -> Self {
+        self.create_dirs = Some(enable);
+        self
+    }
+
+    /// Enable or disable pretty JSON output
+    pub fn pretty_json(mut self, enable: bool) -> Self {
+        self.pretty_json = Some(enable);
+        self
+    }
+
+    /// Enable or disable compression
+    pub fn compress(mut self, enable: bool) -> Self {
+        self.compress = Some(enable);
+        self
+    }
+
+    /// Set maximum triples per file (0 = unlimited)
+    pub fn max_triples_per_file(mut self, max: usize) -> Self {
+        self.max_triples_per_file = Some(max);
+        self
+    }
+
+    /// Build the config with validation
+    pub fn build(self) -> Result<StorageConfig, super::error::OntologyError> {
+        let config = StorageConfig {
+            base_dir: self.base_dir.unwrap_or_else(|| PathBuf::from("data/triples")),
+            create_dirs: self.create_dirs.unwrap_or(true),
+            pretty_json: self.pretty_json.unwrap_or(true),
+            compress: self.compress.unwrap_or(false),
+            max_triples_per_file: self.max_triples_per_file.unwrap_or(0),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Build without validation
+    pub fn build_unchecked(self) -> StorageConfig {
+        StorageConfig {
+            base_dir: self.base_dir.unwrap_or_else(|| PathBuf::from("data/triples")),
+            create_dirs: self.create_dirs.unwrap_or(true),
+            pretty_json: self.pretty_json.unwrap_or(true),
+            compress: self.compress.unwrap_or(false),
+            max_triples_per_file: self.max_triples_per_file.unwrap_or(0),
+        }
+    }
+}
+
 /// Index entry for quick lookup
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexEntry {
@@ -603,6 +707,38 @@ mod tests {
         let config = StorageConfig::default();
         assert!(config.create_dirs);
         assert!(config.pretty_json);
+    }
+
+    #[test]
+    fn test_storage_config_builder() {
+        let config = StorageConfig::builder()
+            .base_dir("/tmp/test_triples")
+            .create_dirs(false)
+            .pretty_json(false)
+            .max_triples_per_file(1000)
+            .build_unchecked();
+
+        assert_eq!(config.base_dir, std::path::PathBuf::from("/tmp/test_triples"));
+        assert!(!config.create_dirs);
+        assert!(!config.pretty_json);
+        assert_eq!(config.max_triples_per_file, 1000);
+    }
+
+    #[test]
+    fn test_storage_config_builder_validation() {
+        // Empty base_dir should fail
+        let config = StorageConfig {
+            base_dir: std::path::PathBuf::new(),
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_storage_config_paths() {
+        let config = StorageConfig::default();
+        assert!(config.index_path().ends_with("index.json"));
+        assert!(config.triples_dir().ends_with("triples"));
     }
 
     #[test]
