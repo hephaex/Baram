@@ -45,7 +45,10 @@ pub use extractor::{
 };
 
 // Re-export commonly used types from linker
-pub use linker::{EntityLinker, KnowledgeBaseEntry, LinkedEntity, LinkerConfig};
+pub use linker::{
+    EntityLinker, KnowledgeBaseEntry, LinkedEntity, LinkedExtractionResult, LinkedRelation,
+    LinkedTriple, LinkedTripleStore, LinkerConfig, LinkingStats,
+};
 
 // Re-export storage types
 pub use storage::{IndexEntry, StorageConfig, StorageIndex, StorageStats, TripleStorage};
