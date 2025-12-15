@@ -48,6 +48,472 @@ impl Default for ExtractionConfig {
     }
 }
 
+// ============================================================================
+// Hallucination Verification
+// ============================================================================
+
+/// Verification failure reason
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum VerificationFailure {
+    /// Subject not found in source text
+    SubjectNotFound,
+    /// Object not found in source text
+    ObjectNotFound,
+    /// Evidence sentence not found in source text
+    EvidenceNotFound,
+    /// Subject found but with different context
+    SubjectContextMismatch,
+    /// Relation type doesn't match evidence
+    RelationMismatch,
+    /// Confidence too low after verification
+    LowConfidence,
+}
+
+impl VerificationFailure {
+    /// Get Korean description
+    pub fn korean_desc(&self) -> &'static str {
+        match self {
+            VerificationFailure::SubjectNotFound => "주어가 원문에 없음",
+            VerificationFailure::ObjectNotFound => "목적어가 원문에 없음",
+            VerificationFailure::EvidenceNotFound => "증거 문장이 원문에 없음",
+            VerificationFailure::SubjectContextMismatch => "주어의 문맥이 불일치",
+            VerificationFailure::RelationMismatch => "관계 유형이 불일치",
+            VerificationFailure::LowConfidence => "신뢰도가 너무 낮음",
+        }
+    }
+}
+
+/// Detailed verification result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationResult {
+    /// Whether the relation passed verification
+    pub verified: bool,
+
+    /// Original confidence
+    pub original_confidence: f32,
+
+    /// Adjusted confidence after verification
+    pub adjusted_confidence: f32,
+
+    /// Failure reasons (empty if verified)
+    pub failures: Vec<VerificationFailure>,
+
+    /// Subject match details
+    pub subject_match: MatchDetail,
+
+    /// Object match details
+    pub object_match: MatchDetail,
+
+    /// Evidence match details
+    pub evidence_match: MatchDetail,
+}
+
+/// Match detail for verification
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchDetail {
+    /// Whether a match was found
+    pub found: bool,
+
+    /// Match type (exact, fuzzy, partial)
+    pub match_type: MatchType,
+
+    /// Similarity score (0.0 - 1.0)
+    pub similarity: f32,
+
+    /// Matched text (if found)
+    pub matched_text: Option<String>,
+
+    /// Position in source text
+    pub position: Option<(usize, usize)>,
+}
+
+impl Default for MatchDetail {
+    fn default() -> Self {
+        Self {
+            found: false,
+            match_type: MatchType::None,
+            similarity: 0.0,
+            matched_text: None,
+            position: None,
+        }
+    }
+}
+
+/// Type of match found
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum MatchType {
+    /// Exact match
+    Exact,
+    /// Case-insensitive match
+    CaseInsensitive,
+    /// Fuzzy match (high similarity)
+    Fuzzy,
+    /// Partial match (substring)
+    Partial,
+    /// No match
+    None,
+}
+
+/// Hallucination verifier with configurable options
+pub struct HallucinationVerifier {
+    /// Minimum similarity for fuzzy match
+    pub fuzzy_threshold: f32,
+
+    /// Minimum similarity for partial match
+    pub partial_threshold: f32,
+
+    /// Confidence boost for exact match
+    pub exact_match_boost: f32,
+
+    /// Confidence penalty for fuzzy match
+    pub fuzzy_match_penalty: f32,
+
+    /// Confidence penalty for no match
+    pub no_match_penalty: f32,
+
+    /// Minimum confidence after verification
+    pub min_confidence: f32,
+}
+
+impl Default for HallucinationVerifier {
+    fn default() -> Self {
+        Self {
+            fuzzy_threshold: 0.8,
+            partial_threshold: 0.5,
+            exact_match_boost: 1.2,
+            fuzzy_match_penalty: 0.9,
+            no_match_penalty: 0.4,
+            min_confidence: 0.3,
+        }
+    }
+}
+
+impl HallucinationVerifier {
+    /// Create a new verifier with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create a strict verifier (higher thresholds)
+    pub fn strict() -> Self {
+        Self {
+            fuzzy_threshold: 0.9,
+            partial_threshold: 0.7,
+            exact_match_boost: 1.1,
+            fuzzy_match_penalty: 0.8,
+            no_match_penalty: 0.3,
+            min_confidence: 0.5,
+        }
+    }
+
+    /// Create a lenient verifier (lower thresholds)
+    pub fn lenient() -> Self {
+        Self {
+            fuzzy_threshold: 0.6,
+            partial_threshold: 0.3,
+            exact_match_boost: 1.3,
+            fuzzy_match_penalty: 0.95,
+            no_match_penalty: 0.6,
+            min_confidence: 0.2,
+        }
+    }
+
+    /// Verify a relation against source text
+    pub fn verify(&self, relation: &ExtractedRelation, source_text: &str) -> VerificationResult {
+        let mut failures = Vec::new();
+        let original_confidence = relation.confidence;
+        let adjusted_confidence: f32;
+
+        // Verify subject
+        let subject_match = self.find_match(&relation.subject, source_text);
+        if !subject_match.found {
+            failures.push(VerificationFailure::SubjectNotFound);
+        }
+
+        // Verify object (if not empty)
+        let object_match = if relation.object.is_empty() {
+            MatchDetail {
+                found: true,
+                match_type: MatchType::Exact,
+                similarity: 1.0,
+                matched_text: None,
+                position: None,
+            }
+        } else {
+            let m = self.find_match(&relation.object, source_text);
+            if !m.found {
+                failures.push(VerificationFailure::ObjectNotFound);
+            }
+            m
+        };
+
+        // Verify evidence
+        let evidence_match = if relation.evidence.is_empty() {
+            MatchDetail {
+                found: true,
+                match_type: MatchType::Exact,
+                similarity: 1.0,
+                matched_text: None,
+                position: None,
+            }
+        } else {
+            let m = self.find_match(&relation.evidence, source_text);
+            if !m.found {
+                failures.push(VerificationFailure::EvidenceNotFound);
+            }
+            m
+        };
+
+        // Adjust confidence based on matches
+        adjusted_confidence = self.calculate_adjusted_confidence(
+            original_confidence,
+            &subject_match,
+            &object_match,
+            &evidence_match,
+        );
+
+        // Check minimum confidence
+        if adjusted_confidence < self.min_confidence {
+            failures.push(VerificationFailure::LowConfidence);
+        }
+
+        let verified = failures.is_empty() && adjusted_confidence >= self.min_confidence;
+
+        VerificationResult {
+            verified,
+            original_confidence,
+            adjusted_confidence,
+            failures,
+            subject_match,
+            object_match,
+            evidence_match,
+        }
+    }
+
+    /// Find a match in source text
+    fn find_match(&self, query: &str, source: &str) -> MatchDetail {
+        let query_trimmed = query.trim();
+        if query_trimmed.is_empty() {
+            return MatchDetail {
+                found: true,
+                match_type: MatchType::Exact,
+                similarity: 1.0,
+                matched_text: None,
+                position: None,
+            };
+        }
+
+        // Try exact match
+        if let Some(pos) = source.find(query_trimmed) {
+            return MatchDetail {
+                found: true,
+                match_type: MatchType::Exact,
+                similarity: 1.0,
+                matched_text: Some(query_trimmed.to_string()),
+                position: Some((pos, pos + query_trimmed.len())),
+            };
+        }
+
+        // Try case-insensitive match
+        let query_lower = query_trimmed.to_lowercase();
+        let source_lower = source.to_lowercase();
+        if let Some(pos) = source_lower.find(&query_lower) {
+            return MatchDetail {
+                found: true,
+                match_type: MatchType::CaseInsensitive,
+                similarity: 0.95,
+                matched_text: Some(source[pos..pos + query_trimmed.len()].to_string()),
+                position: Some((pos, pos + query_trimmed.len())),
+            };
+        }
+
+        // Try partial match (query is substring or source contains query)
+        // Split into words and check for partial matches
+        let query_words: Vec<&str> = query_trimmed.split_whitespace().collect();
+        let mut matched_words = 0;
+
+        for word in &query_words {
+            if word.len() >= 2 && source.contains(*word) {
+                matched_words += 1;
+            }
+        }
+
+        if !query_words.is_empty() {
+            let partial_ratio = matched_words as f32 / query_words.len() as f32;
+            if partial_ratio >= self.partial_threshold {
+                return MatchDetail {
+                    found: true,
+                    match_type: MatchType::Partial,
+                    similarity: partial_ratio,
+                    matched_text: None,
+                    position: None,
+                };
+            }
+        }
+
+        // Try fuzzy match using character overlap
+        let similarity = self.calculate_similarity(query_trimmed, source);
+        if similarity >= self.fuzzy_threshold {
+            return MatchDetail {
+                found: true,
+                match_type: MatchType::Fuzzy,
+                similarity,
+                matched_text: None,
+                position: None,
+            };
+        }
+
+        // No match found
+        MatchDetail::default()
+    }
+
+    /// Calculate string similarity (character-level Jaccard + containment)
+    fn calculate_similarity(&self, a: &str, b: &str) -> f32 {
+        if a.is_empty() || b.is_empty() {
+            return 0.0;
+        }
+
+        // Check for containment
+        if b.contains(a) {
+            return a.len() as f32 / b.len().min(a.len() * 3) as f32;
+        }
+
+        // Character bigram similarity
+        let bigrams_a: HashSet<(char, char)> = a.chars().zip(a.chars().skip(1)).collect();
+        let bigrams_b: HashSet<(char, char)> = b.chars().zip(b.chars().skip(1)).collect();
+
+        if bigrams_a.is_empty() || bigrams_b.is_empty() {
+            // Fall back to character overlap
+            let chars_a: HashSet<char> = a.chars().collect();
+            let chars_b: HashSet<char> = b.chars().collect();
+            let intersection = chars_a.intersection(&chars_b).count();
+            let union = chars_a.union(&chars_b).count();
+            return if union == 0 { 0.0 } else { intersection as f32 / union as f32 };
+        }
+
+        let intersection = bigrams_a.intersection(&bigrams_b).count();
+        let union = bigrams_a.union(&bigrams_b).count();
+
+        if union == 0 { 0.0 } else { intersection as f32 / union as f32 }
+    }
+
+    /// Calculate adjusted confidence based on match quality
+    fn calculate_adjusted_confidence(
+        &self,
+        original: f32,
+        subject: &MatchDetail,
+        object: &MatchDetail,
+        evidence: &MatchDetail,
+    ) -> f32 {
+        let mut confidence = original;
+
+        // Apply subject match factor
+        confidence *= match subject.match_type {
+            MatchType::Exact => self.exact_match_boost,
+            MatchType::CaseInsensitive => 1.0,
+            MatchType::Fuzzy => self.fuzzy_match_penalty,
+            MatchType::Partial => self.fuzzy_match_penalty * subject.similarity,
+            MatchType::None => self.no_match_penalty,
+        };
+
+        // Apply object match factor (weighted less)
+        confidence *= match object.match_type {
+            MatchType::Exact => 1.05,
+            MatchType::CaseInsensitive => 1.0,
+            MatchType::Fuzzy => 0.95,
+            MatchType::Partial => 0.9,
+            MatchType::None => 0.7,
+        };
+
+        // Apply evidence match factor
+        confidence *= match evidence.match_type {
+            MatchType::Exact => self.exact_match_boost,
+            MatchType::CaseInsensitive => 1.0,
+            MatchType::Fuzzy => self.fuzzy_match_penalty,
+            MatchType::Partial => 0.85,
+            MatchType::None => self.no_match_penalty,
+        };
+
+        // Clamp to valid range
+        confidence.clamp(0.0, 1.0)
+    }
+
+    /// Verify multiple relations and return results
+    pub fn verify_batch(
+        &self,
+        relations: &[ExtractedRelation],
+        source_text: &str,
+    ) -> Vec<VerificationResult> {
+        relations
+            .iter()
+            .map(|r| self.verify(r, source_text))
+            .collect()
+    }
+
+    /// Verify and update relations in place
+    pub fn verify_and_update(
+        &self,
+        relations: &mut [ExtractedRelation],
+        source_text: &str,
+    ) -> VerificationSummary {
+        let mut summary = VerificationSummary::default();
+
+        for relation in relations {
+            let result = self.verify(relation, source_text);
+
+            relation.verified = result.verified;
+            relation.confidence = result.adjusted_confidence;
+
+            summary.total += 1;
+            if result.verified {
+                summary.verified += 1;
+            } else {
+                summary.failed += 1;
+                for failure in &result.failures {
+                    *summary.failure_counts.entry(failure.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+
+        summary
+    }
+}
+
+/// Summary of batch verification
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct VerificationSummary {
+    /// Total relations verified
+    pub total: usize,
+
+    /// Number that passed verification
+    pub verified: usize,
+
+    /// Number that failed verification
+    pub failed: usize,
+
+    /// Count by failure reason
+    pub failure_counts: HashMap<VerificationFailure, usize>,
+}
+
+impl VerificationSummary {
+    /// Get verification rate as percentage
+    pub fn verification_rate(&self) -> f64 {
+        if self.total == 0 {
+            0.0
+        } else {
+            (self.verified as f64 / self.total as f64) * 100.0
+        }
+    }
+
+    /// Get most common failure reason
+    pub fn most_common_failure(&self) -> Option<&VerificationFailure> {
+        self.failure_counts
+            .iter()
+            .max_by_key(|(_, count)| *count)
+            .map(|(failure, _)| failure)
+    }
+}
+
 /// Extracted entity
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExtractedEntity {
@@ -1578,5 +2044,222 @@ mod tests {
 
         assert_eq!(stats.total_entities, 10);
         assert_eq!(stats.verified_relations, 3);
+    }
+
+    // ========================================================================
+    // Hallucination Verification Tests
+    // ========================================================================
+
+    #[test]
+    fn test_verification_failure_korean_desc() {
+        assert_eq!(VerificationFailure::SubjectNotFound.korean_desc(), "주어가 원문에 없음");
+        assert_eq!(VerificationFailure::ObjectNotFound.korean_desc(), "목적어가 원문에 없음");
+    }
+
+    #[test]
+    fn test_match_type_variants() {
+        let exact = MatchType::Exact;
+        let fuzzy = MatchType::Fuzzy;
+        let none = MatchType::None;
+
+        assert_eq!(exact, MatchType::Exact);
+        assert_ne!(fuzzy, none);
+    }
+
+    #[test]
+    fn test_hallucination_verifier_default() {
+        let verifier = HallucinationVerifier::new();
+        assert_eq!(verifier.fuzzy_threshold, 0.8);
+        assert_eq!(verifier.min_confidence, 0.3);
+    }
+
+    #[test]
+    fn test_hallucination_verifier_strict() {
+        let verifier = HallucinationVerifier::strict();
+        assert_eq!(verifier.fuzzy_threshold, 0.9);
+        assert_eq!(verifier.min_confidence, 0.5);
+    }
+
+    #[test]
+    fn test_hallucination_verifier_lenient() {
+        let verifier = HallucinationVerifier::lenient();
+        assert_eq!(verifier.fuzzy_threshold, 0.6);
+        assert_eq!(verifier.min_confidence, 0.2);
+    }
+
+    #[test]
+    fn test_verify_exact_match() {
+        let verifier = HallucinationVerifier::new();
+        let source = "삼성전자 이재용 회장이 발표했다.";
+
+        let relation = ExtractedRelation {
+            subject: "이재용".to_string(),
+            subject_type: EntityType::Person,
+            predicate: RelationType::Said,
+            object: "".to_string(),
+            object_type: EntityType::Other,
+            confidence: 0.8,
+            evidence: "이재용 회장이 발표했다".to_string(),
+            verified: false,
+        };
+
+        let result = verifier.verify(&relation, source);
+        assert!(result.verified);
+        assert!(result.subject_match.found);
+        assert_eq!(result.subject_match.match_type, MatchType::Exact);
+    }
+
+    #[test]
+    fn test_verify_subject_not_found() {
+        let verifier = HallucinationVerifier::new();
+        let source = "삼성전자가 발표했다.";
+
+        let relation = ExtractedRelation {
+            subject: "LG전자".to_string(), // Not in source
+            subject_type: EntityType::Organization,
+            predicate: RelationType::Announced,
+            object: "".to_string(),
+            object_type: EntityType::Other,
+            confidence: 0.8,
+            evidence: "".to_string(),
+            verified: false,
+        };
+
+        let result = verifier.verify(&relation, source);
+        assert!(!result.verified);
+        assert!(result.failures.contains(&VerificationFailure::SubjectNotFound));
+    }
+
+    #[test]
+    fn test_verify_partial_match() {
+        let verifier = HallucinationVerifier::lenient();
+        let source = "삼성전자 이재용 회장이 서울에서 발표했다.";
+
+        let relation = ExtractedRelation {
+            subject: "이재용 회장".to_string(),
+            subject_type: EntityType::Person,
+            predicate: RelationType::Said,
+            object: "".to_string(),
+            object_type: EntityType::Other,
+            confidence: 0.8,
+            evidence: "이재용 회장이 발표".to_string(),
+            verified: false,
+        };
+
+        let result = verifier.verify(&relation, source);
+        assert!(result.subject_match.found);
+    }
+
+    #[test]
+    fn test_verify_batch() {
+        let verifier = HallucinationVerifier::new();
+        let source = "삼성전자 이재용 회장이 발표했다. SK하이닉스도 참여했다.";
+
+        let relations = vec![
+            ExtractedRelation {
+                subject: "이재용".to_string(),
+                subject_type: EntityType::Person,
+                predicate: RelationType::Said,
+                object: "".to_string(),
+                object_type: EntityType::Other,
+                confidence: 0.8,
+                evidence: "".to_string(),
+                verified: false,
+            },
+            ExtractedRelation {
+                subject: "SK하이닉스".to_string(),
+                subject_type: EntityType::Organization,
+                predicate: RelationType::ParticipatedIn,
+                object: "".to_string(),
+                object_type: EntityType::Other,
+                confidence: 0.7,
+                evidence: "".to_string(),
+                verified: false,
+            },
+        ];
+
+        let results = verifier.verify_batch(&relations, source);
+        assert_eq!(results.len(), 2);
+        assert!(results[0].verified);
+        assert!(results[1].verified);
+    }
+
+    #[test]
+    fn test_verify_and_update() {
+        let verifier = HallucinationVerifier::new();
+        let source = "삼성전자가 발표했다.";
+
+        let mut relations = vec![
+            ExtractedRelation {
+                subject: "삼성전자".to_string(),
+                subject_type: EntityType::Organization,
+                predicate: RelationType::Announced,
+                object: "".to_string(),
+                object_type: EntityType::Other,
+                confidence: 0.7,
+                evidence: "".to_string(),
+                verified: false,
+            },
+            ExtractedRelation {
+                subject: "애플".to_string(), // Not in source
+                subject_type: EntityType::Organization,
+                predicate: RelationType::Announced,
+                object: "".to_string(),
+                object_type: EntityType::Other,
+                confidence: 0.7,
+                evidence: "".to_string(),
+                verified: false,
+            },
+        ];
+
+        let summary = verifier.verify_and_update(&mut relations, source);
+
+        assert_eq!(summary.total, 2);
+        assert_eq!(summary.verified, 1);
+        assert_eq!(summary.failed, 1);
+        assert!(relations[0].verified);
+        assert!(!relations[1].verified);
+    }
+
+    #[test]
+    fn test_verification_summary_rate() {
+        let summary = VerificationSummary {
+            total: 10,
+            verified: 8,
+            failed: 2,
+            failure_counts: [(VerificationFailure::SubjectNotFound, 2)].into(),
+        };
+
+        assert_eq!(summary.verification_rate(), 80.0);
+        assert_eq!(summary.most_common_failure(), Some(&VerificationFailure::SubjectNotFound));
+    }
+
+    #[test]
+    fn test_match_detail_default() {
+        let detail = MatchDetail::default();
+        assert!(!detail.found);
+        assert_eq!(detail.match_type, MatchType::None);
+        assert_eq!(detail.similarity, 0.0);
+    }
+
+    #[test]
+    fn test_confidence_adjustment() {
+        let verifier = HallucinationVerifier::new();
+        let source = "테스트 문장입니다.";
+
+        let relation = ExtractedRelation {
+            subject: "테스트".to_string(),
+            subject_type: EntityType::Other,
+            predicate: RelationType::Unknown,
+            object: "".to_string(),
+            object_type: EntityType::Other,
+            confidence: 0.5,
+            evidence: "".to_string(),
+            verified: false,
+        };
+
+        let result = verifier.verify(&relation, source);
+        // Exact match should boost confidence
+        assert!(result.adjusted_confidence > result.original_confidence);
     }
 }

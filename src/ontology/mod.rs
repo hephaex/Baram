@@ -28,6 +28,7 @@ use crate::parser::Article;
 // Submodules
 pub mod extractor;
 pub mod linker;
+pub mod storage;
 
 // Re-export commonly used types from extractor
 pub use extractor::{
@@ -37,8 +38,17 @@ pub use extractor::{
     TripleStore,
 };
 
+// Re-export verification types from extractor
+pub use extractor::{
+    HallucinationVerifier, MatchDetail, MatchType, VerificationFailure, VerificationResult,
+    VerificationSummary,
+};
+
 // Re-export commonly used types from linker
 pub use linker::{EntityLinker, KnowledgeBaseEntry, LinkedEntity, LinkerConfig};
+
+// Re-export storage types
+pub use storage::{IndexEntry, StorageConfig, StorageIndex, StorageStats, TripleStorage};
 
 /// Legacy ontology entity (for backwards compatibility)
 /// Prefer using ExtractedEntity from extractor module
