@@ -49,13 +49,20 @@
 //! }
 //! ```
 
+pub mod assignment;
+pub mod distribution;
 pub mod error;
 pub mod rotation;
 pub mod schedule;
 pub mod trigger;
 
 // Re-export main types
+pub use assignment::{AssignmentStrategy, CategoryAssigner, CategoryConfig, CategoryPriority};
+pub use distribution::{
+    create_default_distributor, create_distributor, DistributionConfig, DistributionEvent,
+    DistributorHandle, ScheduleDistributor, ScheduleReceiver, UpdateReason,
+};
 pub use error::{SchedulerError, SchedulerResult};
-pub use rotation::{CrawlerInstance, RotationScheduler};
-pub use schedule::{DailySchedule, HourlySlot, ScheduleCache};
+pub use rotation::{CrawlerInstance, NewsCategory, RotationScheduler};
+pub use schedule::{DailySchedule, HourlySlot, ScheduleCache, ScheduleMetadata};
 pub use trigger::{ScheduleTrigger, TriggerConfig};
