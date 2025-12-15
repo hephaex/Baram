@@ -506,20 +506,267 @@ fn stats(database: PathBuf) -> Result<()> {
 }
 
 async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
-    println!("Index functionality not yet implemented");
-    println!("  Input: {input}");
-    println!("  Batch size: {batch_size}");
-    println!("  Force reindex: {force}");
+    use ntimes::config::OpenSearchConfig;
+    use ntimes::embedding::VectorStore;
+    use std::fs;
+
+    println!("Indexing articles from: {input}");
+    println!("================================");
+
+    // Create OpenSearch client
+    let opensearch_config = OpenSearchConfig {
+        url: std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string()),
+        index_name: std::env::var("OPENSEARCH_INDEX").unwrap_or_else(|_| "ntimes-articles".to_string()),
+        username: std::env::var("OPENSEARCH_USER").ok(),
+        password: std::env::var("OPENSEARCH_PASSWORD").ok(),
+    };
+
+    let store = VectorStore::new(&opensearch_config)
+        .context("Failed to connect to OpenSearch")?;
+
+    // Create index if it doesn't exist
+    let index_exists = store.index_exists().await?;
+    if !index_exists {
+        println!("Creating index '{}'...", opensearch_config.index_name);
+        // Use 384 dimensions for multilingual MiniLM
+        store.create_index(384).await
+            .context("Failed to create index")?;
+        println!("Index created successfully.");
+    } else if force {
+        println!("Force reindex: deleting existing index...");
+        store.delete_index().await?;
+        store.create_index(384).await?;
+        println!("Index recreated.");
+    } else {
+        println!("Index '{}' already exists.", opensearch_config.index_name);
+    }
+
+    // Collect markdown files from input directory
+    let input_path = PathBuf::from(&input);
+    if !input_path.exists() {
+        anyhow::bail!("Input path does not exist: {input}");
+    }
+
+    let mut documents: Vec<ntimes::embedding::IndexDocument> = Vec::new();
+
+    if input_path.is_dir() {
+        let entries: Vec<_> = fs::read_dir(&input_path)?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map(|ext| ext == "md").unwrap_or(false))
+            .collect();
+
+        println!("Found {} markdown files", entries.len());
+
+        for entry in entries {
+            let path = entry.path();
+            match parse_markdown_to_document(&path) {
+                Ok(doc) => documents.push(doc),
+                Err(e) => {
+                    tracing::warn!(path = %path.display(), error = %e, "Failed to parse markdown");
+                }
+            }
+        }
+    } else {
+        // Single file
+        documents.push(parse_markdown_to_document(&input_path)?);
+    }
+
+    if documents.is_empty() {
+        println!("No documents to index.");
+        return Ok(());
+    }
+
+    println!("Indexing {} documents (batch size: {})...", documents.len(), batch_size);
+
+    // Index in batches
+    let mut total_success = 0;
+    let mut total_failed = 0;
+
+    for (batch_num, batch) in documents.chunks(batch_size).enumerate() {
+        print!("\rProcessing batch {}/{}...", batch_num + 1, documents.len().div_ceil(batch_size));
+        std::io::Write::flush(&mut std::io::stdout())?;
+
+        let result = store.bulk_index(batch).await?;
+        total_success += result.success;
+        total_failed += result.failed;
+    }
+
+    println!("\n\nIndexing Complete");
+    println!("=================");
+    println!("Successful: {total_success}");
+    println!("Failed: {total_failed}");
+
+    // Refresh index
+    store.refresh().await?;
+
+    let count = store.count().await?;
+    println!("Total documents in index: {count}");
+
     Ok(())
 }
 
-async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
-    println!("Search functionality not yet implemented");
-    println!("  Query: {query}");
-    println!("  Results: {k}");
-    if let Some(threshold) = threshold {
-        println!("  Threshold: {threshold}");
+fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embedding::IndexDocument> {
+    let content = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read file: {}", path.display()))?;
+
+    // Parse markdown to extract metadata
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Extract title (first # heading)
+    let title = lines.iter()
+        .find(|l| l.starts_with("# "))
+        .map(|l| l.trim_start_matches("# ").to_string())
+        .unwrap_or_else(|| "Untitled".to_string());
+
+    // Extract metadata from YAML frontmatter or inline
+    let mut oid = String::new();
+    let mut aid = String::new();
+    let mut category = String::new();
+    let mut publisher = None;
+    let mut author = None;
+    let mut url = String::new();
+    let mut published_at = None;
+
+    let mut in_metadata = false;
+    let mut body_lines = Vec::new();
+
+    for line in &lines {
+        if line.starts_with("---") {
+            in_metadata = !in_metadata;
+            continue;
+        }
+
+        if in_metadata {
+            if let Some((key, value)) = line.split_once(':') {
+                let key = key.trim();
+                let value = value.trim().trim_matches('"');
+                match key {
+                    "oid" => oid = value.to_string(),
+                    "aid" => aid = value.to_string(),
+                    "category" => category = value.to_string(),
+                    "publisher" => publisher = Some(value.to_string()),
+                    "author" => author = Some(value.to_string()),
+                    "url" => url = value.to_string(),
+                    "published_at" | "date" => published_at = Some(value.to_string()),
+                    _ => {}
+                }
+            }
+        } else if !line.starts_with('#') && !line.is_empty() {
+            body_lines.push(*line);
+        }
     }
+
+    // Build content from body
+    let article_content = body_lines.join("\n");
+
+    // Generate ID from filename if not available
+    if oid.is_empty() || aid.is_empty() {
+        let stem = path.file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        if let Some((o, a)) = stem.split_once('_') {
+            oid = o.to_string();
+            aid = a.to_string();
+        } else {
+            oid = "000".to_string();
+            aid = stem.to_string();
+        }
+    }
+
+    // Create dummy embedding (will be replaced with real embedding later)
+    let embedding = vec![0.0f32; 384];
+
+    Ok(ntimes::embedding::IndexDocument {
+        id: format!("{}_{}", oid, aid),
+        oid,
+        aid,
+        title,
+        content: article_content,
+        category,
+        publisher,
+        author,
+        url,
+        published_at,
+        crawled_at: chrono::Utc::now().to_rfc3339(),
+        comment_count: None,
+        embedding,
+        chunk_index: None,
+        chunk_text: None,
+    })
+}
+
+async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
+    use ntimes::config::OpenSearchConfig;
+    use ntimes::embedding::{SearchConfig, VectorStore};
+
+    println!("Searching for: \"{query}\"");
+    println!("================================");
+
+    // Create OpenSearch client with default config
+    let opensearch_config = OpenSearchConfig {
+        url: std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string()),
+        index_name: std::env::var("OPENSEARCH_INDEX").unwrap_or_else(|_| "ntimes-articles".to_string()),
+        username: std::env::var("OPENSEARCH_USER").ok(),
+        password: std::env::var("OPENSEARCH_PASSWORD").ok(),
+    };
+
+    let store = VectorStore::new(&opensearch_config)
+        .context("Failed to connect to OpenSearch")?;
+
+    // Check if index exists
+    if !store.index_exists().await? {
+        println!("Index '{}' does not exist.", opensearch_config.index_name);
+        println!("Run 'ntimes index' first to create and populate the index.");
+        return Ok(());
+    }
+
+    // Configure search
+    let search_config = SearchConfig {
+        k,
+        min_score: threshold,
+        include_highlights: true,
+        ..Default::default()
+    };
+
+    // Perform BM25 text search
+    let results = store.search_bm25(&query, &search_config).await
+        .context("Search failed")?;
+
+    if results.is_empty() {
+        println!("\nNo results found for \"{query}\"");
+        return Ok(());
+    }
+
+    println!("\nFound {} results:\n", results.len());
+
+    for (i, result) in results.iter().enumerate() {
+        println!("{}. {} (score: {:.3})", i + 1, result.title, result.score);
+        println!("   Category: {} | Publisher: {}",
+            result.category,
+            result.publisher.as_deref().unwrap_or("Unknown")
+        );
+        if let Some(date) = &result.published_at {
+            println!("   Published: {}", date);
+        }
+
+        // Show highlights if available
+        if let Some(highlights) = &result.highlights {
+            for highlight in highlights.iter().take(2) {
+                println!("   > {}", highlight.replace("<mark>", "[").replace("</mark>", "]"));
+            }
+        } else {
+            // Show content preview
+            let preview = if result.content.len() > 150 {
+                format!("{}...", &result.content[..150])
+            } else {
+                result.content.clone()
+            };
+            println!("   > {}", preview);
+        }
+        println!("   URL: {}", result.url);
+        println!();
+    }
+
     Ok(())
 }
 

@@ -37,6 +37,16 @@ deadpool-postgres = "0.14"
 # Vector search - OpenSearch
 opensearch = "2.2"
 
+# Tokenization
+tokenizers = "0.20"
+
+# Machine Learning - Candle (for embeddings)
+candle-core = "0.8"
+candle-nn = "0.8"
+candle-transformers = "0.8"
+hf-hub = "0.3"
+safetensors = "0.4"
+
 # Template engine
 handlebars = "6.1"
 
