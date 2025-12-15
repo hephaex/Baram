@@ -2,6 +2,22 @@
 //!
 //! This module handles extracting structured knowledge from articles
 //! and building ontologies in various formats (JSON, RDF, Turtle).
+//!
+//! # Submodules
+//!
+//! - [`extractor`] - Entity and relation extraction using regex patterns and LLM
+//! - [`linker`] - Entity linking and normalization with knowledge base
+//!
+//! # Usage
+//!
+//! ```ignore
+//! use ntimes::ontology::{RelationExtractor, EntityLinker, TripleStore};
+//!
+//! let extractor = RelationExtractor::new();
+//! let result = extractor.extract_from_article(&article);
+//! let store = TripleStore::from_extraction(&result, &article.title);
+//! println!("{}", store.to_turtle());
+//! ```
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -9,7 +25,23 @@ use std::collections::HashMap;
 
 use crate::parser::Article;
 
-/// Ontology entity
+// Submodules
+pub mod extractor;
+pub mod linker;
+
+// Re-export commonly used types from extractor
+pub use extractor::{
+    EntitySource, EntityType, ExtractionConfig, ExtractionResult, ExtractedEntity,
+    ExtractedRelation, LlmEntityResponse, LlmExtractionResponse, LlmRelationResponse,
+    PromptTemplate, RelationExtractor, RelationType, Triple, TripleContext, TripleStats,
+    TripleStore,
+};
+
+// Re-export commonly used types from linker
+pub use linker::{EntityLinker, KnowledgeBaseEntry, LinkedEntity, LinkerConfig};
+
+/// Legacy ontology entity (for backwards compatibility)
+/// Prefer using ExtractedEntity from extractor module
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
     /// Entity ID
@@ -25,19 +57,8 @@ pub struct Entity {
     pub properties: HashMap<String, String>,
 }
 
-/// Entity types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum EntityType {
-    Person,
-    Organization,
-    Location,
-    Date,
-    Event,
-    Concept,
-    Other,
-}
-
-/// Relationship between entities
+/// Legacy relationship between entities (for backwards compatibility)
+/// Prefer using ExtractedRelation from extractor module
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relation {
     /// Source entity ID
@@ -53,7 +74,8 @@ pub struct Relation {
     pub confidence: f32,
 }
 
-/// Knowledge graph
+/// Legacy knowledge graph (for backwards compatibility)
+/// Prefer using TripleStore from extractor module
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeGraph {
     /// Entities in the graph
@@ -63,23 +85,25 @@ pub struct KnowledgeGraph {
     pub relations: Vec<Relation>,
 }
 
-/// Ontology extractor
+/// Legacy ontology extractor (for backwards compatibility)
+/// Prefer using RelationExtractor from extractor module
 pub struct OntologyExtractor {
-    // Future: Add NLP models, entity recognizers, etc.
+    inner: RelationExtractor,
 }
 
 impl OntologyExtractor {
     /// Create a new ontology extractor
     #[must_use]
     pub fn new() -> Self {
-        Self {}
+        Self {
+            inner: RelationExtractor::new(),
+        }
     }
 
     /// Extract entities and relations from an article
     pub fn extract(&self, _article: &Article) -> Result<KnowledgeGraph> {
-        // TODO: Implement entity and relation extraction
-        // This would typically use NLP models for NER and relation extraction
-
+        // Legacy implementation - returns empty graph
+        // Use RelationExtractor.extract_from_article() for actual extraction
         Ok(KnowledgeGraph {
             entities: Vec::new(),
             relations: Vec::new(),
@@ -93,14 +117,19 @@ impl OntologyExtractor {
 
     /// Export knowledge graph to RDF Turtle format
     pub fn export_turtle(&self, _graph: &KnowledgeGraph) -> Result<String> {
-        // TODO: Implement Turtle export
+        // Use TripleStore.to_turtle() for actual Turtle export
         Ok(String::new())
     }
 
     /// Export knowledge graph to RDF/XML format
     pub fn export_rdf(&self, _graph: &KnowledgeGraph) -> Result<String> {
-        // TODO: Implement RDF/XML export
+        // RDF/XML export not yet implemented
         Ok(String::new())
+    }
+
+    /// Get the inner RelationExtractor for advanced usage
+    pub fn relation_extractor(&self) -> &RelationExtractor {
+        &self.inner
     }
 }
 
@@ -135,5 +164,11 @@ mod tests {
         let extractor = OntologyExtractor::new();
         let json = extractor.export_json(&graph);
         assert!(json.is_ok());
+    }
+
+    #[test]
+    fn test_relation_extractor_access() {
+        let extractor = OntologyExtractor::new();
+        let _inner = extractor.relation_extractor();
     }
 }
