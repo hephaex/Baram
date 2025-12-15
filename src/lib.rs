@@ -31,6 +31,7 @@
 //! ```
 
 pub mod config;
+pub mod coordinator;
 pub mod crawler;
 pub mod embedding;
 pub mod models;

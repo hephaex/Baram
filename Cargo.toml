@@ -81,6 +81,11 @@ url = "2.5"
 rand = "0.8"
 rand_chacha = "0.3"
 
+# Web server (for coordinator)
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
 [dev-dependencies]
 criterion = "0.5"
 proptest = "1.5"
