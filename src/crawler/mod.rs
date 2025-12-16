@@ -17,6 +17,7 @@
 //! For distributed crawling with multiple instances, see:
 //! - [`instance`] - Instance configuration and state management
 //! - [`distributed`] - Distributed crawler runner with coordinator integration
+//! - [`trigger`] - Hourly crawling trigger with category logic
 
 pub mod comment;
 pub mod distributed;
@@ -25,11 +26,13 @@ pub mod headers;
 pub mod instance;
 pub mod list;
 pub mod pipeline;
+pub mod trigger;
 pub mod url;
 
 pub use distributed::{DistributedRunner, RunnerError, RunnerHandle, SlotResult};
 pub use instance::{ConfigError, InstanceConfig, InstanceState};
 pub use pipeline::{CrawlerPipeline, PipelineBuilder, PipelineConfig, PipelineStats, StatsSnapshot};
+pub use trigger::{CrawlEvent, CrawlerTrigger, CrawlerTriggerConfig, CrawlerTriggerError, CrawlerTriggerState};
 
 use anyhow::{Context, Result};
 use governor::{Quota, RateLimiter};
