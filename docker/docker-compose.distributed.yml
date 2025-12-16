@@ -1,0 +1,240 @@
+# docker-compose.distributed.yml
+# Distributed crawler deployment with coordinator and 3 crawler instances
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.distributed.yml up -d
+#
+# This extends the base docker-compose.yml with:
+#   - Coordinator server for schedule management
+#   - 3 crawler instances (Main, Sub1, Sub2)
+#   - Each instance with unique IP rotation
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Coordinator Server - Central schedule management
+  # ============================================================================
+  coordinator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ntimes-coordinator
+    restart: unless-stopped
+    command: ["coordinator", "--port", "8000"]
+    environment:
+      RUST_LOG: ${COORDINATOR_LOG_LEVEL:-info}
+      COORDINATOR_PORT: 8000
+      COORDINATOR_HOST: "0.0.0.0"
+      ROTATION_TIME: ${ROTATION_TIME:-23:00}
+      TIMEZONE: ${TIMEZONE:-Asia/Seoul}
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "${COORDINATOR_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.1.1
+    volumes:
+      - coordinator_data:/app/data
+    labels:
+      - "com.ntimes.role=coordinator"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
+
+  # ============================================================================
+  # Crawler Instance - Main (ID: 0)
+  # ============================================================================
+  crawler-main:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ntimes-crawler-main
+    restart: unless-stopped
+    command: ["crawler", "--instance", "main", "--coordinator", "http://coordinator:8000"]
+    environment:
+      RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
+      INSTANCE_ID: main
+      COORDINATOR_URL: "http://coordinator:8000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      REDIS_URL: "redis://redis:6379"
+      OPENSEARCH_URL: "http://opensearch:9200"
+      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
+      REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
+      ENABLE_DEDUP: "true"
+      OUTPUT_DIR: /app/output
+      CHECKPOINT_DIR: /app/checkpoints
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.2.1
+    volumes:
+      - crawler_main_output:/app/output
+      - crawler_main_checkpoints:/app/checkpoints
+      - crawler_main_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      - "com.ntimes.role=crawler"
+      - "com.ntimes.instance=main"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
+
+  # ============================================================================
+  # Crawler Instance - Sub1 (ID: 1)
+  # ============================================================================
+  crawler-sub1:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ntimes-crawler-sub1
+    restart: unless-stopped
+    command: ["crawler", "--instance", "sub1", "--coordinator", "http://coordinator:8000"]
+    environment:
+      RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
+      INSTANCE_ID: sub1
+      COORDINATOR_URL: "http://coordinator:8000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      REDIS_URL: "redis://redis:6379"
+      OPENSEARCH_URL: "http://opensearch:9200"
+      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
+      REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
+      ENABLE_DEDUP: "true"
+      OUTPUT_DIR: /app/output
+      CHECKPOINT_DIR: /app/checkpoints
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.2.2
+    volumes:
+      - crawler_sub1_output:/app/output
+      - crawler_sub1_checkpoints:/app/checkpoints
+      - crawler_sub1_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      - "com.ntimes.role=crawler"
+      - "com.ntimes.instance=sub1"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
+
+  # ============================================================================
+  # Crawler Instance - Sub2 (ID: 2)
+  # ============================================================================
+  crawler-sub2:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ntimes-crawler-sub2
+    restart: unless-stopped
+    command: ["crawler", "--instance", "sub2", "--coordinator", "http://coordinator:8000"]
+    environment:
+      RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
+      INSTANCE_ID: sub2
+      COORDINATOR_URL: "http://coordinator:8000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      REDIS_URL: "redis://redis:6379"
+      OPENSEARCH_URL: "http://opensearch:9200"
+      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
+      REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
+      ENABLE_DEDUP: "true"
+      OUTPUT_DIR: /app/output
+      CHECKPOINT_DIR: /app/checkpoints
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.2.3
+    volumes:
+      - crawler_sub2_output:/app/output
+      - crawler_sub2_checkpoints:/app/checkpoints
+      - crawler_sub2_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      - "com.ntimes.role=crawler"
+      - "com.ntimes.instance=sub2"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
+
+# ============================================================================
+# Additional Volumes
+# ============================================================================
+volumes:
+  coordinator_data:
+    driver: local
+  crawler_main_output:
+    driver: local
+  crawler_main_checkpoints:
+    driver: local
+  crawler_main_logs:
+    driver: local
+  crawler_sub1_output:
+    driver: local
+  crawler_sub1_checkpoints:
+    driver: local
+  crawler_sub1_logs:
+    driver: local
+  crawler_sub2_output:
+    driver: local
+  crawler_sub2_checkpoints:
+    driver: local
+  crawler_sub2_logs:
+    driver: local
