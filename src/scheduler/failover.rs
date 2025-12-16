@@ -9,9 +9,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::distribution::{DistributionEvent, ScheduleDistributor, UpdateReason};
+use super::distribution::{ScheduleDistributor, UpdateReason};
 use super::rotation::CrawlerInstance;
-use super::schedule::DailySchedule;
 
 // ============================================================================
 // Instance Health Status
