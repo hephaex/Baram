@@ -11,14 +11,24 @@
 //! ```text
 //! URL Producer → Fetcher Workers → Parser Workers → Storage Workers
 //! ```
+//!
+//! # Distributed Crawling
+//!
+//! For distributed crawling with multiple instances, see:
+//! - [`instance`] - Instance configuration and state management
+//! - [`distributed`] - Distributed crawler runner with coordinator integration
 
 pub mod comment;
+pub mod distributed;
 pub mod fetcher;
 pub mod headers;
+pub mod instance;
 pub mod list;
 pub mod pipeline;
 pub mod url;
 
+pub use distributed::{DistributedRunner, RunnerError, RunnerHandle, SlotResult};
+pub use instance::{ConfigError, InstanceConfig, InstanceState};
 pub use pipeline::{CrawlerPipeline, PipelineBuilder, PipelineConfig, PipelineStats, StatsSnapshot};
 
 use anyhow::{Context, Result};
