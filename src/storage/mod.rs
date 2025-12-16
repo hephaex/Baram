@@ -3,15 +3,21 @@
 //! This module handles data persistence:
 //! - SQLite for crawl metadata and deduplication
 //! - PostgreSQL for raw article data (optional)
+//! - Async PostgreSQL deduplication for distributed crawling
 //! - Markdown files for article output
 //! - Checkpointing for resumable crawls
 
 pub mod checkpoint;
+pub mod dedup;
 pub mod markdown;
 
 pub use checkpoint::{
     AsyncCheckpointManager, CheckpointManager, CheckpointStats, ConcurrencyConfig,
     ConcurrencyMonitor, CrawlState, FailedUrl,
+};
+pub use dedup::{
+    create_shared_checker, AsyncDedupChecker, DedupCheckResult, DedupConfig, DedupRecord,
+    DedupStats, PoolStatus, SharedDedupChecker,
 };
 pub use markdown::{
     ArticleStorage, ArticleWithCommentsData, ArticleWithCommentsWriter, BatchSaveResult,

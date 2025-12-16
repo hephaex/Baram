@@ -11,6 +11,7 @@ use chrono::Timelike;
 
 use crate::coordinator::client::{ClientConfig, ClientError, CoordinatorClient, SlotResponse};
 use crate::scheduler::rotation::CrawlerInstance;
+use crate::storage::dedup::{DedupConfig, DedupRecord, SharedDedupChecker};
 
 use super::instance::{InstanceConfig, InstanceState};
 
@@ -24,6 +25,7 @@ use super::instance::{InstanceConfig, InstanceState};
 /// - Registration with coordinator
 /// - Periodic heartbeat sending
 /// - Schedule polling and slot execution
+/// - Deduplication via PostgreSQL
 /// - Graceful shutdown
 pub struct DistributedRunner {
     /// Instance configuration
@@ -34,6 +36,9 @@ pub struct DistributedRunner {
 
     /// Instance state
     state: Arc<RwLock<InstanceState>>,
+
+    /// Deduplication checker (optional)
+    dedup_checker: Option<SharedDedupChecker>,
 
     /// Shutdown signal
     shutdown: tokio::sync::watch::Sender<bool>,
@@ -58,9 +63,172 @@ impl DistributedRunner {
             config,
             coordinator,
             state: Arc::new(RwLock::new(InstanceState::new())),
+            dedup_checker: None,
             shutdown,
             shutdown_rx,
         })
+    }
+
+    /// Create a new distributed runner with deduplication
+    pub async fn with_dedup(config: InstanceConfig) -> Result<Self, RunnerError> {
+        let mut runner = Self::new(config)?;
+        runner.init_dedup().await?;
+        Ok(runner)
+    }
+
+    /// Initialize deduplication checker
+    pub async fn init_dedup(&mut self) -> Result<(), RunnerError> {
+        let dedup_config = DedupConfig::default()
+            .with_database_url(&self.config.database_url)
+            .with_pool_size(5);
+
+        let checker = crate::storage::dedup::create_shared_checker(dedup_config)
+            .await
+            .map_err(|e| RunnerError::InitError(format!("Failed to init dedup: {}", e)))?;
+
+        self.dedup_checker = Some(checker);
+
+        tracing::info!(
+            "Deduplication checker initialized for instance {}",
+            self.config.instance_id
+        );
+
+        Ok(())
+    }
+
+    /// Set deduplication checker
+    pub fn set_dedup_checker(&mut self, checker: SharedDedupChecker) {
+        self.dedup_checker = Some(checker);
+    }
+
+    /// Check if deduplication is enabled
+    pub fn has_dedup(&self) -> bool {
+        self.dedup_checker.is_some()
+    }
+
+    /// Filter URLs that haven't been crawled
+    ///
+    /// Returns only new URLs that need to be crawled
+    pub async fn filter_new_urls(&self, urls: &[String]) -> Result<Vec<String>, RunnerError> {
+        match &self.dedup_checker {
+            Some(checker) => {
+                let result = checker
+                    .batch_check_urls(urls)
+                    .await
+                    .map_err(|e| RunnerError::CrawlError(format!("Dedup check failed: {}", e)))?;
+
+                tracing::debug!(
+                    "Dedup check: {} new, {} existing, {} total",
+                    result.new_count(),
+                    result.existing_count(),
+                    result.total_checked
+                );
+
+                Ok(result.new_urls)
+            }
+            None => {
+                // No dedup checker, return all URLs
+                Ok(urls.to_vec())
+            }
+        }
+    }
+
+    /// Check if a URL has been crawled
+    pub async fn is_url_crawled(&self, url: &str) -> Result<bool, RunnerError> {
+        match &self.dedup_checker {
+            Some(checker) => checker
+                .exists_by_url(url)
+                .await
+                .map_err(|e| RunnerError::CrawlError(format!("Dedup check failed: {}", e))),
+            None => Ok(false),
+        }
+    }
+
+    /// Record a successful crawl
+    pub async fn record_crawl_success(
+        &self,
+        article_id: &str,
+        url: &str,
+        content_hash: &str,
+    ) -> Result<(), RunnerError> {
+        if let Some(checker) = &self.dedup_checker {
+            let record = DedupRecord::new(
+                article_id,
+                url,
+                content_hash,
+                self.config.instance_id.id(),
+            );
+
+            checker
+                .record_crawl(&record)
+                .await
+                .map_err(|e| RunnerError::CrawlError(format!("Failed to record crawl: {}", e)))?;
+        }
+
+        Ok(())
+    }
+
+    /// Record a failed crawl
+    pub async fn record_crawl_failure(
+        &self,
+        article_id: &str,
+        url: &str,
+    ) -> Result<(), RunnerError> {
+        if let Some(checker) = &self.dedup_checker {
+            let record = DedupRecord::new(article_id, url, "", self.config.instance_id.id())
+                .with_failure();
+
+            checker
+                .record_crawl(&record)
+                .await
+                .map_err(|e| RunnerError::CrawlError(format!("Failed to record failure: {}", e)))?;
+        }
+
+        Ok(())
+    }
+
+    /// Batch record successful crawls
+    pub async fn batch_record_crawls(
+        &self,
+        records: &[(String, String, String)], // (article_id, url, content_hash)
+    ) -> Result<usize, RunnerError> {
+        match &self.dedup_checker {
+            Some(checker) => {
+                let dedup_records: Vec<DedupRecord> = records
+                    .iter()
+                    .map(|(id, url, hash)| {
+                        DedupRecord::new(id, url, hash, self.config.instance_id.id())
+                    })
+                    .collect();
+
+                let count = checker
+                    .batch_record_crawls(&dedup_records)
+                    .await
+                    .map_err(|e| {
+                        RunnerError::CrawlError(format!("Failed to batch record: {}", e))
+                    })?;
+
+                Ok(count)
+            }
+            None => Ok(0),
+        }
+    }
+
+    /// Get deduplication statistics for this instance
+    pub async fn get_dedup_stats(
+        &self,
+    ) -> Result<Option<crate::storage::dedup::DedupStats>, RunnerError> {
+        match &self.dedup_checker {
+            Some(checker) => {
+                let stats = checker
+                    .get_stats_by_instance(self.config.instance_id.id())
+                    .await
+                    .map_err(|e| RunnerError::CrawlError(format!("Failed to get stats: {}", e)))?;
+
+                Ok(Some(stats))
+            }
+            None => Ok(None),
+        }
     }
 
     /// Get instance ID
