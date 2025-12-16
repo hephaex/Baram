@@ -52,6 +52,7 @@
 pub mod assignment;
 pub mod distribution;
 pub mod error;
+pub mod failover;
 pub mod rotation;
 pub mod schedule;
 pub mod trigger;
@@ -63,6 +64,10 @@ pub use distribution::{
     DistributorHandle, ScheduleDistributor, ScheduleReceiver, UpdateReason,
 };
 pub use error::{SchedulerError, SchedulerResult};
+pub use failover::{
+    FailoverConfig, FailoverError, FailoverEvent, FailoverManager, FailoverReason,
+    HealthStatus, InstanceHealth, OverrideManager, OverrideRequest,
+};
 pub use rotation::{CrawlerInstance, NewsCategory, RotationScheduler};
 pub use schedule::{DailySchedule, HourlySlot, ScheduleCache, ScheduleMetadata};
 pub use trigger::{ScheduleTrigger, TriggerConfig};
