@@ -12,8 +12,9 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Get version from tag
@@ -37,13 +38,9 @@ jobs:
           echo "$CHANGELOG" > changelog.txt
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
           body_path: changelog.txt
           draft: false
           prerelease: false
@@ -52,6 +49,8 @@ jobs:
     name: Build ${{ matrix.target }}
     needs: create-release
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -102,11 +101,6 @@ jobs:
           echo "archive_path=target/${{ matrix.target }}/release/${ARCHIVE_NAME}.tar.gz" >> $GITHUB_OUTPUT
 
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.archive.outputs.archive_path }}
-          asset_name: ${{ steps.archive.outputs.archive_name }}
-          asset_content_type: application/gzip
+          files: ${{ steps.archive.outputs.archive_path }}
