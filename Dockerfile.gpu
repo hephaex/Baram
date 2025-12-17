@@ -32,6 +32,9 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CUDA_HOME=/usr/local/cuda
 ENV PATH="${CUDA_HOME}/bin:${PATH}"
 ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+# Set CUDA compute capability for candle-cuda (supports most modern GPUs)
+# 75=Turing, 80=Ampere, 86=GA102, 89=Ada, 90=Hopper
+ENV CUDA_COMPUTE_CAP=80
 
 # Set working directory
 WORKDIR /build
