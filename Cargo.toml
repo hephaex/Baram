@@ -3,9 +3,9 @@ name = "ntimes"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
-authors = ["nTimes Contributors"]
+authors = ["hephaex <hephaex@gmail.com>"]
 description = "Advanced Naver News crawler with vector search and ontology extraction"
-license = "MIT OR Apache-2.0"
+license = "GPL-3.0"
 
 [dependencies]
 # Async runtime
