@@ -1,0 +1,139 @@
+# Dockerfile.gpu for nTimes with NVIDIA CUDA GPU support
+# Multi-stage build for optimized GPU-accelerated production image
+# Copyright (c) 2024 hephaex@gmail.com
+# License: GPL v3
+
+# ============================================================================
+# Stage 1: Builder - Compile Rust application with CUDA support
+# ============================================================================
+FROM nvidia/cuda:12.4-devel-ubuntu22.04 AS builder
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Rust and build dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    ca-certificates \
+    build-essential \
+    g++ \
+    cmake \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Set CUDA environment
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH="${CUDA_HOME}/bin:${PATH}"
+ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
+
+# Set working directory
+WORKDIR /build
+
+# Copy dependency manifests first for better layer caching
+COPY Cargo.toml Cargo.lock ./
+
+# Create dummy source to cache dependencies
+RUN mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release --features cuda && \
+    rm -rf src
+
+# Copy actual source code
+COPY . .
+
+# Build the application with CUDA support
+RUN cargo build --release --locked --features cuda
+
+# Strip debug symbols to reduce binary size
+RUN strip /build/target/release/ntimes
+
+# ============================================================================
+# Stage 2: Runtime - CUDA runtime image
+# ============================================================================
+FROM nvidia/cuda:12.4-runtime-ubuntu22.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libpq5 \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user and group for running the application
+RUN groupadd -r -g 1001 ntimes && \
+    useradd -r -u 1001 -g ntimes -s /bin/bash -m -d /app ntimes
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/output/raw \
+    /app/output/markdown \
+    /app/checkpoints \
+    /app/logs \
+    /app/models \
+    && chown -R ntimes:ntimes /app
+
+# Set working directory
+WORKDIR /app
+
+# Copy the compiled binary from builder stage
+COPY --from=builder --chown=ntimes:ntimes /build/target/release/ntimes /usr/local/bin/ntimes
+
+# Copy configuration files
+COPY --chown=ntimes:ntimes config.toml.example /app/config.toml
+
+# Set environment variables
+ENV RUST_LOG=info \
+    RUST_BACKTRACE=1 \
+    OUTPUT_DIR=/app/output \
+    CHECKPOINT_DIR=/app/checkpoints \
+    LOG_FILE=/app/logs/ntimes.log \
+    HF_HOME=/app/models \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Switch to non-root user
+USER ntimes
+
+# Expose health check port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/ntimes"]
+CMD ["--help"]
+
+# Labels for image metadata
+LABEL maintainer="hephaex@gmail.com" \
+      version="0.1.0-gpu" \
+      description="nTimes Naver News Crawler - GPU-accelerated with CUDA support" \
+      license="GPL-3.0" \
+      org.opencontainers.image.source="https://github.com/hephaex/nTimes"
+
+# ============================================================================
+# Build instructions:
+# ============================================================================
+# Build the GPU image:
+#   docker build -f Dockerfile.gpu -t ntimes:gpu .
+#
+# Run with GPU support:
+#   docker run --gpus all --rm -it \
+#     --env-file docker/.env \
+#     -v $(pwd)/output:/app/output \
+#     ntimes:gpu crawl --category politics
+#
+# Run with docker-compose (see docker/docker-compose.gpu.yml):
+#   docker-compose -f docker/docker-compose.yml -f docker/docker-compose.gpu.yml up -d
+# ============================================================================

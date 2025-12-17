@@ -1,0 +1,143 @@
+# docker-compose.gpu.yml
+# GPU-accelerated deployment with NVIDIA CUDA support
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# Requirements:
+#   - NVIDIA GPU with CUDA support
+#   - nvidia-container-toolkit installed
+#   - Docker 19.03+ with GPU support
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # GPU-accelerated Crawler - Uses CUDA for ML inference
+  # ============================================================================
+  crawler-gpu:
+    build:
+      context: ..
+      dockerfile: Dockerfile.gpu
+    container_name: ntimes-crawler-gpu
+    restart: unless-stopped
+    command: ["crawler", "--instance", "gpu", "--coordinator", "http://coordinator:8000"]
+    environment:
+      RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
+      INSTANCE_ID: gpu
+      COORDINATOR_URL: "http://coordinator:8000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      REDIS_URL: "redis://redis:6379"
+      OPENSEARCH_URL: "http://opensearch:9200"
+      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
+      REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
+      ENABLE_DEDUP: "true"
+      OUTPUT_DIR: /app/output
+      CHECKPOINT_DIR: /app/checkpoints
+      # GPU-specific settings
+      USE_GPU: "true"
+      CUDA_VISIBLE_DEVICES: "0"
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.3.1
+    volumes:
+      - crawler_gpu_output:/app/output
+      - crawler_gpu_checkpoints:/app/checkpoints
+      - crawler_gpu_logs:/app/logs
+      - crawler_gpu_models:/app/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    labels:
+      - "com.ntimes.role=crawler"
+      - "com.ntimes.instance=gpu"
+      - "com.ntimes.gpu=true"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
+
+  # ============================================================================
+  # GPU Embedding Service - Dedicated embedding generation
+  # ============================================================================
+  embedding-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile.gpu
+    container_name: ntimes-embedding-gpu
+    restart: unless-stopped
+    command: ["embedding-server", "--port", "8090"]
+    environment:
+      RUST_LOG: ${EMBEDDING_LOG_LEVEL:-info}
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      OPENSEARCH_URL: "http://opensearch:9200"
+      # GPU settings
+      USE_GPU: "true"
+      CUDA_VISIBLE_DEVICES: "0"
+      MODEL_NAME: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-large}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
+      MAX_SEQ_LENGTH: ${MAX_SEQ_LENGTH:-512}
+    ports:
+      - "${EMBEDDING_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.3.10
+    volumes:
+      - embedding_models:/app/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 16G
+    labels:
+      - "com.ntimes.role=embedding"
+      - "com.ntimes.gpu=true"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
+
+# ============================================================================
+# Additional Volumes for GPU services
+# ============================================================================
+volumes:
+  crawler_gpu_output:
+    driver: local
+  crawler_gpu_checkpoints:
+    driver: local
+  crawler_gpu_logs:
+    driver: local
+  crawler_gpu_models:
+    driver: local
+  embedding_models:
+    driver: local
