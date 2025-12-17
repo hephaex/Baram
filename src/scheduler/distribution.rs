@@ -245,9 +245,9 @@ impl ScheduleDistributor {
                 .map(|s| s.hour)
                 .collect();
 
-            let state = states.entry(instance).or_insert_with(|| {
-                InstanceScheduleState::new(instance, date)
-            });
+            let state = states
+                .entry(instance)
+                .or_insert_with(|| InstanceScheduleState::new(instance, date));
 
             state.schedule_date = date;
             state.update_hours(hours);
@@ -380,7 +380,10 @@ impl ScheduleDistributor {
     }
 
     /// Get state for a specific instance
-    pub async fn get_instance_state(&self, instance: CrawlerInstance) -> Option<InstanceScheduleState> {
+    pub async fn get_instance_state(
+        &self,
+        instance: CrawlerInstance,
+    ) -> Option<InstanceScheduleState> {
         self.instance_states.read().await.get(&instance).cloned()
     }
 

@@ -149,7 +149,8 @@ impl InstanceHealth {
 
     /// Get seconds since last heartbeat
     pub fn seconds_since_heartbeat(&self) -> Option<i64> {
-        self.last_heartbeat.map(|last| (Utc::now() - last).num_seconds())
+        self.last_heartbeat
+            .map(|last| (Utc::now() - last).num_seconds())
     }
 }
 
@@ -305,8 +306,14 @@ impl FailoverManager {
         };
 
         if should_failover {
-            tracing::warn!("Instance {} exceeded max failures, initiating failover", instance);
-            if let Err(e) = self.initiate_failover(instance, FailoverReason::ConsecutiveFailures).await {
+            tracing::warn!(
+                "Instance {} exceeded max failures, initiating failover",
+                instance
+            );
+            if let Err(e) = self
+                .initiate_failover(instance, FailoverReason::ConsecutiveFailures)
+                .await
+            {
                 tracing::error!("Failover failed: {}", e);
             }
         }
@@ -511,9 +518,18 @@ impl FailoverManager {
         let health = self.health.read().await;
         let history = self.history.read().await;
 
-        let healthy_count = health.values().filter(|h| h.status == HealthStatus::Healthy).count();
-        let degraded_count = health.values().filter(|h| h.status == HealthStatus::Degraded).count();
-        let unhealthy_count = health.values().filter(|h| h.status == HealthStatus::Unhealthy).count();
+        let healthy_count = health
+            .values()
+            .filter(|h| h.status == HealthStatus::Healthy)
+            .count();
+        let degraded_count = health
+            .values()
+            .filter(|h| h.status == HealthStatus::Degraded)
+            .count();
+        let unhealthy_count = health
+            .values()
+            .filter(|h| h.status == HealthStatus::Unhealthy)
+            .count();
 
         FailoverStats {
             total_instances: CrawlerInstance::count(),
@@ -521,9 +537,10 @@ impl FailoverManager {
             degraded_count,
             unhealthy_count,
             total_failovers: history.len(),
-            recent_failovers: history.iter().filter(|e| {
-                (Utc::now() - e.timestamp).num_hours() < 24
-            }).count(),
+            recent_failovers: history
+                .iter()
+                .filter(|e| (Utc::now() - e.timestamp).num_hours() < 24)
+                .count(),
         }
     }
 }
@@ -557,7 +574,10 @@ impl std::fmt::Display for FailoverError {
         match self {
             Self::NoAvailableTarget => write!(f, "No available target for failover"),
             Self::CooldownActive { remaining_secs } => {
-                write!(f, "Failover cooldown active, {remaining_secs} seconds remaining")
+                write!(
+                    f,
+                    "Failover cooldown active, {remaining_secs} seconds remaining"
+                )
             }
             Self::InstanceNotFound(i) => write!(f, "Instance not found: {i}"),
             Self::ScheduleUpdateFailed(msg) => write!(f, "Schedule update failed: {msg}"),
@@ -634,7 +654,10 @@ impl OverrideManager {
     }
 
     /// Apply a manual override
-    pub async fn apply_override(&self, request: OverrideRequest) -> Result<ActiveOverride, OverrideError> {
+    pub async fn apply_override(
+        &self,
+        request: OverrideRequest,
+    ) -> Result<ActiveOverride, OverrideError> {
         // Validate hours
         for hour in &request.hours {
             if *hour > 23 {
@@ -835,7 +858,9 @@ mod tests {
         };
         let manager = FailoverManager::new(config);
 
-        manager.process_failure(CrawlerInstance::Main, Some("error".to_string())).await;
+        manager
+            .process_failure(CrawlerInstance::Main, Some("error".to_string()))
+            .await;
 
         let health = manager.get_health(CrawlerInstance::Main).await.unwrap();
         assert_eq!(health.failure_count, 1);

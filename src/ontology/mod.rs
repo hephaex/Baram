@@ -132,8 +132,8 @@ pub use error::{OntologyError, OntologyResult};
 
 // Re-export commonly used types from extractor
 pub use extractor::{
-    EntitySource, EntityType, ExtractionConfig, ExtractionConfigBuilder, ExtractionResult,
-    ExtractedEntity, ExtractedRelation, LlmEntityResponse, LlmExtractionResponse,
+    EntitySource, EntityType, ExtractedEntity, ExtractedRelation, ExtractionConfig,
+    ExtractionConfigBuilder, ExtractionResult, LlmEntityResponse, LlmExtractionResponse,
     LlmRelationResponse, PromptTemplate, RelationExtractor, RelationType, Triple, TripleContext,
     TripleStats, TripleStore,
 };

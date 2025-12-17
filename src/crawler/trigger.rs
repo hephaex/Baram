@@ -122,16 +122,10 @@ pub enum CrawlEvent {
     },
 
     /// Slot was skipped (not assigned to this instance)
-    Skipped {
-        hour: u8,
-        reason: String,
-    },
+    Skipped { hour: u8, reason: String },
 
     /// Error occurred
-    Error {
-        hour: u8,
-        error: String,
-    },
+    Error { hour: u8, error: String },
 }
 
 // ============================================================================
@@ -446,7 +440,9 @@ impl CrawlerTrigger {
         categories: &[String],
     ) -> Vec<Result<u64, CrawlerTriggerError>> {
         // Use semaphore to limit parallelism
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(self.config.max_parallel_workers));
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(
+            self.config.max_parallel_workers,
+        ));
 
         let futures: Vec<_> = categories
             .iter()
@@ -545,7 +541,9 @@ impl CrawlerTrigger {
             .unwrap()
             .with_second(0)
             .unwrap();
-        let initial_wait = (next_hour - now).to_std().unwrap_or(Duration::from_secs(60));
+        let initial_wait = (next_hour - now)
+            .to_std()
+            .unwrap_or(Duration::from_secs(60));
 
         tracing::info!("Waiting {:?} until next hour boundary", initial_wait);
 

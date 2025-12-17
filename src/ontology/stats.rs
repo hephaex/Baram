@@ -76,7 +76,12 @@ impl ExtractionStats {
     }
 
     /// Record relation extraction
-    pub fn record_relation(&mut self, relation_type: RelationType, confidence: f32, verified: bool) {
+    pub fn record_relation(
+        &mut self,
+        relation_type: RelationType,
+        confidence: f32,
+        verified: bool,
+    ) {
         self.relation_count += 1;
         if verified {
             self.verified_count += 1;
@@ -323,7 +328,10 @@ impl BatchStats {
         report.push_str(&format!("Articles Processed: {}\n", self.total_articles));
         report.push_str(&format!("  - Successful: {}\n", self.successful));
         report.push_str(&format!("  - Failed: {}\n", self.failed));
-        report.push_str(&format!("  - Success Rate: {:.1}%\n\n", self.success_rate()));
+        report.push_str(&format!(
+            "  - Success Rate: {:.1}%\n\n",
+            self.success_rate()
+        ));
 
         report.push_str(&format!("Total Entities: {}\n", self.total_entities));
         report.push_str(&format!(
@@ -487,7 +495,10 @@ impl PipelineProfiler {
         let summary = self.summary();
         let mut report = String::new();
 
-        report.push_str(&format!("Pipeline Profile (Total: {}ms)\n", summary.total_ms));
+        report.push_str(&format!(
+            "Pipeline Profile (Total: {}ms)\n",
+            summary.total_ms
+        ));
         report.push_str(&format!("{:-<40}\n", ""));
 
         let mut sorted_stages = summary.stages;
@@ -544,9 +555,8 @@ impl MemoryEstimator {
     /// Estimate memory for extracted relations
     pub fn estimate_relations(count: usize, avg_evidence_len: usize) -> usize {
         count
-            * (std::mem::size_of::<super::extractor::ExtractedRelation>()
-                + avg_evidence_len
-                + 100) // subject + object
+            * (std::mem::size_of::<super::extractor::ExtractedRelation>() + avg_evidence_len + 100)
+        // subject + object
     }
 
     /// Estimate memory for triples
@@ -616,7 +626,11 @@ pub fn parse_bytes(s: &str) -> Option<usize> {
         (s.as_str(), 1)
     };
 
-    num_str.trim().parse::<f64>().ok().map(|n| (n * multiplier as f64) as usize)
+    num_str
+        .trim()
+        .parse::<f64>()
+        .ok()
+        .map(|n| (n * multiplier as f64) as usize)
 }
 
 #[cfg(test)]

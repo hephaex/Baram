@@ -152,12 +152,8 @@ impl DistributedRunner {
         content_hash: &str,
     ) -> Result<(), RunnerError> {
         if let Some(checker) = &self.dedup_checker {
-            let record = DedupRecord::new(
-                article_id,
-                url,
-                content_hash,
-                self.config.instance_id.id(),
-            );
+            let record =
+                DedupRecord::new(article_id, url, content_hash, self.config.instance_id.id());
 
             checker
                 .record_crawl(&record)
@@ -175,8 +171,8 @@ impl DistributedRunner {
         url: &str,
     ) -> Result<(), RunnerError> {
         if let Some(checker) = &self.dedup_checker {
-            let record = DedupRecord::new(article_id, url, "", self.config.instance_id.id())
-                .with_failure();
+            let record =
+                DedupRecord::new(article_id, url, "", self.config.instance_id.id()).with_failure();
 
             checker
                 .record_crawl(&record)
@@ -204,9 +200,7 @@ impl DistributedRunner {
                 let count = checker
                     .batch_record_crawls(&dedup_records)
                     .await
-                    .map_err(|e| {
-                        RunnerError::CrawlError(format!("Failed to batch record: {e}"))
-                    })?;
+                    .map_err(|e| RunnerError::CrawlError(format!("Failed to batch record: {e}")))?;
 
                 Ok(count)
             }
@@ -243,7 +237,11 @@ impl DistributedRunner {
 
     /// Register with coordinator
     pub async fn register(&self) -> Result<(), RunnerError> {
-        let ip = self.config.local_ip.clone().unwrap_or_else(|| "0.0.0.0".to_string());
+        let ip = self
+            .config
+            .local_ip
+            .clone()
+            .unwrap_or_else(|| "0.0.0.0".to_string());
 
         tracing::info!(
             "Registering instance {} with coordinator at {}",
@@ -452,8 +450,11 @@ impl DistributedRunner {
         tokio::spawn(async move {
             // Wait until next hour boundary
             let now = chrono::Local::now();
-            let next_hour = now.with_minute(0).unwrap().with_second(0).unwrap() + chrono::Duration::hours(1);
-            let wait_duration = (next_hour - now).to_std().unwrap_or(Duration::from_secs(60));
+            let next_hour =
+                now.with_minute(0).unwrap().with_second(0).unwrap() + chrono::Duration::hours(1);
+            let wait_duration = (next_hour - now)
+                .to_std()
+                .unwrap_or(Duration::from_secs(60));
 
             tracing::info!(
                 "Schedule watcher starting, waiting {:?} until next hour",
@@ -505,9 +506,10 @@ impl DistributedRunner {
 
     /// Clone coordinator client (creates new client with same config)
     fn coordinator_clone(&self) -> CoordinatorClient {
-        let client_config = ClientConfig::new(&self.config.coordinator_url, self.config.instance_id)
-            .with_timeout(self.config.timeout())
-            .with_retry_count(self.config.max_retries);
+        let client_config =
+            ClientConfig::new(&self.config.coordinator_url, self.config.instance_id)
+                .with_timeout(self.config.timeout())
+                .with_retry_count(self.config.max_retries);
 
         CoordinatorClient::new(client_config).expect("Failed to create coordinator client")
     }
@@ -633,12 +635,8 @@ impl From<ClientError> for RunnerError {
 /// Calculate time until next hour
 pub fn time_until_next_hour() -> Duration {
     let now = chrono::Local::now();
-    let next_hour = now
-        .with_minute(0)
-        .unwrap()
-        .with_second(0)
-        .unwrap()
-        + chrono::Duration::hours(1);
+    let next_hour =
+        now.with_minute(0).unwrap().with_second(0).unwrap() + chrono::Duration::hours(1);
 
     (next_hour - now)
         .to_std()
@@ -663,9 +661,7 @@ pub fn time_until_hour(target_hour: u32) -> Duration {
         today_target
     };
 
-    (target - now)
-        .to_std()
-        .unwrap_or(Duration::from_secs(60))
+    (target - now).to_std().unwrap_or(Duration::from_secs(60))
 }
 
 // ============================================================================

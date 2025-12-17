@@ -17,9 +17,8 @@ use crate::crawler::fetcher::NaverFetcher;
 
 /// Regex for extracting JSON from JSONP response
 /// Format: _callback({...}) or jQuery12345({...})
-static JSONP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(\s*(.*)\s*\);?\s*$").unwrap()
-});
+static JSONP_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(\s*(.*)\s*\);?\s*$").unwrap());
 
 /// Parse JSONP response and extract JSON content
 ///
@@ -368,11 +367,9 @@ fn timestamp_to_datetime(timestamp_ms: i64) -> DateTime<Utc> {
 /// - Decode HTML entities
 /// - Normalize whitespace
 fn clean_comment_content(content: &str) -> String {
-    static HTML_TAG_REGEX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+    static HTML_TAG_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
 
-    static WHITESPACE_REGEX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"\s+").unwrap());
+    static WHITESPACE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
 
     // Remove HTML tags
     let no_tags = HTML_TAG_REGEX.replace_all(content, "");
@@ -451,10 +448,12 @@ pub fn build_comment_tree(comments: Vec<Comment>) -> Vec<Comment> {
 /// Naver News Comment API endpoints
 pub mod api {
     /// Base URL for comment API
-    pub const COMMENT_API_BASE: &str = "https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json";
+    pub const COMMENT_API_BASE: &str =
+        "https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json";
 
     /// Base URL for reply API (nested replies)
-    pub const REPLY_API_BASE: &str = "https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json";
+    pub const REPLY_API_BASE: &str =
+        "https://apis.naver.com/commentBox/cbox/web_naver_list_jsonp.json";
 
     /// Default ticket ID
     pub const TICKET: &str = "news";
@@ -716,7 +715,11 @@ impl CommentClient {
     ) -> Result<Vec<Comment>> {
         let mut all_comments = Vec::new();
         let mut page = 1;
-        let max = if max_pages == 0 { api::MAX_PAGES } else { max_pages };
+        let max = if max_pages == 0 {
+            api::MAX_PAGES
+        } else {
+            max_pages
+        };
 
         loop {
             if page > max {
@@ -800,7 +803,11 @@ impl CommentClient {
     ) -> Result<Vec<Comment>> {
         let mut all_replies = Vec::new();
         let mut page = 1;
-        let max = if max_pages == 0 { api::MAX_PAGES } else { max_pages };
+        let max = if max_pages == 0 {
+            api::MAX_PAGES
+        } else {
+            max_pages
+        };
 
         loop {
             if page > max {
@@ -971,12 +978,7 @@ impl CommentClient {
     /// * `aid` - Article ID
     /// * `parent_comment_no` - Parent comment number
     /// * `page` - Page number (1-based)
-    pub fn build_reply_url(
-        oid: &str,
-        aid: &str,
-        parent_comment_no: i64,
-        page: u32,
-    ) -> String {
+    pub fn build_reply_url(oid: &str, aid: &str, parent_comment_no: i64, page: u32) -> String {
         let object_id = format!("news{oid},{aid}");
 
         format!(
@@ -1001,12 +1003,7 @@ fn calculate_max_depth(comments: &[Comment]) -> u32 {
         if comment.replies.is_empty() {
             1
         } else {
-            1 + comment
-                .replies
-                .iter()
-                .map(depth_of)
-                .max()
-                .unwrap_or(0)
+            1 + comment.replies.iter().map(depth_of).max().unwrap_or(0)
         }
     }
 
@@ -1047,9 +1044,8 @@ pub fn filter_comments(comments: Vec<Comment>, filter: &CommentFilter) -> Vec<Co
 /// ```
 pub fn extract_article_ids(url: &str) -> Result<(String, String)> {
     // Pattern: /article/{oid}/{aid} or /mnews/article/{oid}/{aid}
-    static ARTICLE_ID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"/(?:mnews/)?article/(\d+)/(\d+)").unwrap()
-    });
+    static ARTICLE_ID_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"/(?:mnews/)?article/(\d+)/(\d+)").unwrap());
 
     if let Some(captures) = ARTICLE_ID_REGEX.captures(url) {
         let oid = captures.get(1).map(|m| m.as_str().to_string());
@@ -1594,23 +1590,21 @@ mod tests {
 
     #[test]
     fn test_calculate_max_depth_flat() {
-        let comments = vec![
-            Comment {
-                id: "1".to_string(),
-                parent_id: None,
-                content: "Top".to_string(),
-                author: "A".to_string(),
-                author_id: "a***".to_string(),
-                created_at: Utc::now(),
-                modified_at: None,
-                likes: 0,
-                dislikes: 0,
-                reply_count: 0,
-                is_best: false,
-                is_deleted: false,
-                replies: vec![],
-            },
-        ];
+        let comments = vec![Comment {
+            id: "1".to_string(),
+            parent_id: None,
+            content: "Top".to_string(),
+            author: "A".to_string(),
+            author_id: "a***".to_string(),
+            created_at: Utc::now(),
+            modified_at: None,
+            likes: 0,
+            dislikes: 0,
+            reply_count: 0,
+            is_best: false,
+            is_deleted: false,
+            replies: vec![],
+        }];
         assert_eq!(calculate_max_depth(&comments), 1);
     }
 

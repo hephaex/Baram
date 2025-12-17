@@ -165,7 +165,16 @@ async fn main() -> Result<()> {
                 output = %output.display(),
                 "Starting crawl command"
             );
-            crawl(config, category, max_articles, url, with_comments, output, skip_existing).await?;
+            crawl(
+                config,
+                category,
+                max_articles,
+                url,
+                with_comments,
+                output,
+                skip_existing,
+            )
+            .await?;
         }
 
         Commands::Index {
@@ -313,7 +322,11 @@ async fn crawl(
         let list_crawler = NewsListCrawler::new(fetcher);
 
         for cat in categories {
-            println!("\nCrawling category: {} ({})", cat.korean_name(), cat.as_str());
+            println!(
+                "\nCrawling category: {} ({})",
+                cat.korean_name(),
+                cat.as_str()
+            );
 
             // Calculate max pages needed (roughly 20 articles per page)
             let max_pages = max_articles.div_ceil(20) as u32;
@@ -341,7 +354,12 @@ async fn crawl(
 
             // Crawl each URL
             for (i, url) in uncrawled_urls.iter().enumerate().take(max_articles) {
-                print!("\r[{}/{}] Crawling: {}...", i + 1, uncrawled_urls.len().min(max_articles), truncate_url(url, 50));
+                print!(
+                    "\r[{}/{}] Crawling: {}...",
+                    i + 1,
+                    uncrawled_urls.len().min(max_articles),
+                    truncate_url(url, 50)
+                );
                 std::io::Write::flush(&mut std::io::stdout())?;
 
                 match crawl_single_url(&crawler, &parser, &storage, &db, url, &mut state).await {
@@ -364,7 +382,10 @@ async fn crawl(
     println!("\nCrawl Summary");
     println!("=============");
     println!("Total processed: {}", state.stats().total_crawled);
-    println!("Successful: {}", state.stats().total_crawled - state.stats().total_errors);
+    println!(
+        "Successful: {}",
+        state.stats().total_crawled - state.stats().total_errors
+    );
     println!("Failed: {}", state.stats().total_errors);
     println!("Output directory: {}", output.display());
     println!("Database: {}", db_path.display());
@@ -424,7 +445,9 @@ fn parse_category(s: &str) -> Result<NewsCategory> {
         "culture" | "생활/문화" | "생활" | "문화" => Ok(NewsCategory::Culture),
         "world" | "세계" => Ok(NewsCategory::World),
         "it" | "과학" | "it/과학" => Ok(NewsCategory::IT),
-        _ => anyhow::bail!("Unknown category: {s}. Valid: politics, economy, society, culture, world, it"),
+        _ => anyhow::bail!(
+            "Unknown category: {s}. Valid: politics, economy, society, culture, world, it"
+        ),
     }
 }
 
@@ -498,9 +521,33 @@ fn stats(database: PathBuf) -> Result<()> {
     println!("Database: {}", database.display());
     println!();
     println!("Total records: {}", stats.total);
-    println!("  Success: {} ({:.1}%)", stats.success, if stats.total > 0 { stats.success as f64 / stats.total as f64 * 100.0 } else { 0.0 });
-    println!("  Failed:  {} ({:.1}%)", stats.failed, if stats.total > 0 { stats.failed as f64 / stats.total as f64 * 100.0 } else { 0.0 });
-    println!("  Skipped: {} ({:.1}%)", stats.skipped, if stats.total > 0 { stats.skipped as f64 / stats.total as f64 * 100.0 } else { 0.0 });
+    println!(
+        "  Success: {} ({:.1}%)",
+        stats.success,
+        if stats.total > 0 {
+            stats.success as f64 / stats.total as f64 * 100.0
+        } else {
+            0.0
+        }
+    );
+    println!(
+        "  Failed:  {} ({:.1}%)",
+        stats.failed,
+        if stats.total > 0 {
+            stats.failed as f64 / stats.total as f64 * 100.0
+        } else {
+            0.0
+        }
+    );
+    println!(
+        "  Skipped: {} ({:.1}%)",
+        stats.skipped,
+        if stats.total > 0 {
+            stats.skipped as f64 / stats.total as f64 * 100.0
+        } else {
+            0.0
+        }
+    );
 
     Ok(())
 }
@@ -515,21 +562,24 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
 
     // Create OpenSearch client
     let opensearch_config = OpenSearchConfig {
-        url: std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string()),
-        index_name: std::env::var("OPENSEARCH_INDEX").unwrap_or_else(|_| "ntimes-articles".to_string()),
+        url: std::env::var("OPENSEARCH_URL")
+            .unwrap_or_else(|_| "http://localhost:9200".to_string()),
+        index_name: std::env::var("OPENSEARCH_INDEX")
+            .unwrap_or_else(|_| "ntimes-articles".to_string()),
         username: std::env::var("OPENSEARCH_USER").ok(),
         password: std::env::var("OPENSEARCH_PASSWORD").ok(),
     };
 
-    let store = VectorStore::new(&opensearch_config)
-        .context("Failed to connect to OpenSearch")?;
+    let store = VectorStore::new(&opensearch_config).context("Failed to connect to OpenSearch")?;
 
     // Create index if it doesn't exist
     let index_exists = store.index_exists().await?;
     if !index_exists {
         println!("Creating index '{}'...", opensearch_config.index_name);
         // Use 384 dimensions for multilingual MiniLM
-        store.create_index(384).await
+        store
+            .create_index(384)
+            .await
             .context("Failed to create index")?;
         println!("Index created successfully.");
     } else if force {
@@ -576,14 +626,22 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("Indexing {} documents (batch size: {})...", documents.len(), batch_size);
+    println!(
+        "Indexing {} documents (batch size: {})...",
+        documents.len(),
+        batch_size
+    );
 
     // Index in batches
     let mut total_success = 0;
     let mut total_failed = 0;
 
     for (batch_num, batch) in documents.chunks(batch_size).enumerate() {
-        print!("\rProcessing batch {}/{}...", batch_num + 1, documents.len().div_ceil(batch_size));
+        print!(
+            "\rProcessing batch {}/{}...",
+            batch_num + 1,
+            documents.len().div_ceil(batch_size)
+        );
         std::io::Write::flush(&mut std::io::stdout())?;
 
         let result = store.bulk_index(batch).await?;
@@ -613,7 +671,8 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embeddin
     let lines: Vec<&str> = content.lines().collect();
 
     // Extract title (first # heading)
-    let title = lines.iter()
+    let title = lines
+        .iter()
         .find(|l| l.starts_with("# "))
         .map(|l| l.trim_start_matches("# ").to_string())
         .unwrap_or_else(|| "Untitled".to_string());
@@ -661,7 +720,8 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embeddin
 
     // Generate ID from filename if not available
     if oid.is_empty() || aid.is_empty() {
-        let stem = path.file_stem()
+        let stem = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
         if let Some((o, a)) = stem.split_once('_') {
@@ -704,14 +764,15 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
 
     // Create OpenSearch client with default config
     let opensearch_config = OpenSearchConfig {
-        url: std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string()),
-        index_name: std::env::var("OPENSEARCH_INDEX").unwrap_or_else(|_| "ntimes-articles".to_string()),
+        url: std::env::var("OPENSEARCH_URL")
+            .unwrap_or_else(|_| "http://localhost:9200".to_string()),
+        index_name: std::env::var("OPENSEARCH_INDEX")
+            .unwrap_or_else(|_| "ntimes-articles".to_string()),
         username: std::env::var("OPENSEARCH_USER").ok(),
         password: std::env::var("OPENSEARCH_PASSWORD").ok(),
     };
 
-    let store = VectorStore::new(&opensearch_config)
-        .context("Failed to connect to OpenSearch")?;
+    let store = VectorStore::new(&opensearch_config).context("Failed to connect to OpenSearch")?;
 
     // Check if index exists
     if !store.index_exists().await? {
@@ -729,7 +790,9 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
     };
 
     // Perform BM25 text search
-    let results = store.search_bm25(&query, &search_config).await
+    let results = store
+        .search_bm25(&query, &search_config)
+        .await
         .context("Search failed")?;
 
     if results.is_empty() {
@@ -741,7 +804,8 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
 
     for (i, result) in results.iter().enumerate() {
         println!("{}. {} (score: {:.3})", i + 1, result.title, result.score);
-        println!("   Category: {} | Publisher: {}",
+        println!(
+            "   Category: {} | Publisher: {}",
             result.category,
             result.publisher.as_deref().unwrap_or("Unknown")
         );
@@ -752,7 +816,10 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
         // Show highlights if available
         if let Some(highlights) = &result.highlights {
             for highlight in highlights.iter().take(2) {
-                println!("   > {}", highlight.replace("<mark>", "[").replace("</mark>", "]"));
+                println!(
+                    "   > {}",
+                    highlight.replace("<mark>", "[").replace("</mark>", "]")
+                );
             }
         } else {
             // Show content preview

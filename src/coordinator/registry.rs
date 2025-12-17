@@ -241,7 +241,10 @@ impl InstanceRegistry {
     }
 
     /// Register a new instance
-    pub async fn register(&self, request: RegisterRequest) -> Result<RegisterResponse, RegistryError> {
+    pub async fn register(
+        &self,
+        request: RegisterRequest,
+    ) -> Result<RegisterResponse, RegistryError> {
         let instance = CrawlerInstance::from_id(&request.instance_id)
             .map_err(|_| RegistryError::InvalidInstanceId(request.instance_id.clone()))?;
 
@@ -271,7 +274,10 @@ impl InstanceRegistry {
     }
 
     /// Process heartbeat from instance
-    pub async fn heartbeat(&self, request: HeartbeatRequest) -> Result<HeartbeatResponse, RegistryError> {
+    pub async fn heartbeat(
+        &self,
+        request: HeartbeatRequest,
+    ) -> Result<HeartbeatResponse, RegistryError> {
         let instance = CrawlerInstance::from_id(&request.instance_id)
             .map_err(|_| RegistryError::InvalidInstanceId(request.instance_id.clone()))?;
 
@@ -375,7 +381,11 @@ impl InstanceRegistry {
     }
 
     /// Set maintenance mode for an instance
-    pub async fn set_maintenance(&self, instance: CrawlerInstance, enabled: bool) -> Result<(), RegistryError> {
+    pub async fn set_maintenance(
+        &self,
+        instance: CrawlerInstance,
+        enabled: bool,
+    ) -> Result<(), RegistryError> {
         let mut instances = self.instances.write().await;
 
         let info = instances
@@ -387,7 +397,10 @@ impl InstanceRegistry {
     }
 
     /// Start background task to periodically update statuses
-    pub fn start_status_updater(self: Arc<Self>, interval_secs: u64) -> tokio::task::JoinHandle<()> {
+    pub fn start_status_updater(
+        self: Arc<Self>,
+        interval_secs: u64,
+    ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
 
@@ -571,8 +584,14 @@ mod tests {
         let registry = InstanceRegistry::new(90, 2);
 
         // Register two instances
-        registry.register(create_register_request("main")).await.unwrap();
-        registry.register(create_register_request("sub1")).await.unwrap();
+        registry
+            .register(create_register_request("main"))
+            .await
+            .unwrap();
+        registry
+            .register(create_register_request("sub1"))
+            .await
+            .unwrap();
 
         // Third should fail
         let result = registry.register(create_register_request("sub2")).await;
@@ -583,7 +602,10 @@ mod tests {
     async fn test_registry_unregister() {
         let registry = InstanceRegistry::new(90, 10);
 
-        registry.register(create_register_request("main")).await.unwrap();
+        registry
+            .register(create_register_request("main"))
+            .await
+            .unwrap();
 
         let removed = registry.unregister(CrawlerInstance::Main).await;
         assert!(removed.is_some());
@@ -596,8 +618,14 @@ mod tests {
     async fn test_registry_stats() {
         let registry = InstanceRegistry::new(90, 10);
 
-        registry.register(create_register_request("main")).await.unwrap();
-        registry.register(create_register_request("sub1")).await.unwrap();
+        registry
+            .register(create_register_request("main"))
+            .await
+            .unwrap();
+        registry
+            .register(create_register_request("sub1"))
+            .await
+            .unwrap();
 
         let stats = registry.stats().await;
         assert_eq!(stats.total_instances, 2);
@@ -608,8 +636,14 @@ mod tests {
     async fn test_registry_maintenance() {
         let registry = InstanceRegistry::new(90, 10);
 
-        registry.register(create_register_request("main")).await.unwrap();
-        registry.set_maintenance(CrawlerInstance::Main, true).await.unwrap();
+        registry
+            .register(create_register_request("main"))
+            .await
+            .unwrap();
+        registry
+            .set_maintenance(CrawlerInstance::Main, true)
+            .await
+            .unwrap();
 
         let info = registry.get_instance(CrawlerInstance::Main).await.unwrap();
         assert_eq!(info.status, InstanceStatus::Maintenance);

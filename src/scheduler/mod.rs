@@ -169,8 +169,8 @@ pub use distribution::{
 };
 pub use error::{SchedulerError, SchedulerResult};
 pub use failover::{
-    FailoverConfig, FailoverError, FailoverEvent, FailoverManager, FailoverReason,
-    HealthStatus, InstanceHealth, OverrideManager, OverrideRequest,
+    FailoverConfig, FailoverError, FailoverEvent, FailoverManager, FailoverReason, HealthStatus,
+    InstanceHealth, OverrideManager, OverrideRequest,
 };
 pub use rotation::{CrawlerInstance, NewsCategory, RotationScheduler};
 pub use schedule::{DailySchedule, HourlySlot, ScheduleCache, ScheduleMetadata};

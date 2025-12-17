@@ -58,7 +58,9 @@ pub struct CoordinatorServer {
 impl CoordinatorServer {
     /// Create a new coordinator server
     pub fn new(config: CoordinatorConfig) -> Result<Self, ServerError> {
-        config.validate().map_err(|e| ServerError::ConfigError(e.to_string()))?;
+        config
+            .validate()
+            .map_err(|e| ServerError::ConfigError(e.to_string()))?;
 
         // Create schedule cache
         let cache = Arc::new(match &config.schedule_cache_path {
@@ -150,7 +152,10 @@ impl CoordinatorServer {
         let router = self.build_router();
         let addr = self.config.bind_address;
 
-        tracing::info!("Starting Coordinator server on {} (with graceful shutdown)", addr);
+        tracing::info!(
+            "Starting Coordinator server on {} (with graceful shutdown)",
+            addr
+        );
 
         // Start background tasks
         self.start_background_tasks();
@@ -221,8 +226,16 @@ impl ServerInfo {
             self.bind_address,
             self.heartbeat_timeout_secs,
             self.max_instances,
-            if self.cors_enabled { "enabled" } else { "disabled" },
-            if self.request_logging_enabled { "enabled" } else { "disabled" }
+            if self.cors_enabled {
+                "enabled"
+            } else {
+                "disabled"
+            },
+            if self.request_logging_enabled {
+                "enabled"
+            } else {
+                "disabled"
+            }
         )
     }
 }

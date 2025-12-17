@@ -97,7 +97,8 @@ impl TextTokenizer {
     /// Create a new tokenizer from a pretrained model (downloads from HuggingFace Hub)
     pub fn from_pretrained(model_name: &str) -> Result<Self> {
         // Download tokenizer from HuggingFace Hub
-        let api = Api::new().map_err(|e| anyhow::anyhow!("Failed to create HuggingFace API: {e}"))?;
+        let api =
+            Api::new().map_err(|e| anyhow::anyhow!("Failed to create HuggingFace API: {e}"))?;
         let repo = api.repo(Repo::new(model_name.to_string(), RepoType::Model));
 
         let tokenizer_path = repo
@@ -275,7 +276,8 @@ impl TextTokenizer {
             let sentence_tokens = self.count_tokens(sentence)?;
 
             // If adding this sentence would exceed max tokens
-            if current_tokens + sentence_tokens > self.config.max_tokens && !current_chunk.is_empty()
+            if current_tokens + sentence_tokens > self.config.max_tokens
+                && !current_chunk.is_empty()
             {
                 // Save current chunk
                 let chunk_end = chunk_start + current_chunk.len();
@@ -357,7 +359,10 @@ fn split_sentences(text: &str) -> Vec<&str> {
         if c == '.' || c == '!' || c == '?' || c == '。' || c == '！' || c == '？' {
             // Check if this is end of sentence (not abbreviation, etc.)
             let next_char = text[i..].chars().nth(1);
-            if next_char.map(|c| c.is_whitespace() || c == '"' || c == '\'').unwrap_or(true) {
+            if next_char
+                .map(|c| c.is_whitespace() || c == '"' || c == '\'')
+                .unwrap_or(true)
+            {
                 let end = i + c.len_utf8();
                 if end > start {
                     sentences.push(&text[start..end]);
@@ -383,8 +388,7 @@ fn get_overlap_text(text: &str, _target_tokens: usize) -> String {
     // Simple implementation: take last ~20% of words
     let words: Vec<&str> = text.split_whitespace().collect();
     let overlap_words = (words.len() / 5).max(1);
-    words[words.len().saturating_sub(overlap_words)..]
-        .join(" ")
+    words[words.len().saturating_sub(overlap_words)..].join(" ")
 }
 
 #[cfg(test)]

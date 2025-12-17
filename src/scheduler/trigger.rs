@@ -59,7 +59,10 @@ impl TriggerConfig {
         if NaiveTime::parse_from_str(&self.rotation_time, "%H:%M").is_err() {
             return Err(SchedulerError::trigger_config(
                 "rotation_time",
-                format!("Invalid time format '{}'. Expected HH:MM", self.rotation_time),
+                format!(
+                    "Invalid time format '{}'. Expected HH:MM",
+                    self.rotation_time
+                ),
             ));
         }
 
@@ -160,9 +163,7 @@ pub enum TriggerEvent {
     },
 
     /// Preparation period started (before rotation)
-    PreparationStarted {
-        rotation_in_minutes: u32,
-    },
+    PreparationStarted { rotation_in_minutes: u32 },
 
     /// Schedule was regenerated (e.g., due to error recovery)
     ScheduleRegenerated {

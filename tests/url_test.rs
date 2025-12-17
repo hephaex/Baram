@@ -181,10 +181,7 @@ fn test_ssrf_prevention() {
     ];
 
     for url in safe_urls {
-        assert!(
-            validators::is_safe_url(url),
-            "Should allow safe URL: {url}"
-        );
+        assert!(validators::is_safe_url(url), "Should allow safe URL: {url}");
     }
 }
 

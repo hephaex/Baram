@@ -271,7 +271,11 @@ impl RotationScheduler {
     ///
     /// # Returns
     /// The instance that should crawl at this hour
-    pub fn get_instance_for_hour(&self, date: NaiveDate, hour: u32) -> SchedulerResult<CrawlerInstance> {
+    pub fn get_instance_for_hour(
+        &self,
+        date: NaiveDate,
+        hour: u32,
+    ) -> SchedulerResult<CrawlerInstance> {
         if hour > 23 {
             return Err(SchedulerError::invalid_hour(hour));
         }
@@ -428,9 +432,18 @@ mod tests {
 
     #[test]
     fn test_crawler_instance_from_id() {
-        assert_eq!(CrawlerInstance::from_id("main").unwrap(), CrawlerInstance::Main);
-        assert_eq!(CrawlerInstance::from_id("SUB1").unwrap(), CrawlerInstance::Sub1);
-        assert_eq!(CrawlerInstance::from_id("sub2").unwrap(), CrawlerInstance::Sub2);
+        assert_eq!(
+            CrawlerInstance::from_id("main").unwrap(),
+            CrawlerInstance::Main
+        );
+        assert_eq!(
+            CrawlerInstance::from_id("SUB1").unwrap(),
+            CrawlerInstance::Sub1
+        );
+        assert_eq!(
+            CrawlerInstance::from_id("sub2").unwrap(),
+            CrawlerInstance::Sub2
+        );
         assert!(CrawlerInstance::from_id("invalid").is_err());
     }
 
@@ -452,7 +465,10 @@ mod tests {
 
     #[test]
     fn test_news_category_from_id() {
-        assert_eq!(NewsCategory::from_id("politics"), Some(NewsCategory::Politics));
+        assert_eq!(
+            NewsCategory::from_id("politics"),
+            Some(NewsCategory::Politics)
+        );
         assert_eq!(NewsCategory::from_id("경제"), Some(NewsCategory::Economy));
         assert_eq!(NewsCategory::from_id("unknown"), None);
     }
@@ -579,7 +595,9 @@ mod tests {
 
         let instance_at_0 = scheduler.get_instance_for_hour(date, 0).unwrap();
 
-        assert!(scheduler.is_instance_active(instance_at_0, date, 0).unwrap());
+        assert!(scheduler
+            .is_instance_active(instance_at_0, date, 0)
+            .unwrap());
     }
 
     #[test]

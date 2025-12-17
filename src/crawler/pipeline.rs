@@ -146,10 +146,7 @@ pub struct StoreJob {
 #[derive(Debug, Clone)]
 pub enum JobResult {
     /// Successfully processed
-    Success {
-        job_id: u64,
-        article_id: String,
-    },
+    Success { job_id: u64, article_id: String },
     /// Failed to process
     Failed {
         job_id: u64,
@@ -157,10 +154,7 @@ pub enum JobResult {
         error: String,
     },
     /// Skipped (duplicate or filtered)
-    Skipped {
-        job_id: u64,
-        reason: String,
-    },
+    Skipped { job_id: u64, reason: String },
 }
 
 // ============================================================================
@@ -303,25 +297,15 @@ impl CrawlerPipeline {
         let (fetch_tx, fetch_rx) = mpsc::channel::<FetchJob>(self.config.channel_buffer_size);
         let (parse_tx, parse_rx) = mpsc::channel::<ParseJob>(self.config.channel_buffer_size);
         let (store_tx, store_rx) = mpsc::channel::<StoreJob>(self.config.channel_buffer_size);
-        let (result_tx, mut result_rx) = mpsc::channel::<JobResult>(self.config.channel_buffer_size);
+        let (result_tx, mut result_rx) =
+            mpsc::channel::<JobResult>(self.config.channel_buffer_size);
 
         // Spawn workers
-        let fetcher_handles = self.spawn_fetcher_workers(
-            fetch_rx,
-            parse_tx,
-            result_tx.clone(),
-        );
+        let fetcher_handles = self.spawn_fetcher_workers(fetch_rx, parse_tx, result_tx.clone());
 
-        let parser_handles = self.spawn_parser_workers(
-            parse_rx,
-            store_tx,
-            result_tx.clone(),
-        );
+        let parser_handles = self.spawn_parser_workers(parse_rx, store_tx, result_tx.clone());
 
-        let storage_handles = self.spawn_storage_workers(
-            store_rx,
-            result_tx.clone(),
-        );
+        let storage_handles = self.spawn_storage_workers(store_rx, result_tx.clone());
 
         // Spawn result collector
         let stats = Arc::clone(&self.stats);
@@ -457,11 +441,13 @@ impl CrawlerPipeline {
                                     }
                                 }
                                 Err(e) => {
-                                    let _ = result_tx.send(JobResult::Failed {
-                                        job_id: job.job_id,
-                                        url: job.url,
-                                        error: format!("Failed to read response: {e}"),
-                                    }).await;
+                                    let _ = result_tx
+                                        .send(JobResult::Failed {
+                                            job_id: job.job_id,
+                                            url: job.url,
+                                            error: format!("Failed to read response: {e}"),
+                                        })
+                                        .await;
                                 }
                             }
                         }
@@ -477,11 +463,13 @@ impl CrawlerPipeline {
                                 // For now, just record the failure
                             }
 
-                            let _ = result_tx.send(JobResult::Failed {
-                                job_id: job.job_id,
-                                url: job.url,
-                                error: e.to_string(),
-                            }).await;
+                            let _ = result_tx
+                                .send(JobResult::Failed {
+                                    job_id: job.job_id,
+                                    url: job.url,
+                                    error: e.to_string(),
+                                })
+                                .await;
                         }
                     }
                 }
@@ -542,11 +530,13 @@ impl CrawlerPipeline {
                             }
                         }
                         Err(e) => {
-                            let _ = result_tx.send(JobResult::Failed {
-                                job_id: job.job_id,
-                                url: job.url,
-                                error: format!("Parse error: {e}"),
-                            }).await;
+                            let _ = result_tx
+                                .send(JobResult::Failed {
+                                    job_id: job.job_id,
+                                    url: job.url,
+                                    error: format!("Parse error: {e}"),
+                                })
+                                .await;
                         }
                     }
                 }
@@ -599,26 +589,32 @@ impl CrawlerPipeline {
 
                     // Check if already exists
                     if writer.exists(&job.article) {
-                        let _ = result_tx.send(JobResult::Skipped {
-                            job_id: job.job_id,
-                            reason: "File already exists".to_string(),
-                        }).await;
+                        let _ = result_tx
+                            .send(JobResult::Skipped {
+                                job_id: job.job_id,
+                                reason: "File already exists".to_string(),
+                            })
+                            .await;
                         continue;
                     }
 
                     match writer.save(&job.article) {
                         Ok(path) => {
-                            let _ = result_tx.send(JobResult::Success {
-                                job_id: job.job_id,
-                                article_id: path.display().to_string(),
-                            }).await;
+                            let _ = result_tx
+                                .send(JobResult::Success {
+                                    job_id: job.job_id,
+                                    article_id: path.display().to_string(),
+                                })
+                                .await;
                         }
                         Err(e) => {
-                            let _ = result_tx.send(JobResult::Failed {
-                                job_id: job.job_id,
-                                url: job.article.url.clone(),
-                                error: format!("Storage error: {e}"),
-                            }).await;
+                            let _ = result_tx
+                                .send(JobResult::Failed {
+                                    job_id: job.job_id,
+                                    url: job.article.url.clone(),
+                                    error: format!("Storage error: {e}"),
+                                })
+                                .await;
                         }
                     }
                 }

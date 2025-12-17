@@ -34,7 +34,10 @@ fn test_detect_format_entertainment_news() {
     let format = detect_format(&html);
     // Entertainment uses end_body_wrp which maps to Entertainment format
     assert!(
-        matches!(format, ArticleFormat::Entertainment | ArticleFormat::General),
+        matches!(
+            format,
+            ArticleFormat::Entertainment | ArticleFormat::General
+        ),
         "Expected Entertainment or General, got {format:?}"
     );
 }
@@ -292,10 +295,7 @@ fn test_parse_deleted_article_detection() {
 
     for pattern in &deleted_patterns {
         let result = parser.parse_with_fallback(pattern, url);
-        assert!(
-            result.is_err(),
-            "Should detect deleted article: {pattern}"
-        );
+        assert!(result.is_err(), "Should detect deleted article: {pattern}");
     }
 }
 
@@ -517,10 +517,22 @@ fn test_parse_mobile_format_url() {
 #[test]
 fn test_parse_all_fixture_formats() {
     let fixtures = [
-        ("general_news.html", "https://n.news.naver.com/mnews/article/001/0014000001"),
-        ("entertainment_news.html", "https://entertain.naver.com/read?oid=001&aid=0014000002"),
-        ("sports_news.html", "https://sports.naver.com/news/read?oid=001&aid=0014000003"),
-        ("card_news.html", "https://n.news.naver.com/mnews/article/001/0014000004"),
+        (
+            "general_news.html",
+            "https://n.news.naver.com/mnews/article/001/0014000001",
+        ),
+        (
+            "entertainment_news.html",
+            "https://entertain.naver.com/read?oid=001&aid=0014000002",
+        ),
+        (
+            "sports_news.html",
+            "https://sports.naver.com/news/read?oid=001&aid=0014000003",
+        ),
+        (
+            "card_news.html",
+            "https://n.news.naver.com/mnews/article/001/0014000004",
+        ),
     ];
 
     let parser = ArticleParser::new();

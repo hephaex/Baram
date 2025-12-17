@@ -233,8 +233,9 @@ impl CheckpointManager {
         // Write to temp file first, then rename (atomic)
         let temp_path = self.checkpoint_dir.join(format!("{filename}.tmp"));
 
-        let file = File::create(&temp_path)
-            .with_context(|| format!("Failed to create checkpoint file: {}", temp_path.display()))?;
+        let file = File::create(&temp_path).with_context(|| {
+            format!("Failed to create checkpoint file: {}", temp_path.display())
+        })?;
 
         let writer = BufWriter::new(file);
         serde_json::to_writer_pretty(writer, state).context("Failed to serialize checkpoint")?;
@@ -389,7 +390,8 @@ impl AsyncCheckpointManager {
 
             // Auto-save check
             if self.inner.should_auto_save() {
-                let session_name = format!("{}_{}", state.category, state.created_at.format("%Y%m%d"));
+                let session_name =
+                    format!("{}_{}", state.category, state.created_at.format("%Y%m%d"));
                 self.inner.save(&session_name, state)?;
             }
         }
@@ -403,7 +405,8 @@ impl AsyncCheckpointManager {
             state.mark_failed(url, error);
 
             if self.inner.should_auto_save() {
-                let session_name = format!("{}_{}", state.category, state.created_at.format("%Y%m%d"));
+                let session_name =
+                    format!("{}_{}", state.category, state.created_at.format("%Y%m%d"));
                 self.inner.save(&session_name, state)?;
             }
         }
@@ -417,7 +420,8 @@ impl AsyncCheckpointManager {
             state.mark_skipped(url);
 
             if self.inner.should_auto_save() {
-                let session_name = format!("{}_{}", state.category, state.created_at.format("%Y%m%d"));
+                let session_name =
+                    format!("{}_{}", state.category, state.created_at.format("%Y%m%d"));
                 self.inner.save(&session_name, state)?;
             }
         }
@@ -448,7 +452,10 @@ impl AsyncCheckpointManager {
 
             if delete_on_success && state.is_complete() {
                 self.inner.delete(&session_name)?;
-                tracing::info!(session = session_name, "Crawl session completed, checkpoint deleted");
+                tracing::info!(
+                    session = session_name,
+                    "Crawl session completed, checkpoint deleted"
+                );
             } else {
                 self.inner.save(&session_name, state)?;
                 tracing::info!(
@@ -533,7 +540,8 @@ impl ConcurrencyMonitor {
             current
         };
 
-        self.current_workers.store(recommended as u64, Ordering::Relaxed);
+        self.current_workers
+            .store(recommended as u64, Ordering::Relaxed);
         recommended
     }
 

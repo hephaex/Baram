@@ -194,12 +194,16 @@ impl<'a> MarkdownWriter<'a> {
     /// Format: {oid}_{aid}_{sanitized_title}.md
     fn generate_filename(&self, article: &ParsedArticle) -> String {
         let sanitized_title = sanitize_filename(&article.title, 50);
-        format!("{}_{}{}.md", article.oid, article.aid,
+        format!(
+            "{}_{}{}.md",
+            article.oid,
+            article.aid,
             if sanitized_title.is_empty() {
                 String::new()
             } else {
                 format!("_{sanitized_title}")
-            })
+            }
+        )
     }
 
     /// Get output directory
@@ -229,10 +233,7 @@ fn sanitize_filename(s: &str, max_len: usize) -> String {
         .take(max_len)
         .collect();
 
-    sanitized
-        .trim()
-        .replace(' ', "_")
-        .to_lowercase()
+    sanitized.trim().replace(' ', "_").to_lowercase()
 }
 
 /// Result of batch save operation
@@ -540,11 +541,7 @@ impl CommentRenderer {
                     .unwrap_or(current)
             }
         }
-        comments
-            .iter()
-            .map(|c| depth_of(c, 1))
-            .max()
-            .unwrap_or(0)
+        comments.iter().map(|c| depth_of(c, 1)).max().unwrap_or(0)
     }
 }
 
@@ -832,9 +829,15 @@ mod tests {
     fn test_sanitize_filename() {
         assert_eq!(sanitize_filename("Hello World", 50), "hello_world");
         assert_eq!(sanitize_filename("Test<>File", 50), "testfile");
-        assert_eq!(sanitize_filename("한글 제목 테스트", 50), "한글_제목_테스트");
+        assert_eq!(
+            sanitize_filename("한글 제목 테스트", 50),
+            "한글_제목_테스트"
+        );
         // "Very Long " (10 chars) -> trim -> "Very Long" -> replace -> "Very_Long" -> lowercase
-        assert_eq!(sanitize_filename("Very Long Title That Should Be Truncated", 10), "very_long");
+        assert_eq!(
+            sanitize_filename("Very Long Title That Should Be Truncated", 10),
+            "very_long"
+        );
     }
 
     #[test]
@@ -888,7 +891,9 @@ mod tests {
         result.saved.push(PathBuf::from("file1.md"));
         result.saved.push(PathBuf::from("file2.md"));
         result.skipped.push("skipped_id".to_string());
-        result.failed.push(("failed_id".to_string(), "error".to_string()));
+        result
+            .failed
+            .push(("failed_id".to_string(), "error".to_string()));
 
         assert_eq!(result.total(), 4);
         assert_eq!(result.success_rate(), 0.5);
@@ -1116,7 +1121,13 @@ mod tests {
         let md = renderer.render_comment(&comment, 5);
 
         // Should have exactly 3 ">" characters
-        let prefix_count = md.lines().next().unwrap().chars().take_while(|c| *c == '>').count();
+        let prefix_count = md
+            .lines()
+            .next()
+            .unwrap()
+            .chars()
+            .take_while(|c| *c == '>')
+            .count();
         assert_eq!(prefix_count, 3);
     }
 
@@ -1237,7 +1248,8 @@ mod tests {
         parent.replies = vec![reply];
         let comments = vec![parent];
 
-        let data = ArticleWithCommentsData::from_article_and_comments(&article, &comments, &renderer);
+        let data =
+            ArticleWithCommentsData::from_article_and_comments(&article, &comments, &renderer);
 
         assert!(data.has_comments);
         assert_eq!(data.comment_count, 2); // 1 parent + 1 reply

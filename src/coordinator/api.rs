@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::scheduler::rotation::CrawlerInstance;
 use crate::scheduler::schedule::DailySchedule;
 
-use super::registry::{
-    HeartbeatRequest, InstanceInfo, RegisterRequest, RegistryStats,
-};
+use super::registry::{HeartbeatRequest, InstanceInfo, RegisterRequest, RegistryStats};
 use super::server::AppState;
 
 // ============================================================================
@@ -168,10 +166,15 @@ async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
 /// Get today's schedule
 async fn get_today_schedule(State(state): State<AppState>) -> impl IntoResponse {
     match state.trigger.get_current_schedule().await {
-        Ok(schedule) => (StatusCode::OK, Json(ApiResponse::success(ScheduleResponse::from(&schedule)))),
+        Ok(schedule) => (
+            StatusCode::OK,
+            Json(ApiResponse::success(ScheduleResponse::from(&schedule))),
+        ),
         Err(_e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::<ScheduleResponse>::error_with_default("Failed to get schedule")),
+            Json(ApiResponse::<ScheduleResponse>::error_with_default(
+                "Failed to get schedule",
+            )),
         ),
     }
 }
@@ -179,10 +182,15 @@ async fn get_today_schedule(State(state): State<AppState>) -> impl IntoResponse 
 /// Get tomorrow's schedule
 async fn get_tomorrow_schedule(State(state): State<AppState>) -> impl IntoResponse {
     match state.trigger.generate_tomorrow_schedule().await {
-        Ok(schedule) => (StatusCode::OK, Json(ApiResponse::success(ScheduleResponse::from(&schedule)))),
+        Ok(schedule) => (
+            StatusCode::OK,
+            Json(ApiResponse::success(ScheduleResponse::from(&schedule))),
+        ),
         Err(_e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::<ScheduleResponse>::error_with_default("Failed to generate schedule")),
+            Json(ApiResponse::<ScheduleResponse>::error_with_default(
+                "Failed to generate schedule",
+            )),
         ),
     }
 }
@@ -198,9 +206,9 @@ async fn get_schedule_by_date(
         Err(_) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<ScheduleResponse>::error_with_default(format!(
-                    "Invalid date format: {date_str}. Expected YYYY-MM-DD"
-                ))),
+                Json(ApiResponse::<ScheduleResponse>::error_with_default(
+                    format!("Invalid date format: {date_str}. Expected YYYY-MM-DD"),
+                )),
             );
         }
     };
@@ -208,7 +216,10 @@ async fn get_schedule_by_date(
     // Generate schedule for the date
     let schedule = state.scheduler.generate_daily_schedule(date);
 
-    (StatusCode::OK, Json(ApiResponse::success(ScheduleResponse::from(&schedule))))
+    (
+        StatusCode::OK,
+        Json(ApiResponse::success(ScheduleResponse::from(&schedule))),
+    )
 }
 
 // ============================================================================
@@ -234,7 +245,8 @@ async fn get_instance(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(format!("Invalid instance ID: {id}"))),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -243,7 +255,8 @@ async fn get_instance(
         None => (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(format!("Instance not found: {id}"))),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
@@ -257,7 +270,8 @@ async fn register_instance(
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(e.to_string())),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
@@ -271,7 +285,8 @@ async fn heartbeat(
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(e.to_string())),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
@@ -292,20 +307,34 @@ async fn set_maintenance(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(format!("Invalid instance ID: {id}"))),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
-    match state.registry.set_maintenance(instance, request.enabled).await {
+    match state
+        .registry
+        .set_maintenance(instance, request.enabled)
+        .await
+    {
         Ok(()) => (
             StatusCode::OK,
             Json(ApiResponse::success(format!(
                 "Maintenance mode {} for {}",
-                if request.enabled { "enabled" } else { "disabled" },
+                if request.enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                },
                 id
             ))),
-        ).into_response(),
-        Err(e) => (StatusCode::NOT_FOUND, Json(ErrorResponse::new(e.to_string()))).into_response(),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new(e.to_string())),
+        )
+            .into_response(),
     }
 }
 

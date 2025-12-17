@@ -11,7 +11,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::extractor::{EntityType, ExtractionResult, ExtractedEntity, TripleStore};
+use super::extractor::{EntityType, ExtractedEntity, ExtractionResult, TripleStore};
 
 /// Entity linking configuration
 #[derive(Debug, Clone)]
@@ -267,13 +267,47 @@ impl EntityLinker {
             alias_map: HashMap::new(),
             cache: HashMap::new(),
             title_suffixes: vec![
-                "씨", "님", "대표", "회장", "사장", "원장", "총장", "장관", "의원",
-                "대통령", "총리", "교수", "박사", "기자", "작가", "배우", "감독",
-                "선수", "코치", "위원", "위원장", "본부장", "실장", "팀장", "부장",
+                "씨",
+                "님",
+                "대표",
+                "회장",
+                "사장",
+                "원장",
+                "총장",
+                "장관",
+                "의원",
+                "대통령",
+                "총리",
+                "교수",
+                "박사",
+                "기자",
+                "작가",
+                "배우",
+                "감독",
+                "선수",
+                "코치",
+                "위원",
+                "위원장",
+                "본부장",
+                "실장",
+                "팀장",
+                "부장",
             ],
             org_suffixes: vec![
-                "그룹", "전자", "건설", "제약", "바이오", "엔터테인먼트", "엔터",
-                "은행", "증권", "보험", "통신", "항공", "자동차", "중공업",
+                "그룹",
+                "전자",
+                "건설",
+                "제약",
+                "바이오",
+                "엔터테인먼트",
+                "엔터",
+                "은행",
+                "증권",
+                "보험",
+                "통신",
+                "항공",
+                "자동차",
+                "중공업",
             ],
         };
 
@@ -328,7 +362,10 @@ impl EntityLinker {
             ],
             external_ids: [
                 ("wikidata".to_string(), "Q491522".to_string()),
-                ("dbpedia".to_string(), "Lee_Jae-yong_(businessman)".to_string()),
+                (
+                    "dbpedia".to_string(),
+                    "Lee_Jae-yong_(businessman)".to_string(),
+                ),
             ]
             .into(),
             properties: [("company".to_string(), "삼성전자".to_string())].into(),
@@ -368,7 +405,11 @@ impl EntityLinker {
         self.add_entry(KnowledgeBaseEntry {
             canonical: "현대자동차".to_string(),
             entity_type: EntityType::Organization,
-            aliases: vec!["현대차".to_string(), "Hyundai".to_string(), "현대".to_string()],
+            aliases: vec![
+                "현대차".to_string(),
+                "Hyundai".to_string(),
+                "현대".to_string(),
+            ],
             external_ids: [
                 ("wikidata".to_string(), "Q55931".to_string()),
                 ("dbpedia".to_string(), "Hyundai_Motor_Company".to_string()),
@@ -398,7 +439,10 @@ impl EntityLinker {
             aliases: vec!["국힘".to_string(), "여당".to_string(), "PPP".to_string()],
             external_ids: [
                 ("wikidata".to_string(), "Q96165405".to_string()),
-                ("dbpedia".to_string(), "People_Power_Party_(South_Korea)".to_string()),
+                (
+                    "dbpedia".to_string(),
+                    "People_Power_Party_(South_Korea)".to_string(),
+                ),
             ]
             .into(),
             properties: [("type".to_string(), "정당".to_string())].into(),
@@ -454,7 +498,11 @@ impl EntityLinker {
         self.add_entry(KnowledgeBaseEntry {
             canonical: "서울".to_string(),
             entity_type: EntityType::Location,
-            aliases: vec!["서울시".to_string(), "서울특별시".to_string(), "Seoul".to_string()],
+            aliases: vec![
+                "서울시".to_string(),
+                "서울특별시".to_string(),
+                "Seoul".to_string(),
+            ],
             external_ids: [
                 ("wikidata".to_string(), "Q8684".to_string()),
                 ("dbpedia".to_string(), "Seoul".to_string()),
@@ -518,11 +566,13 @@ impl EntityLinker {
 
         // Map all aliases to canonical
         for alias in &entry.aliases {
-            self.alias_map.insert(alias.to_lowercase(), canonical.clone());
+            self.alias_map
+                .insert(alias.to_lowercase(), canonical.clone());
         }
 
         // Also map canonical itself
-        self.alias_map.insert(canonical.to_lowercase(), canonical.clone());
+        self.alias_map
+            .insert(canonical.to_lowercase(), canonical.clone());
 
         self.knowledge_base.insert(canonical, entry);
     }
@@ -638,7 +688,8 @@ impl EntityLinker {
                         // Also handle with space
                         let with_space = format!(" {suffix}");
                         if normalized.ends_with(&with_space) {
-                            normalized = normalized.trim_end_matches(&with_space).trim().to_string();
+                            normalized =
+                                normalized.trim_end_matches(&with_space).trim().to_string();
                         }
                     }
                 }
@@ -651,7 +702,9 @@ impl EntityLinker {
         }
 
         // Remove quotes (straight and curly quotes)
-        normalized = normalized.trim_matches(|c| c == '\'' || c == '"' || c == '\u{201C}' || c == '\u{201D}').to_string();
+        normalized = normalized
+            .trim_matches(|c| c == '\'' || c == '"' || c == '\u{201C}' || c == '\u{201D}')
+            .to_string();
 
         // Normalize whitespace
         normalized = normalized.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -748,15 +801,9 @@ impl EntityLinker {
     }
 
     /// Link all entities in an ExtractionResult and return linked entities
-    pub fn link_extraction_result(
-        &mut self,
-        result: &ExtractionResult,
-    ) -> LinkedExtractionResult {
-        let linked_entities: Vec<LinkedEntity> = result
-            .entities
-            .iter()
-            .map(|e| self.link(e))
-            .collect();
+    pub fn link_extraction_result(&mut self, result: &ExtractionResult) -> LinkedExtractionResult {
+        let linked_entities: Vec<LinkedEntity> =
+            result.entities.iter().map(|e| self.link(e)).collect();
 
         // Build lookup for linked entities by original text
         let entity_map: HashMap<String, &LinkedEntity> = linked_entities
@@ -777,8 +824,7 @@ impl EntityLinker {
                     subject_canonical: subject_linked
                         .map(|e| e.canonical.clone())
                         .unwrap_or_else(|| r.subject.clone()),
-                    subject_uri: subject_linked
-                        .and_then(|e| e.rdf_uri.clone()),
+                    subject_uri: subject_linked.and_then(|e| e.rdf_uri.clone()),
                     subject_type: r.subject_type,
                     predicate: r.predicate,
                     object: r.object.clone(),
@@ -795,7 +841,10 @@ impl EntityLinker {
             .collect();
 
         // Calculate statistics
-        let kb_linked = linked_entities.iter().filter(|e| e.in_knowledge_base).count();
+        let kb_linked = linked_entities
+            .iter()
+            .filter(|e| e.in_knowledge_base)
+            .count();
         let wikidata_linked = linked_entities
             .iter()
             .filter(|e| e.external_ids.contains_key("wikidata"))
@@ -817,11 +866,8 @@ impl EntityLinker {
     /// Apply linking to a TripleStore and generate RDF output
     pub fn apply_to_triple_store(&mut self, store: &TripleStore) -> LinkedTripleStore {
         // Link all entities
-        let linked_entities: Vec<LinkedEntity> = store
-            .entities
-            .iter()
-            .map(|e| self.link(e))
-            .collect();
+        let linked_entities: Vec<LinkedEntity> =
+            store.entities.iter().map(|e| self.link(e)).collect();
 
         // Build entity lookup
         let entity_map: HashMap<String, &LinkedEntity> = linked_entities
@@ -1078,7 +1124,10 @@ impl LinkedTripleStore {
                         .iter()
                         .map(|a| format!("\"{}\"@ko", escape_turtle_string(a)))
                         .collect();
-                    output.push_str(&format!("    schema:alternateName {} ;\n", aliases.join(", ")));
+                    output.push_str(&format!(
+                        "    schema:alternateName {} ;\n",
+                        aliases.join(", ")
+                    ));
                 }
 
                 if let Some(qid) = entity.external_ids.get("wikidata") {
@@ -1106,7 +1155,10 @@ impl LinkedTripleStore {
                     evidence.chars().take(100).collect::<String>()
                 ));
             }
-            output.push_str(&format!("# Confidence: {:.2}, Verified: {}\n\n", triple.confidence, triple.verified));
+            output.push_str(&format!(
+                "# Confidence: {:.2}, Verified: {}\n\n",
+                triple.confidence, triple.verified
+            ));
         }
 
         output
@@ -1180,10 +1232,16 @@ impl LinkedTripleStore {
         // Entities
         for entity in &self.entities {
             if let Some(uri) = &entity.rdf_uri {
-                output.push_str(&format!("  <rdf:Description rdf:about=\"{}\">\n", xml_escape(uri)));
+                output.push_str(&format!(
+                    "  <rdf:Description rdf:about=\"{}\">\n",
+                    xml_escape(uri)
+                ));
                 output.push_str(&format!(
                     "    <rdf:type rdf:resource=\"{}\"/>\n",
-                    entity.entity_type.rdf_type().replace("schema:", "https://schema.org/")
+                    entity
+                        .entity_type
+                        .rdf_type()
+                        .replace("schema:", "https://schema.org/")
                 ));
                 output.push_str(&format!(
                     "    <rdfs:label xml:lang=\"ko\">{}</rdfs:label>\n",
@@ -1202,7 +1260,10 @@ impl LinkedTripleStore {
 
         // Triples as statements
         for triple in &self.triples {
-            output.push_str(&format!("  <rdf:Description rdf:about=\"{}\">\n", xml_escape(&triple.subject_uri)));
+            output.push_str(&format!(
+                "  <rdf:Description rdf:about=\"{}\">\n",
+                xml_escape(&triple.subject_uri)
+            ));
             output.push_str(&format!(
                 "    <{} rdf:resource=\"{}\"/>\n",
                 &triple.predicate_uri,
@@ -1249,8 +1310,8 @@ fn xml_escape(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::extractor::{EntitySource, ExtractedRelation, RelationType};
+    use super::*;
 
     #[test]
     fn test_linker_config_default() {
@@ -1278,14 +1339,10 @@ mod tests {
     #[test]
     fn test_linker_config_builder_validation() {
         // Invalid similarity threshold
-        let result = LinkerConfig::builder()
-            .similarity_threshold(1.5)
-            .build();
+        let result = LinkerConfig::builder().similarity_threshold(1.5).build();
         assert!(result.is_err());
 
-        let result = LinkerConfig::builder()
-            .similarity_threshold(-0.1)
-            .build();
+        let result = LinkerConfig::builder().similarity_threshold(-0.1).build();
         assert!(result.is_err());
     }
 
@@ -1375,7 +1432,10 @@ mod tests {
 
         let linked = linker.link(&entity);
         assert!(linked.external_ids.contains_key("wikidata"));
-        assert_eq!(linked.external_ids.get("wikidata"), Some(&"Q20718".to_string()));
+        assert_eq!(
+            linked.external_ids.get("wikidata"),
+            Some(&"Q20718".to_string())
+        );
         assert!(linked.rdf_uri.is_some());
         assert!(linked.rdf_uri.as_ref().unwrap().contains("wikidata.org"));
     }
@@ -1504,18 +1564,16 @@ mod tests {
                     source: EntitySource::Content,
                 },
             ],
-            relations: vec![
-                ExtractedRelation {
-                    subject: "이재용".to_string(),
-                    subject_type: EntityType::Person,
-                    predicate: RelationType::Leads,
-                    object: "삼성전자".to_string(),
-                    object_type: EntityType::Organization,
-                    confidence: 0.8,
-                    evidence: "이재용 회장".to_string(),
-                    verified: true,
-                },
-            ],
+            relations: vec![ExtractedRelation {
+                subject: "이재용".to_string(),
+                subject_type: EntityType::Person,
+                predicate: RelationType::Leads,
+                object: "삼성전자".to_string(),
+                object_type: EntityType::Organization,
+                confidence: 0.8,
+                evidence: "이재용 회장".to_string(),
+                verified: true,
+            }],
         };
 
         let linked = linker.link_extraction_result(&result);
@@ -1569,19 +1627,17 @@ mod tests {
             article_id: "test_001".to_string(),
             article_title: "테스트 기사".to_string(),
             extracted_at: "2024-01-01T00:00:00Z".to_string(),
-            entities: vec![
-                LinkedEntity {
-                    original: "삼성전자".to_string(),
-                    canonical: "삼성전자".to_string(),
-                    entity_type: EntityType::Organization,
-                    aliases: vec!["삼성".to_string()],
-                    external_id: Some("Q20718".to_string()),
-                    external_ids: [("wikidata".to_string(), "Q20718".to_string())].into(),
-                    confidence: 0.95,
-                    rdf_uri: Some("http://www.wikidata.org/entity/Q20718".to_string()),
-                    in_knowledge_base: true,
-                },
-            ],
+            entities: vec![LinkedEntity {
+                original: "삼성전자".to_string(),
+                canonical: "삼성전자".to_string(),
+                entity_type: EntityType::Organization,
+                aliases: vec!["삼성".to_string()],
+                external_id: Some("Q20718".to_string()),
+                external_ids: [("wikidata".to_string(), "Q20718".to_string())].into(),
+                confidence: 0.95,
+                rdf_uri: Some("http://www.wikidata.org/entity/Q20718".to_string()),
+                in_knowledge_base: true,
+            }],
             triples: vec![],
         };
 
@@ -1598,19 +1654,17 @@ mod tests {
             article_id: "test_001".to_string(),
             article_title: "테스트 기사".to_string(),
             extracted_at: "2024-01-01T00:00:00Z".to_string(),
-            entities: vec![
-                LinkedEntity {
-                    original: "서울".to_string(),
-                    canonical: "서울".to_string(),
-                    entity_type: EntityType::Location,
-                    aliases: vec![],
-                    external_id: Some("Q8684".to_string()),
-                    external_ids: [("wikidata".to_string(), "Q8684".to_string())].into(),
-                    confidence: 0.9,
-                    rdf_uri: Some("http://www.wikidata.org/entity/Q8684".to_string()),
-                    in_knowledge_base: true,
-                },
-            ],
+            entities: vec![LinkedEntity {
+                original: "서울".to_string(),
+                canonical: "서울".to_string(),
+                entity_type: EntityType::Location,
+                aliases: vec![],
+                external_id: Some("Q8684".to_string()),
+                external_ids: [("wikidata".to_string(), "Q8684".to_string())].into(),
+                confidence: 0.9,
+                rdf_uri: Some("http://www.wikidata.org/entity/Q8684".to_string()),
+                in_knowledge_base: true,
+            }],
             triples: vec![],
         };
 

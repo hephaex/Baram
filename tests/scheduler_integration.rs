@@ -377,7 +377,9 @@ async fn test_maintenance_mode() {
 
     // Verify a failover event was created for maintenance
     let history = manager.get_history().await;
-    assert!(history.iter().any(|e| matches!(e.reason, FailoverReason::Maintenance)));
+    assert!(history
+        .iter()
+        .any(|e| matches!(e.reason, FailoverReason::Maintenance)));
 }
 
 // ============================================================================
@@ -521,7 +523,10 @@ async fn test_complete_scheduling_workflow() {
     // 7. Simulate Main failure
     for _ in 0..3 {
         failover
-            .process_failure(CrawlerInstance::Main, Some("Connection timeout".to_string()))
+            .process_failure(
+                CrawlerInstance::Main,
+                Some("Connection timeout".to_string()),
+            )
             .await;
     }
 
@@ -532,12 +537,22 @@ async fn test_complete_scheduling_workflow() {
 
     // 9. Verify failover event has correct data
     let event = &history[0];
-    assert!(!event.affected_hours.is_empty(), "Failover should affect some hours");
-    assert_ne!(event.target_instance, CrawlerInstance::Main, "Target should not be the failed instance");
+    assert!(
+        !event.affected_hours.is_empty(),
+        "Failover should affect some hours"
+    );
+    assert_ne!(
+        event.target_instance,
+        CrawlerInstance::Main,
+        "Target should not be the failed instance"
+    );
 
     // 10. Verify Main is now unhealthy
     let main_health = failover.get_health(CrawlerInstance::Main).await.unwrap();
-    assert_eq!(main_health.status, ntimes::scheduler::HealthStatus::Unhealthy);
+    assert_eq!(
+        main_health.status,
+        ntimes::scheduler::HealthStatus::Unhealthy
+    );
 
     // 11. Verify stats reflect the failure
     let stats_after = failover.stats().await;

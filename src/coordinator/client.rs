@@ -117,7 +117,11 @@ impl CoordinatorClient {
     }
 
     /// Register this instance with the coordinator
-    pub async fn register(&self, ip_address: &str, port: u16) -> Result<RegisterResponse, ClientError> {
+    pub async fn register(
+        &self,
+        ip_address: &str,
+        port: u16,
+    ) -> Result<RegisterResponse, ClientError> {
         let request = RegisterRequest {
             instance_id: self.config.instance_id.id().to_string(),
             ip_address: ip_address.to_string(),
@@ -181,7 +185,11 @@ impl CoordinatorClient {
                             .map(|s| SlotResponse {
                                 hour: s.hour,
                                 instance: s.instance.id().to_string(),
-                                categories: s.categories.iter().map(|c| c.id().to_string()).collect(),
+                                categories: s
+                                    .categories
+                                    .iter()
+                                    .map(|c| c.id().to_string())
+                                    .collect(),
                             })
                             .collect(),
                     });
@@ -205,7 +213,9 @@ impl CoordinatorClient {
                 uptime_secs: health.uptime_secs,
             })
         } else {
-            Err(ClientError::InvalidResponse("Missing health data".to_string()))
+            Err(ClientError::InvalidResponse(
+                "Missing health data".to_string(),
+            ))
         }
     }
 
@@ -236,7 +246,10 @@ impl CoordinatorClient {
     }
 
     // Internal: GET request with retry
-    async fn get_with_retry<T: for<'de> Deserialize<'de>>(&self, url: &str) -> Result<T, ClientError> {
+    async fn get_with_retry<T: for<'de> Deserialize<'de>>(
+        &self,
+        url: &str,
+    ) -> Result<T, ClientError> {
         let mut last_error = None;
 
         for attempt in 0..=self.config.retry_count {

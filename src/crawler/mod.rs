@@ -33,12 +33,16 @@ pub mod url;
 
 pub use distributed::{DistributedRunner, RunnerError, RunnerHandle, SlotResult};
 pub use instance::{ConfigError, InstanceConfig, InstanceState};
-pub use pipeline::{CrawlerPipeline, PipelineBuilder, PipelineConfig, PipelineStats, StatsSnapshot};
+pub use pipeline::{
+    CrawlerPipeline, PipelineBuilder, PipelineConfig, PipelineStats, StatsSnapshot,
+};
 pub use status::{
     CrawlerStatus, ErrorCategory, ErrorRecord, HealthCheck, HealthStatus, RecoveryAction,
     StatusReporter, StatusReporterConfig,
 };
-pub use trigger::{CrawlEvent, CrawlerTrigger, CrawlerTriggerConfig, CrawlerTriggerError, CrawlerTriggerState};
+pub use trigger::{
+    CrawlEvent, CrawlerTrigger, CrawlerTriggerConfig, CrawlerTriggerError, CrawlerTriggerState,
+};
 
 use anyhow::{Context, Result};
 use governor::{Quota, RateLimiter};

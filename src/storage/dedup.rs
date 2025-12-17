@@ -280,7 +280,10 @@ impl AsyncDedupChecker {
             .context("Failed to create PostgreSQL connection pool")?;
 
         // Test connection
-        let client = pool.get().await.context("Failed to connect to PostgreSQL")?;
+        let client = pool
+            .get()
+            .await
+            .context("Failed to connect to PostgreSQL")?;
         client.simple_query("SELECT 1").await?;
 
         let cache = DedupCache::new(config.cache_size);
@@ -454,9 +457,8 @@ impl AsyncDedupChecker {
             .map(|s| s as &(dyn ToSql + Sync))
             .collect();
 
-        let placeholders: Vec<String> = (1..=urls_to_check.len())
-            .map(|i| format!("${i}"))
-            .collect();
+        let placeholders: Vec<String> =
+            (1..=urls_to_check.len()).map(|i| format!("${i}")).collect();
 
         let query = format!(
             "SELECT url FROM crawl_dedup WHERE url IN ({}) AND success = TRUE",

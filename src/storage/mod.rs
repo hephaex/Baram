@@ -181,10 +181,7 @@ impl Database {
     /// # Returns
     /// True if URL has been successfully crawled
     pub fn is_url_crawled(&self, url: &str) -> Result<bool> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let exists: bool = conn
             .query_row(
@@ -205,10 +202,7 @@ impl Database {
     /// # Returns
     /// True if content with this hash already exists
     pub fn is_content_duplicate(&self, hash: &str) -> Result<bool> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let exists: bool = conn
             .query_row(
@@ -237,10 +231,7 @@ impl Database {
         status: CrawlStatus,
         error_message: Option<&str>,
     ) -> Result<()> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let now = Utc::now().to_rfc3339();
 
@@ -264,7 +255,13 @@ impl Database {
     /// Record successful crawl
     pub fn record_success(&self, article: &ParsedArticle) -> Result<()> {
         let hash = article.content_hash.as_deref().unwrap_or("");
-        self.mark_url_crawled(&article.id(), &article.url, hash, CrawlStatus::Success, None)
+        self.mark_url_crawled(
+            &article.id(),
+            &article.url,
+            hash,
+            CrawlStatus::Success,
+            None,
+        )
     }
 
     /// Record failed crawl
@@ -274,10 +271,7 @@ impl Database {
 
     /// Get crawl record by URL
     pub fn get_crawl_record(&self, url: &str) -> Result<Option<CrawlRecord>> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let record = conn
             .query_row(
@@ -305,16 +299,10 @@ impl Database {
 
     /// Get crawl statistics
     pub fn get_stats(&self) -> Result<CrawlStats> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
-        let total: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM crawl_metadata",
-            [],
-            |row| row.get(0),
-        )?;
+        let total: i64 =
+            conn.query_row("SELECT COUNT(*) FROM crawl_metadata", [], |row| row.get(0))?;
 
         let success: i64 = conn.query_row(
             "SELECT COUNT(*) FROM crawl_metadata WHERE status = 'success'",
@@ -344,10 +332,7 @@ impl Database {
 
     /// Save checkpoint state
     pub fn save_checkpoint(&self, key: &str, value: &str) -> Result<()> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let now = Utc::now().to_rfc3339();
 
@@ -368,10 +353,7 @@ impl Database {
 
     /// Load checkpoint state
     pub fn load_checkpoint(&self, key: &str) -> Result<Option<String>> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let value = conn
             .query_row(
@@ -387,20 +369,16 @@ impl Database {
 
     /// Filter URLs that haven't been crawled
     pub fn filter_uncrawled(&self, urls: &[String]) -> Result<Vec<String>> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let mut uncrawled = Vec::new();
 
         for url in urls {
-            let exists: bool = conn
-                .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM crawl_metadata WHERE url = ?1 AND status = 'success')",
-                    params![url],
-                    |row| row.get(0),
-                )?;
+            let exists: bool = conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM crawl_metadata WHERE url = ?1 AND status = 'success')",
+                params![url],
+                |row| row.get(0),
+            )?;
 
             if !exists {
                 uncrawled.push(url.clone());
@@ -412,20 +390,16 @@ impl Database {
 
     /// Batch check URLs for crawl status
     pub fn batch_check_urls(&self, urls: &[String]) -> Result<Vec<(String, bool)>> {
-        let conn = self
-            .sqlite
-            .as_ref()
-            .context("SQLite not initialized")?;
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
         let mut results = Vec::with_capacity(urls.len());
 
         for url in urls {
-            let exists: bool = conn
-                .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM crawl_metadata WHERE url = ?1 AND status = 'success')",
-                    params![url],
-                    |row| row.get(0),
-                )?;
+            let exists: bool = conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM crawl_metadata WHERE url = ?1 AND status = 'success')",
+                params![url],
+                |row| row.get(0),
+            )?;
 
             results.push((url.clone(), exists));
         }
@@ -599,11 +573,7 @@ mod tests {
         db.mark_url_crawled("1", "url1", "h1", CrawlStatus::Success, None)
             .unwrap();
 
-        let urls = vec![
-            "url1".to_string(),
-            "url2".to_string(),
-            "url3".to_string(),
-        ];
+        let urls = vec!["url1".to_string(), "url2".to_string(), "url3".to_string()];
 
         let uncrawled = db.filter_uncrawled(&urls).unwrap();
         assert_eq!(uncrawled.len(), 2);

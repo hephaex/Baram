@@ -139,7 +139,12 @@ impl DailySchedule {
 
     /// Check if schedule is valid (has 24 slots)
     pub fn is_valid(&self) -> bool {
-        self.slots.len() == 24 && self.slots.iter().enumerate().all(|(i, s)| s.hour as usize == i)
+        self.slots.len() == 24
+            && self
+                .slots
+                .iter()
+                .enumerate()
+                .all(|(i, s)| s.hour as usize == i)
     }
 
     /// Get summary statistics
@@ -435,10 +440,7 @@ mod tests {
         assert!(schedule.is_valid());
 
         // Invalid schedule (missing slots)
-        let invalid = DailySchedule::new(
-            NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(),
-            vec![],
-        );
+        let invalid = DailySchedule::new(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap(), vec![]);
         assert!(!invalid.is_valid());
     }
 

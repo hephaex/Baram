@@ -128,7 +128,9 @@ impl StorageConfigBuilder {
     /// Build the config with validation
     pub fn build(self) -> Result<StorageConfig, super::error::OntologyError> {
         let config = StorageConfig {
-            base_dir: self.base_dir.unwrap_or_else(|| PathBuf::from("data/triples")),
+            base_dir: self
+                .base_dir
+                .unwrap_or_else(|| PathBuf::from("data/triples")),
             create_dirs: self.create_dirs.unwrap_or(true),
             pretty_json: self.pretty_json.unwrap_or(true),
             compress: self.compress.unwrap_or(false),
@@ -141,7 +143,9 @@ impl StorageConfigBuilder {
     /// Build without validation
     pub fn build_unchecked(self) -> StorageConfig {
         StorageConfig {
-            base_dir: self.base_dir.unwrap_or_else(|| PathBuf::from("data/triples")),
+            base_dir: self
+                .base_dir
+                .unwrap_or_else(|| PathBuf::from("data/triples")),
             create_dirs: self.create_dirs.unwrap_or(true),
             pretty_json: self.pretty_json.unwrap_or(true),
             compress: self.compress.unwrap_or(false),
@@ -298,11 +302,10 @@ impl TripleStorage {
 
     /// Load index from file
     fn load_index(path: &Path) -> Result<StorageIndex> {
-        let file = File::open(path)
-            .with_context(|| format!("Failed to open index file: {path:?}"))?;
+        let file =
+            File::open(path).with_context(|| format!("Failed to open index file: {path:?}"))?;
         let reader = BufReader::new(file);
-        serde_json::from_reader(reader)
-            .with_context(|| "Failed to parse index file")
+        serde_json::from_reader(reader).with_context(|| "Failed to parse index file")
     }
 
     /// Save index to file
@@ -324,7 +327,13 @@ impl TripleStorage {
         // Sanitize article ID for file name
         let safe_id: String = article_id
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+            .map(|c| {
+                if c.is_alphanumeric() || c == '_' || c == '-' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
         self.config.base_dir.join(format!("{safe_id}.json"))
     }
@@ -367,7 +376,11 @@ impl TripleStorage {
     }
 
     /// Save extraction result directly
-    pub fn save_extraction(&mut self, result: &ExtractionResult, article_title: &str) -> Result<PathBuf> {
+    pub fn save_extraction(
+        &mut self,
+        result: &ExtractionResult,
+        article_title: &str,
+    ) -> Result<PathBuf> {
         let store = TripleStore::from_extraction(result, article_title);
         self.save(&store)
     }
@@ -384,11 +397,11 @@ impl TripleStorage {
             return Ok(None);
         }
 
-        let file = File::open(file_path)
-            .with_context(|| format!("Failed to open file: {file_path:?}"))?;
+        let file =
+            File::open(file_path).with_context(|| format!("Failed to open file: {file_path:?}"))?;
         let reader = BufReader::new(file);
-        let store: TripleStore = serde_json::from_reader(reader)
-            .with_context(|| "Failed to parse triple store")?;
+        let store: TripleStore =
+            serde_json::from_reader(reader).with_context(|| "Failed to parse triple store")?;
 
         Ok(Some(store))
     }
@@ -516,7 +529,10 @@ impl TripleStorage {
 
         // Write prefixes once
         writeln!(file, "@prefix schema: <https://schema.org/> .")?;
-        writeln!(file, "@prefix ntimes: <https://ntimes.example.org/ontology/> .")?;
+        writeln!(
+            file,
+            "@prefix ntimes: <https://ntimes.example.org/ontology/> ."
+        )?;
         writeln!(file, "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")?;
         writeln!(file)?;
 
@@ -555,7 +571,8 @@ impl TripleStorage {
             let path = entry.path();
 
             if path.extension().map(|e| e == "json").unwrap_or(false)
-                && path.file_name().map(|n| n != "index.json").unwrap_or(false) {
+                && path.file_name().map(|n| n != "index.json").unwrap_or(false)
+            {
                 // Try to load as TripleStore
                 if let Ok(file) = File::open(&path) {
                     let reader = BufReader::new(file);
@@ -718,7 +735,10 @@ mod tests {
             .max_triples_per_file(1000)
             .build_unchecked();
 
-        assert_eq!(config.base_dir, std::path::PathBuf::from("/tmp/test_triples"));
+        assert_eq!(
+            config.base_dir,
+            std::path::PathBuf::from("/tmp/test_triples")
+        );
         assert!(!config.create_dirs);
         assert!(!config.pretty_json);
         assert_eq!(config.max_triples_per_file, 1000);

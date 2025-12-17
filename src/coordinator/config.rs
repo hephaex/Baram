@@ -146,7 +146,9 @@ impl CoordinatorConfigBuilder {
     /// Build the config
     pub fn build(self) -> Result<CoordinatorConfig, ConfigError> {
         let config = CoordinatorConfig {
-            bind_address: self.bind_address.unwrap_or_else(|| "0.0.0.0:8080".parse().unwrap()),
+            bind_address: self
+                .bind_address
+                .unwrap_or_else(|| "0.0.0.0:8080".parse().unwrap()),
             heartbeat_timeout_secs: self.heartbeat_timeout_secs.unwrap_or(90),
             heartbeat_interval_secs: self.heartbeat_interval_secs.unwrap_or(30),
             enable_cors: self.enable_cors.unwrap_or(true),

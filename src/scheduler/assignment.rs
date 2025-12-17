@@ -539,7 +539,8 @@ impl AffinityMap {
 
     /// Set affinity weight
     pub fn set_affinity(&mut self, category: NewsCategory, instance: CrawlerInstance, weight: f64) {
-        self.weights.insert((category, instance), weight.clamp(0.0, 1.0));
+        self.weights
+            .insert((category, instance), weight.clamp(0.0, 1.0));
     }
 
     /// Get affinity weight
@@ -617,7 +618,10 @@ mod tests {
         let assigner = CategoryAssigner::new();
 
         // All categories should be enabled by default
-        assert_eq!(assigner.enabled_categories().len(), NewsCategory::all().len());
+        assert_eq!(
+            assigner.enabled_categories().len(),
+            NewsCategory::all().len()
+        );
     }
 
     #[test]
@@ -652,7 +656,9 @@ mod tests {
         let after = assigner.enabled_categories().len();
 
         assert_eq!(after, before - 1);
-        assert!(!assigner.enabled_categories().contains(&NewsCategory::Culture));
+        assert!(!assigner
+            .enabled_categories()
+            .contains(&NewsCategory::Culture));
     }
 
     #[test]
@@ -686,7 +692,10 @@ mod tests {
         affinity.set_affinity(NewsCategory::Politics, CrawlerInstance::Main, 0.9);
         affinity.set_affinity(NewsCategory::Politics, CrawlerInstance::Sub1, 0.3);
 
-        assert_eq!(affinity.best_instance_for(NewsCategory::Politics), Some(CrawlerInstance::Main));
+        assert_eq!(
+            affinity.best_instance_for(NewsCategory::Politics),
+            Some(CrawlerInstance::Main)
+        );
     }
 
     #[test]

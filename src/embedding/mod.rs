@@ -193,11 +193,10 @@ impl VectorStore {
 
         // Add basic auth if credentials provided
         if let (Some(username), Some(password)) = (&config.username, &config.password) {
-            transport_builder = transport_builder
-                .auth(opensearch::auth::Credentials::Basic(
-                    username.clone(),
-                    password.clone(),
-                ));
+            transport_builder = transport_builder.auth(opensearch::auth::Credentials::Basic(
+                username.clone(),
+                password.clone(),
+            ));
         }
 
         let transport = transport_builder
@@ -219,7 +218,7 @@ impl VectorStore {
             .client
             .indices()
             .exists(opensearch::indices::IndicesExistsParts::Index(&[
-                &self.index_name,
+                &self.index_name
             ]))
             .send()
             .await
@@ -349,7 +348,7 @@ impl VectorStore {
         self.client
             .indices()
             .delete(opensearch::indices::IndicesDeleteParts::Index(&[
-                &self.index_name,
+                &self.index_name
             ]))
             .send()
             .await
@@ -462,7 +461,11 @@ impl VectorStore {
     }
 
     /// Search using BM25 text matching
-    pub async fn search_bm25(&self, query_text: &str, config: &SearchConfig) -> Result<Vec<SearchResult>> {
+    pub async fn search_bm25(
+        &self,
+        query_text: &str,
+        config: &SearchConfig,
+    ) -> Result<Vec<SearchResult>> {
         let mut should = vec![
             json!({
                 "match": {
@@ -578,13 +581,23 @@ impl VectorStore {
     }
 
     /// Execute search query and parse results
-    async fn execute_search(&self, mut query: Value, config: &SearchConfig) -> Result<Vec<SearchResult>> {
+    async fn execute_search(
+        &self,
+        mut query: Value,
+        config: &SearchConfig,
+    ) -> Result<Vec<SearchResult>> {
         // Set size
         query["size"] = json!(config.k);
 
         // Add source fields
         query["_source"] = json!([
-            "id", "title", "content", "category", "publisher", "url", "published_at"
+            "id",
+            "title",
+            "content",
+            "category",
+            "publisher",
+            "url",
+            "published_at"
         ]);
 
         // Add highlighting if requested
@@ -707,7 +720,7 @@ impl VectorStore {
         self.client
             .indices()
             .refresh(opensearch::indices::IndicesRefreshParts::Index(&[
-                &self.index_name,
+                &self.index_name
             ]))
             .send()
             .await

@@ -51,7 +51,7 @@ pub mod registry;
 pub mod server;
 
 // Re-export main types
-pub use client::{CoordinatorClient, ClientConfig};
+pub use client::{ClientConfig, CoordinatorClient};
 pub use config::CoordinatorConfig;
 pub use registry::{InstanceInfo, InstanceRegistry, InstanceStatus};
 pub use server::CoordinatorServer;

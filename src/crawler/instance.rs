@@ -157,7 +157,10 @@ impl InstanceConfig {
 
     /// Get local address for registration
     pub fn local_address(&self) -> String {
-        let ip = self.local_ip.clone().unwrap_or_else(|| "0.0.0.0".to_string());
+        let ip = self
+            .local_ip
+            .clone()
+            .unwrap_or_else(|| "0.0.0.0".to_string());
         format!("{}:{}", ip, self.local_port)
     }
 
@@ -341,15 +344,15 @@ impl InstanceConfigBuilder {
 
     pub fn build(self) -> Result<InstanceConfig, ConfigError> {
         let config = InstanceConfig {
-            instance_id: self.instance_id.ok_or_else(|| {
-                ConfigError::MissingField("instance_id".to_string())
-            })?,
-            coordinator_url: self.coordinator_url.ok_or_else(|| {
-                ConfigError::MissingField("coordinator_url".to_string())
-            })?,
-            database_url: self.database_url.ok_or_else(|| {
-                ConfigError::MissingField("database_url".to_string())
-            })?,
+            instance_id: self
+                .instance_id
+                .ok_or_else(|| ConfigError::MissingField("instance_id".to_string()))?,
+            coordinator_url: self
+                .coordinator_url
+                .ok_or_else(|| ConfigError::MissingField("coordinator_url".to_string()))?,
+            database_url: self
+                .database_url
+                .ok_or_else(|| ConfigError::MissingField("database_url".to_string()))?,
             heartbeat_interval_secs: self.heartbeat_interval_secs.unwrap_or(30),
             schedule_poll_interval_secs: self.schedule_poll_interval_secs.unwrap_or(60),
             requests_per_second: self.requests_per_second.unwrap_or(1.0),

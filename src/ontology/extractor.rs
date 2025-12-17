@@ -321,7 +321,6 @@ impl HallucinationVerifier {
     pub fn verify(&self, relation: &ExtractedRelation, source_text: &str) -> VerificationResult {
         let mut failures = Vec::new();
         let original_confidence = relation.confidence;
-        
 
         // Verify subject
         let subject_match = self.find_match(&relation.subject, source_text);
@@ -487,13 +486,21 @@ impl HallucinationVerifier {
             let chars_b: HashSet<char> = b.chars().collect();
             let intersection = chars_a.intersection(&chars_b).count();
             let union = chars_a.union(&chars_b).count();
-            return if union == 0 { 0.0 } else { intersection as f32 / union as f32 };
+            return if union == 0 {
+                0.0
+            } else {
+                intersection as f32 / union as f32
+            };
         }
 
         let intersection = bigrams_a.intersection(&bigrams_b).count();
         let union = bigrams_a.union(&bigrams_b).count();
 
-        if union == 0 { 0.0 } else { intersection as f32 / union as f32 }
+        if union == 0 {
+            0.0
+        } else {
+            intersection as f32 / union as f32
+        }
     }
 
     /// Calculate adjusted confidence based on match quality
@@ -848,7 +855,9 @@ impl RelationType {
             "owns" | "소유" | "owner_of" | "has" => RelationType::Owns,
             "founded" | "설립" | "established" | "created" => RelationType::Founded,
             "said" | "발언" | "stated" | "claimed" | "말했다" => RelationType::Said,
-            "participatedin" | "participated_in" | "참여" | "attended" | "joined" => RelationType::ParticipatedIn,
+            "participatedin" | "participated_in" | "참여" | "attended" | "joined" => {
+                RelationType::ParticipatedIn
+            }
             "announced" | "발표" | "revealed" | "disclosed" => RelationType::Announced,
             "criticized" | "비판" | "condemned" | "attacked" => RelationType::Criticized,
             "supported" | "지지" | "backed" | "endorsed" => RelationType::Supported,
@@ -966,8 +975,12 @@ impl LlmExtractionResponse {
     pub fn from_json(json: &str) -> Result<Self> {
         // Try to extract JSON from markdown code blocks if present
         let cleaned = Self::extract_json_from_response(json);
-        serde_json::from_str(&cleaned)
-            .with_context(|| format!("Failed to parse LLM response: {}", &cleaned[..cleaned.len().min(200)]))
+        serde_json::from_str(&cleaned).with_context(|| {
+            format!(
+                "Failed to parse LLM response: {}",
+                &cleaned[..cleaned.len().min(200)]
+            )
+        })
     }
 
     /// Extract JSON from LLM response (handles markdown code blocks)
@@ -1245,7 +1258,10 @@ impl TripleStore {
 
         // Triples
         for triple in &self.triples {
-            output.push_str(&format!("# {} {} {}\n", triple.subject, triple.predicate_label, triple.object));
+            output.push_str(&format!(
+                "# {} {} {}\n",
+                triple.subject, triple.predicate_label, triple.object
+            ));
             output.push_str(&triple.to_turtle());
             output.push('\n');
             if let Some(evidence) = &triple.evidence {
@@ -1357,7 +1373,8 @@ impl RelationExtractor {
     fn build_org_patterns() -> Vec<Regex> {
         vec![
             // Companies: 삼성전자, LG전자
-            Regex::new(r"([가-힣A-Za-z]+)(전자|그룹|은행|증권|보험|건설|제약|바이오|엔터|통신)").unwrap(),
+            Regex::new(r"([가-힣A-Za-z]+)(전자|그룹|은행|증권|보험|건설|제약|바이오|엔터|통신)")
+                .unwrap(),
             // Government: 기획재정부, 외교부
             Regex::new(r"([가-힣]+)(부|처|청|원|위원회|공사|공단)").unwrap(),
             // Political parties
@@ -1385,17 +1402,20 @@ impl RelationExtractor {
             Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*(말했다|밝혔다|전했다|설명했다|언급했다|주장했다|강조했다)").unwrap(),
         ]);
 
-        patterns.insert(RelationType::WorksFor, vec![
-            Regex::new(r"([가-힣]+)\s+([가-힣A-Za-z]+)\s*(소속|근무)").unwrap(),
-        ]);
+        patterns.insert(
+            RelationType::WorksFor,
+            vec![Regex::new(r"([가-힣]+)\s+([가-힣A-Za-z]+)\s*(소속|근무)").unwrap()],
+        );
 
-        patterns.insert(RelationType::Leads, vec![
-            Regex::new(r"([가-힣]+)\s+(대표|회장|사장|원장|총장)").unwrap(),
-        ]);
+        patterns.insert(
+            RelationType::Leads,
+            vec![Regex::new(r"([가-힣]+)\s+(대표|회장|사장|원장|총장)").unwrap()],
+        );
 
-        patterns.insert(RelationType::Announced, vec![
-            Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*(발표했다|공개했다|선언했다)").unwrap(),
-        ]);
+        patterns.insert(
+            RelationType::Announced,
+            vec![Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*(발표했다|공개했다|선언했다)").unwrap()],
+        );
 
         patterns.insert(RelationType::Criticized, vec![
             Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(비판했다|비난했다|질타했다)").unwrap(),
@@ -1405,13 +1425,21 @@ impl RelationExtractor {
             Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(지지했다|찬성했다|옹호했다)").unwrap(),
         ]);
 
-        patterns.insert(RelationType::InvestedIn, vec![
-            Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)에\s*(투자|출자)").unwrap(),
-        ]);
+        patterns.insert(
+            RelationType::InvestedIn,
+            vec![
+                Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)에\s*(투자|출자)")
+                    .unwrap(),
+            ],
+        );
 
-        patterns.insert(RelationType::Acquired, vec![
-            Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(인수|매입)").unwrap(),
-        ]);
+        patterns.insert(
+            RelationType::Acquired,
+            vec![
+                Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(인수|매입)")
+                    .unwrap(),
+            ],
+        );
 
         patterns
     }
@@ -1485,7 +1513,8 @@ impl RelationExtractor {
         }
 
         // Extract money amounts
-        let money_pattern = Regex::new(r"(\d+(?:,\d{3})*(?:\.\d+)?)\s*(원|달러|위안|엔|유로|억|조)").unwrap();
+        let money_pattern =
+            Regex::new(r"(\d+(?:,\d{3})*(?:\.\d+)?)\s*(원|달러|위안|엔|유로|억|조)").unwrap();
         for cap in money_pattern.captures_iter(text) {
             if let Some(m) = cap.get(0) {
                 let name = m.as_str().to_string();
@@ -1795,9 +1824,7 @@ mod tests {
         assert!(result.is_err());
 
         // Invalid min_entity_length
-        let result = ExtractionConfig::builder()
-            .min_entity_length(0)
-            .build();
+        let result = ExtractionConfig::builder().min_entity_length(0).build();
         assert!(result.is_err());
     }
 
@@ -1957,7 +1984,10 @@ mod tests {
     #[test]
     fn test_entity_type_from_string() {
         assert_eq!(EntityType::from_string("Person"), EntityType::Person);
-        assert_eq!(EntityType::from_string("ORGANIZATION"), EntityType::Organization);
+        assert_eq!(
+            EntityType::from_string("ORGANIZATION"),
+            EntityType::Organization
+        );
         assert_eq!(EntityType::from_string("인물"), EntityType::Person);
         assert_eq!(EntityType::from_string("기관"), EntityType::Organization);
         assert_eq!(EntityType::from_string("unknown_type"), EntityType::Other);
@@ -1966,9 +1996,15 @@ mod tests {
     #[test]
     fn test_relation_type_from_string() {
         assert_eq!(RelationType::from_string("said"), RelationType::Said);
-        assert_eq!(RelationType::from_string("works_for"), RelationType::WorksFor);
+        assert_eq!(
+            RelationType::from_string("works_for"),
+            RelationType::WorksFor
+        );
         assert_eq!(RelationType::from_string("발언"), RelationType::Said);
-        assert_eq!(RelationType::from_string("unknown_relation"), RelationType::Unknown);
+        assert_eq!(
+            RelationType::from_string("unknown_relation"),
+            RelationType::Unknown
+        );
     }
 
     #[test]
@@ -2009,13 +2045,11 @@ mod tests {
     #[test]
     fn test_llm_response_to_entities() {
         let response = LlmExtractionResponse {
-            entities: vec![
-                LlmEntityResponse {
-                    text: "삼성전자".to_string(),
-                    entity_type: "Organization".to_string(),
-                    confidence: 0.9,
-                },
-            ],
+            entities: vec![LlmEntityResponse {
+                text: "삼성전자".to_string(),
+                entity_type: "Organization".to_string(),
+                confidence: 0.9,
+            }],
             relations: vec![],
         };
 
@@ -2028,15 +2062,13 @@ mod tests {
     fn test_llm_response_to_relations() {
         let response = LlmExtractionResponse {
             entities: vec![],
-            relations: vec![
-                LlmRelationResponse {
-                    subject: "이재용".to_string(),
-                    predicate: "leads".to_string(),
-                    object: "삼성전자".to_string(),
-                    confidence: 0.85,
-                    evidence: "이재용 회장이 이끄는 삼성전자".to_string(),
-                },
-            ],
+            relations: vec![LlmRelationResponse {
+                subject: "이재용".to_string(),
+                predicate: "leads".to_string(),
+                object: "삼성전자".to_string(),
+                confidence: 0.85,
+                evidence: "이재용 회장이 이끄는 삼성전자".to_string(),
+            }],
         };
 
         let relations = response.to_relations();
@@ -2092,29 +2124,25 @@ mod tests {
     fn test_triple_store_from_extraction() {
         let result = ExtractionResult {
             article_id: "001_0001".to_string(),
-            entities: vec![
-                ExtractedEntity {
-                    text: "삼성전자".to_string(),
-                    canonical_name: None,
-                    entity_type: EntityType::Organization,
-                    start: 0,
-                    end: 4,
-                    confidence: 0.9,
-                    source: EntitySource::Title,
-                },
-            ],
-            relations: vec![
-                ExtractedRelation {
-                    subject: "이재용".to_string(),
-                    subject_type: EntityType::Person,
-                    predicate: RelationType::Leads,
-                    object: "삼성전자".to_string(),
-                    object_type: EntityType::Organization,
-                    confidence: 0.85,
-                    evidence: "이재용 회장".to_string(),
-                    verified: true,
-                },
-            ],
+            entities: vec![ExtractedEntity {
+                text: "삼성전자".to_string(),
+                canonical_name: None,
+                entity_type: EntityType::Organization,
+                start: 0,
+                end: 4,
+                confidence: 0.9,
+                source: EntitySource::Title,
+            }],
+            relations: vec![ExtractedRelation {
+                subject: "이재용".to_string(),
+                subject_type: EntityType::Person,
+                predicate: RelationType::Leads,
+                object: "삼성전자".to_string(),
+                object_type: EntityType::Organization,
+                confidence: 0.85,
+                evidence: "이재용 회장".to_string(),
+                verified: true,
+            }],
         };
 
         let store = TripleStore::from_extraction(&result, "테스트 기사");
@@ -2145,18 +2173,16 @@ mod tests {
         let result = ExtractionResult {
             article_id: "001_0001".to_string(),
             entities: vec![],
-            relations: vec![
-                ExtractedRelation {
-                    subject: "A".to_string(),
-                    subject_type: EntityType::Person,
-                    predicate: RelationType::WorksFor,
-                    object: "B".to_string(),
-                    object_type: EntityType::Organization,
-                    confidence: 0.9,
-                    evidence: "A works for B".to_string(),
-                    verified: true,
-                },
-            ],
+            relations: vec![ExtractedRelation {
+                subject: "A".to_string(),
+                subject_type: EntityType::Person,
+                predicate: RelationType::WorksFor,
+                object: "B".to_string(),
+                object_type: EntityType::Organization,
+                confidence: 0.9,
+                evidence: "A works for B".to_string(),
+                verified: true,
+            }],
         };
 
         let store = TripleStore::from_extraction(&result, "Test");
@@ -2194,8 +2220,14 @@ mod tests {
 
     #[test]
     fn test_verification_failure_korean_desc() {
-        assert_eq!(VerificationFailure::SubjectNotFound.korean_desc(), "주어가 원문에 없음");
-        assert_eq!(VerificationFailure::ObjectNotFound.korean_desc(), "목적어가 원문에 없음");
+        assert_eq!(
+            VerificationFailure::SubjectNotFound.korean_desc(),
+            "주어가 원문에 없음"
+        );
+        assert_eq!(
+            VerificationFailure::ObjectNotFound.korean_desc(),
+            "목적어가 원문에 없음"
+        );
     }
 
     #[test]
@@ -2269,7 +2301,9 @@ mod tests {
 
         let result = verifier.verify(&relation, source);
         assert!(!result.verified);
-        assert!(result.failures.contains(&VerificationFailure::SubjectNotFound));
+        assert!(result
+            .failures
+            .contains(&VerificationFailure::SubjectNotFound));
     }
 
     #[test]
@@ -2373,7 +2407,10 @@ mod tests {
         };
 
         assert_eq!(summary.verification_rate(), 80.0);
-        assert_eq!(summary.most_common_failure(), Some(&VerificationFailure::SubjectNotFound));
+        assert_eq!(
+            summary.most_common_failure(),
+            Some(&VerificationFailure::SubjectNotFound)
+        );
     }
 
     #[test]

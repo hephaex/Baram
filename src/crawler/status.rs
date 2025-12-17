@@ -327,7 +327,9 @@ impl StatusReporter {
         Self {
             config: config.clone(),
             status: Arc::new(RwLock::new(status)),
-            error_history: Arc::new(RwLock::new(VecDeque::with_capacity(config.max_error_history))),
+            error_history: Arc::new(RwLock::new(VecDeque::with_capacity(
+                config.max_error_history,
+            ))),
             start_time: Instant::now(),
             recovery: Arc::new(RwLock::new(RecoveryManager::new(config.clone()))),
             shutdown,
@@ -480,7 +482,8 @@ impl StatusReporter {
         let mut shutdown_rx = self.shutdown_rx.clone();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(config.report_interval_secs));
+            let mut interval =
+                tokio::time::interval(Duration::from_secs(config.report_interval_secs));
 
             loop {
                 tokio::select! {
@@ -691,7 +694,13 @@ impl HealthCheck {
     }
 
     /// Add a component check
-    pub fn add_check(&mut self, name: &str, healthy: bool, message: Option<&str>, latency_ms: Option<u64>) {
+    pub fn add_check(
+        &mut self,
+        name: &str,
+        healthy: bool,
+        message: Option<&str>,
+        latency_ms: Option<u64>,
+    ) {
         self.checks.push(ComponentCheck {
             name: name.to_string(),
             healthy,
@@ -778,7 +787,10 @@ mod tests {
 
     #[test]
     fn test_error_category_backoff() {
-        assert!(ErrorCategory::RateLimited.recommended_backoff() > ErrorCategory::Network.recommended_backoff());
+        assert!(
+            ErrorCategory::RateLimited.recommended_backoff()
+                > ErrorCategory::Network.recommended_backoff()
+        );
     }
 
     #[test]
@@ -818,8 +830,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_status_reporter_record_error() {
-        let mut config = StatusReporterConfig::for_instance(CrawlerInstance::Main)
-            .with_unhealthy_threshold(3);
+        let mut config =
+            StatusReporterConfig::for_instance(CrawlerInstance::Main).with_unhealthy_threshold(3);
         // Disable auto recovery for this test
         config.enable_auto_recovery = false;
         let reporter = StatusReporter::new(config);
@@ -827,12 +839,18 @@ mod tests {
         reporter.mark_healthy().await;
 
         // Record errors (using non-retryable error to avoid recovery)
-        reporter.record_error("Parse error invalid JSON", Some("url1")).await;
+        reporter
+            .record_error("Parse error invalid JSON", Some("url1"))
+            .await;
         let status = reporter.get_status().await;
         assert_eq!(status.health, HealthStatus::Degraded);
 
-        reporter.record_error("Parse error invalid JSON", Some("url2")).await;
-        reporter.record_error("Parse error invalid JSON", Some("url3")).await;
+        reporter
+            .record_error("Parse error invalid JSON", Some("url2"))
+            .await;
+        reporter
+            .record_error("Parse error invalid JSON", Some("url3"))
+            .await;
 
         let status = reporter.get_status().await;
         assert_eq!(status.health, HealthStatus::Unhealthy);
@@ -859,7 +877,9 @@ mod tests {
     fn test_recovery_action_recommend() {
         let actions = RecoveryAction::recommend(ErrorCategory::RateLimited, 3);
         assert!(!actions.is_empty());
-        assert!(actions.iter().any(|a| matches!(a, RecoveryAction::Throttle { .. })));
+        assert!(actions
+            .iter()
+            .any(|a| matches!(a, RecoveryAction::Throttle { .. })));
     }
 
     #[test]

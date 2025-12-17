@@ -18,25 +18,16 @@ pub enum OntologyError {
     // Extraction Errors
     // =========================================================================
     /// Failed to extract entities from article
-    ExtractionFailed {
-        article_id: String,
-        reason: String,
-    },
+    ExtractionFailed { article_id: String, reason: String },
 
     /// No entities found in article
-    NoEntitiesFound {
-        article_id: String,
-    },
+    NoEntitiesFound { article_id: String },
 
     /// Entity type is invalid or unknown
-    InvalidEntityType {
-        value: String,
-    },
+    InvalidEntityType { value: String },
 
     /// Relation type is invalid or unknown
-    InvalidRelationType {
-        value: String,
-    },
+    InvalidRelationType { value: String },
 
     // =========================================================================
     // LLM Response Errors
@@ -51,18 +42,13 @@ pub enum OntologyError {
     EmptyLlmResponse,
 
     /// LLM returned invalid JSON
-    InvalidLlmJson {
-        reason: String,
-    },
+    InvalidLlmJson { reason: String },
 
     // =========================================================================
     // Verification Errors
     // =========================================================================
     /// Hallucination detected - entity not in source
-    HallucinationDetected {
-        entity: String,
-        reason: String,
-    },
+    HallucinationDetected { entity: String, reason: String },
 
     /// Verification failed for relation
     VerificationFailed {
@@ -76,75 +62,46 @@ pub enum OntologyError {
     // Linking Errors
     // =========================================================================
     /// Entity linking failed
-    LinkingFailed {
-        entity: String,
-        reason: String,
-    },
+    LinkingFailed { entity: String, reason: String },
 
     /// Knowledge base entry not found
-    KnowledgeBaseEntryNotFound {
-        canonical_name: String,
-    },
+    KnowledgeBaseEntryNotFound { canonical_name: String },
 
     /// Invalid knowledge base format
-    InvalidKnowledgeBase {
-        reason: String,
-    },
+    InvalidKnowledgeBase { reason: String },
 
     // =========================================================================
     // Storage Errors
     // =========================================================================
     /// Storage directory does not exist
-    StorageDirectoryNotFound {
-        path: PathBuf,
-    },
+    StorageDirectoryNotFound { path: PathBuf },
 
     /// Failed to create storage directory
-    StorageDirectoryCreationFailed {
-        path: PathBuf,
-        reason: String,
-    },
+    StorageDirectoryCreationFailed { path: PathBuf, reason: String },
 
     /// Failed to save triples to storage
-    StorageSaveFailed {
-        article_id: String,
-        reason: String,
-    },
+    StorageSaveFailed { article_id: String, reason: String },
 
     /// Failed to load triples from storage
-    StorageLoadFailed {
-        article_id: String,
-        reason: String,
-    },
+    StorageLoadFailed { article_id: String, reason: String },
 
     /// Article not found in storage
-    ArticleNotFound {
-        article_id: String,
-    },
+    ArticleNotFound { article_id: String },
 
     /// Index is corrupted or invalid
-    IndexCorrupted {
-        reason: String,
-    },
+    IndexCorrupted { reason: String },
 
     // =========================================================================
     // Serialization Errors
     // =========================================================================
     /// JSON serialization failed
-    JsonSerializationFailed {
-        reason: String,
-    },
+    JsonSerializationFailed { reason: String },
 
     /// JSON deserialization failed
-    JsonDeserializationFailed {
-        reason: String,
-    },
+    JsonDeserializationFailed { reason: String },
 
     /// RDF/Turtle export failed
-    RdfExportFailed {
-        format: String,
-        reason: String,
-    },
+    RdfExportFailed { format: String, reason: String },
 
     // =========================================================================
     // Configuration Errors
@@ -157,9 +114,7 @@ pub enum OntologyError {
     },
 
     /// Missing required configuration
-    MissingConfig {
-        field: String,
-    },
+    MissingConfig { field: String },
 
     // =========================================================================
     // I/O Errors
@@ -213,7 +168,12 @@ impl fmt::Display for OntologyError {
             OntologyError::HallucinationDetected { entity, reason } => {
                 write!(f, "Hallucination detected for '{entity}': {reason}")
             }
-            OntologyError::VerificationFailed { subject, predicate, object, reason } => {
+            OntologyError::VerificationFailed {
+                subject,
+                predicate,
+                object,
+                reason,
+            } => {
                 write!(
                     f,
                     "Verification failed for relation ({subject} {predicate} {object}): {reason}"
@@ -263,7 +223,11 @@ impl fmt::Display for OntologyError {
             }
 
             // Configuration
-            OntologyError::InvalidConfig { field, value, reason } => {
+            OntologyError::InvalidConfig {
+                field,
+                value,
+                reason,
+            } => {
                 write!(f, "Invalid config '{field}' = '{value}': {reason}")
             }
             OntologyError::MissingConfig { field } => {
@@ -271,7 +235,11 @@ impl fmt::Display for OntologyError {
             }
 
             // I/O
-            OntologyError::IoError { operation, path, source } => {
+            OntologyError::IoError {
+                operation,
+                path,
+                source,
+            } => {
                 if let Some(p) = path {
                     write!(f, "I/O error during {operation} on {p:?}: {source}")
                 } else {
@@ -295,7 +263,9 @@ impl std::error::Error for OntologyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             OntologyError::IoError { source, .. } => Some(source),
-            OntologyError::Other { source: Some(src), .. } => Some(src.as_ref()),
+            OntologyError::Other {
+                source: Some(src), ..
+            } => Some(src.as_ref()),
             _ => None,
         }
     }
@@ -376,7 +346,11 @@ impl OntologyError {
     }
 
     /// Create an I/O error with context
-    pub fn io_error(operation: impl Into<String>, path: Option<PathBuf>, source: io::Error) -> Self {
+    pub fn io_error(
+        operation: impl Into<String>,
+        path: Option<PathBuf>,
+        source: io::Error,
+    ) -> Self {
         OntologyError::IoError {
             operation: operation.into(),
             path,
@@ -431,7 +405,9 @@ impl OntologyError {
             OntologyError::KnowledgeBaseEntryNotFound { .. } => "지식베이스 항목 없음".to_string(),
             OntologyError::InvalidKnowledgeBase { .. } => "잘못된 지식베이스".to_string(),
             OntologyError::StorageDirectoryNotFound { .. } => "저장소 디렉토리 없음".to_string(),
-            OntologyError::StorageDirectoryCreationFailed { .. } => "디렉토리 생성 실패".to_string(),
+            OntologyError::StorageDirectoryCreationFailed { .. } => {
+                "디렉토리 생성 실패".to_string()
+            }
             OntologyError::StorageSaveFailed { .. } => "저장 실패".to_string(),
             OntologyError::StorageLoadFailed { .. } => "로드 실패".to_string(),
             OntologyError::ArticleNotFound { .. } => "기사 없음".to_string(),
@@ -484,7 +460,10 @@ mod tests {
         let result: Result<serde_json::Value, _> = serde_json::from_str(json_str);
         if let Err(e) = result {
             let ont_err: OntologyError = e.into();
-            assert!(matches!(ont_err, OntologyError::JsonDeserializationFailed { .. }));
+            assert!(matches!(
+                ont_err,
+                OntologyError::JsonDeserializationFailed { .. }
+            ));
         }
     }
 

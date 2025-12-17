@@ -15,52 +15,31 @@ pub enum SchedulerError {
     },
 
     /// Invalid hour value (must be 0-23)
-    InvalidHour {
-        hour: u32,
-    },
+    InvalidHour { hour: u32 },
 
     /// Schedule not found for date
-    ScheduleNotFound {
-        date: String,
-    },
+    ScheduleNotFound { date: String },
 
     /// Failed to generate schedule
-    ScheduleGenerationFailed {
-        reason: String,
-    },
+    ScheduleGenerationFailed { reason: String },
 
     /// Trigger configuration error
-    TriggerConfigError {
-        field: String,
-        reason: String,
-    },
+    TriggerConfigError { field: String, reason: String },
 
     /// Trigger execution error
-    TriggerExecutionFailed {
-        reason: String,
-    },
+    TriggerExecutionFailed { reason: String },
 
     /// Cache error
-    CacheError {
-        operation: String,
-        reason: String,
-    },
+    CacheError { operation: String, reason: String },
 
     /// Serialization/deserialization error
-    SerializationError {
-        reason: String,
-    },
+    SerializationError { reason: String },
 
     /// IO error
-    IoError {
-        operation: String,
-        reason: String,
-    },
+    IoError { operation: String, reason: String },
 
     /// Invalid timezone
-    InvalidTimezone {
-        tz: String,
-    },
+    InvalidTimezone { tz: String },
 }
 
 impl fmt::Display for SchedulerError {
@@ -207,9 +186,7 @@ impl SchedulerError {
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            Self::CacheError { .. }
-                | Self::TriggerExecutionFailed { .. }
-                | Self::IoError { .. }
+            Self::CacheError { .. } | Self::TriggerExecutionFailed { .. } | Self::IoError { .. }
         )
     }
 }
@@ -252,6 +229,9 @@ mod tests {
     fn test_from_serde_json_error() {
         let json_err = serde_json::from_str::<i32>("not a number").unwrap_err();
         let scheduler_err: SchedulerError = json_err.into();
-        assert!(matches!(scheduler_err, SchedulerError::SerializationError { .. }));
+        assert!(matches!(
+            scheduler_err,
+            SchedulerError::SerializationError { .. }
+        ));
     }
 }

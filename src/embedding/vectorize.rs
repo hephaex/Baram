@@ -144,7 +144,11 @@ impl Embedder {
         .context("Failed to parse config")?;
 
         // Load model weights
-        let vb = if weights_path.extension().map(|e| e == "safetensors").unwrap_or(false) {
+        let vb = if weights_path
+            .extension()
+            .map(|e| e == "safetensors")
+            .unwrap_or(false)
+        {
             unsafe {
                 VarBuilder::from_mmaped_safetensors(&[weights_path], DType::F32, &device)
                     .context("Failed to load safetensors")?
@@ -199,8 +203,8 @@ impl Embedder {
         let elapsed_ms = start_time.elapsed().as_millis() as f64;
         self.stats.texts_embedded += texts.len();
 
-        let total_time = self.stats.avg_time_ms * (self.stats.texts_embedded - texts.len()) as f64
-            + elapsed_ms;
+        let total_time =
+            self.stats.avg_time_ms * (self.stats.texts_embedded - texts.len()) as f64 + elapsed_ms;
         self.stats.avg_time_ms = total_time / self.stats.texts_embedded as f64;
 
         Ok(all_embeddings)
@@ -253,8 +257,7 @@ impl Embedder {
         }
 
         // Create tensors
-        let input_ids =
-            Tensor::from_vec(input_ids_vec, (batch_size, max_len), &self.device)?;
+        let input_ids = Tensor::from_vec(input_ids_vec, (batch_size, max_len), &self.device)?;
         let attention_mask =
             Tensor::from_vec(attention_mask_vec, (batch_size, max_len), &self.device)?;
         let token_type_ids =
