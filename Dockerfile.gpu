@@ -6,7 +6,7 @@
 # ============================================================================
 # Stage 1: Builder - Compile Rust application with CUDA support
 # ============================================================================
-FROM nvidia/cuda:12.4-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04 AS builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -57,7 +57,7 @@ RUN strip /build/target/release/ntimes
 # ============================================================================
 # Stage 2: Runtime - CUDA runtime image
 # ============================================================================
-FROM nvidia/cuda:12.4-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
 
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
