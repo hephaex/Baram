@@ -199,8 +199,7 @@ async fn get_schedule_by_date(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::<ScheduleResponse>::error_with_default(format!(
-                    "Invalid date format: {}. Expected YYYY-MM-DD",
-                    date_str
+                    "Invalid date format: {date_str}. Expected YYYY-MM-DD"
                 ))),
             );
         }
@@ -234,7 +233,7 @@ async fn get_instance(
         Err(_) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new(format!("Invalid instance ID: {}", id))),
+                Json(ErrorResponse::new(format!("Invalid instance ID: {id}"))),
             ).into_response();
         }
     };
@@ -243,7 +242,7 @@ async fn get_instance(
         Some(info) => (StatusCode::OK, Json(ApiResponse::success(info))).into_response(),
         None => (
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new(format!("Instance not found: {}", id))),
+            Json(ErrorResponse::new(format!("Instance not found: {id}"))),
         ).into_response(),
     }
 }
@@ -292,7 +291,7 @@ async fn set_maintenance(
         Err(_) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new(format!("Invalid instance ID: {}", id))),
+                Json(ErrorResponse::new(format!("Invalid instance ID: {id}"))),
             ).into_response();
         }
     };

@@ -356,13 +356,13 @@ pub enum ClientError {
 impl std::fmt::Display for ClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InitError(msg) => write!(f, "Initialization error: {}", msg),
-            Self::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            Self::InitError(msg) => write!(f, "Initialization error: {msg}"),
+            Self::NetworkError(msg) => write!(f, "Network error: {msg}"),
             Self::HttpError { status, message } => {
-                write!(f, "HTTP error ({}): {}", status, message)
+                write!(f, "HTTP error ({status}): {message}")
             }
-            Self::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            Self::InvalidResponse(msg) => write!(f, "Invalid response: {}", msg),
+            Self::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            Self::InvalidResponse(msg) => write!(f, "Invalid response: {msg}"),
             Self::CoordinatorUnavailable => write!(f, "Coordinator unavailable"),
         }
     }

@@ -485,7 +485,7 @@ impl CrawlerTrigger {
                 let _ = self.event_sender.send(CrawlEvent::CategoryFailed {
                     hour,
                     category: category.to_string(),
-                    error: last_error.as_ref().map(|e: &String| e.clone()).unwrap_or_default(),
+                    error: last_error.clone().unwrap_or_default(),
                     retry_attempt: attempt,
                 });
 
@@ -640,10 +640,10 @@ impl std::fmt::Display for CrawlerTriggerError {
         match self {
             Self::AlreadyCrawling => write!(f, "Already crawling"),
             Self::CategoryCrawlFailed { category, error } => {
-                write!(f, "Category {} crawl failed: {}", category, error)
+                write!(f, "Category {category} crawl failed: {error}")
             }
-            Self::ExecutionError(msg) => write!(f, "Execution error: {}", msg),
-            Self::RunnerError(msg) => write!(f, "Runner error: {}", msg),
+            Self::ExecutionError(msg) => write!(f, "Execution error: {msg}"),
+            Self::RunnerError(msg) => write!(f, "Runner error: {msg}"),
         }
     }
 }

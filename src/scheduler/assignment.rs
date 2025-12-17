@@ -514,7 +514,7 @@ impl AssignmentStats {
         output.push_str(&format!("Strategy: {:?}\n", self.strategy));
         output.push_str("\nPriority Distribution:\n");
         for (priority, count) in &self.priority_distribution {
-            output.push_str(&format!("  {:?}: {}\n", priority, count));
+            output.push_str(&format!("  {priority:?}: {count}\n"));
         }
         output
     }

@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libpq-dev \
     ca-certificates \
+    build-essential \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for building

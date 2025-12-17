@@ -299,7 +299,7 @@ impl TripleStorage {
     /// Load index from file
     fn load_index(path: &Path) -> Result<StorageIndex> {
         let file = File::open(path)
-            .with_context(|| format!("Failed to open index file: {:?}", path))?;
+            .with_context(|| format!("Failed to open index file: {path:?}"))?;
         let reader = BufReader::new(file);
         serde_json::from_reader(reader)
             .with_context(|| "Failed to parse index file")
@@ -326,7 +326,7 @@ impl TripleStorage {
             .chars()
             .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
             .collect();
-        self.config.base_dir.join(format!("{}.json", safe_id))
+        self.config.base_dir.join(format!("{safe_id}.json"))
     }
 
     /// Save a TripleStore to storage
@@ -335,7 +335,7 @@ impl TripleStorage {
 
         // Write triple store to file
         let file = File::create(&file_path)
-            .with_context(|| format!("Failed to create file: {:?}", file_path))?;
+            .with_context(|| format!("Failed to create file: {file_path:?}"))?;
         let writer = BufWriter::new(file);
 
         if self.config.pretty_json {
@@ -385,7 +385,7 @@ impl TripleStorage {
         }
 
         let file = File::open(file_path)
-            .with_context(|| format!("Failed to open file: {:?}", file_path))?;
+            .with_context(|| format!("Failed to open file: {file_path:?}"))?;
         let reader = BufReader::new(file);
         let store: TripleStore = serde_json::from_reader(reader)
             .with_context(|| "Failed to parse triple store")?;
@@ -403,7 +403,7 @@ impl TripleStorage {
         let file_path = Path::new(&entry.file_path);
         if file_path.exists() {
             fs::remove_file(file_path)
-                .with_context(|| format!("Failed to delete file: {:?}", file_path))?;
+                .with_context(|| format!("Failed to delete file: {file_path:?}"))?;
         }
 
         self.save_index()?;
@@ -479,7 +479,7 @@ impl TripleStorage {
         }
 
         let file = File::create(output_path)
-            .with_context(|| format!("Failed to create export file: {:?}", output_path))?;
+            .with_context(|| format!("Failed to create export file: {output_path:?}"))?;
         let writer = BufWriter::new(file);
         serde_json::to_writer_pretty(writer, &all_stores)
             .with_context(|| "Failed to write export file")?;
@@ -490,7 +490,7 @@ impl TripleStorage {
     /// Export all triples to N-Triples format
     pub fn export_ntriples(&self, output_path: &Path) -> Result<usize> {
         let mut file = File::create(output_path)
-            .with_context(|| format!("Failed to create export file: {:?}", output_path))?;
+            .with_context(|| format!("Failed to create export file: {output_path:?}"))?;
 
         let mut total_triples = 0;
 
@@ -499,7 +499,7 @@ impl TripleStorage {
                 let ntriples = store.to_ntriples();
                 if !ntriples.is_empty() {
                     writeln!(file, "# Article: {}", store.article_title)?;
-                    writeln!(file, "{}", ntriples)?;
+                    writeln!(file, "{ntriples}")?;
                     writeln!(file)?;
                     total_triples += store.triples.len();
                 }
@@ -512,7 +512,7 @@ impl TripleStorage {
     /// Export all triples to Turtle format
     pub fn export_turtle(&self, output_path: &Path) -> Result<usize> {
         let mut file = File::create(output_path)
-            .with_context(|| format!("Failed to create export file: {:?}", output_path))?;
+            .with_context(|| format!("Failed to create export file: {output_path:?}"))?;
 
         // Write prefixes once
         writeln!(file, "@prefix schema: <https://schema.org/> .")?;
@@ -533,7 +533,7 @@ impl TripleStorage {
                 for triple in &store.triples {
                     writeln!(file, "{}", triple.to_turtle())?;
                     if let Some(evidence) = &triple.evidence {
-                        writeln!(file, "  # Evidence: {}", evidence)?;
+                        writeln!(file, "  # Evidence: {evidence}")?;
                     }
                 }
                 writeln!(file)?;
@@ -634,7 +634,7 @@ impl StorageStats {
     pub fn file_size_human(&self) -> String {
         let size = self.total_file_size;
         if size < 1024 {
-            format!("{} B", size)
+            format!("{size} B")
         } else if size < 1024 * 1024 {
             format!("{:.1} KB", size as f64 / 1024.0)
         } else if size < 1024 * 1024 * 1024 {

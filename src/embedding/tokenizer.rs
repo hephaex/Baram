@@ -97,15 +97,15 @@ impl TextTokenizer {
     /// Create a new tokenizer from a pretrained model (downloads from HuggingFace Hub)
     pub fn from_pretrained(model_name: &str) -> Result<Self> {
         // Download tokenizer from HuggingFace Hub
-        let api = Api::new().map_err(|e| anyhow::anyhow!("Failed to create HuggingFace API: {}", e))?;
+        let api = Api::new().map_err(|e| anyhow::anyhow!("Failed to create HuggingFace API: {e}"))?;
         let repo = api.repo(Repo::new(model_name.to_string(), RepoType::Model));
 
         let tokenizer_path = repo
             .get("tokenizer.json")
-            .map_err(|e| anyhow::anyhow!("Failed to download tokenizer: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to download tokenizer: {e}"))?;
 
         let tokenizer = Tokenizer::from_file(&tokenizer_path)
-            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {e}"))?;
 
         let unk_token_id = tokenizer.token_to_id("[UNK]");
 
@@ -120,7 +120,7 @@ impl TextTokenizer {
     /// Create a tokenizer from a local file
     pub fn from_file(path: &Path) -> Result<Self> {
         let tokenizer = Tokenizer::from_file(path)
-            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer from file: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer from file: {e}"))?;
 
         let unk_token_id = tokenizer.token_to_id("[UNK]");
 
@@ -143,7 +143,7 @@ impl TextTokenizer {
         let encoding = self
             .tokenizer
             .encode(text, false)
-            .map_err(|e| anyhow::anyhow!("Tokenization failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Tokenization failed: {e}"))?;
 
         let ids = encoding.get_ids().to_vec();
 
@@ -167,7 +167,7 @@ impl TextTokenizer {
     pub fn decode(&self, ids: &[u32]) -> Result<String> {
         self.tokenizer
             .decode(ids, true)
-            .map_err(|e| anyhow::anyhow!("Decoding failed: {}", e))
+            .map_err(|e| anyhow::anyhow!("Decoding failed: {e}"))
     }
 
     /// Get token count for text without full tokenization overhead
@@ -175,7 +175,7 @@ impl TextTokenizer {
         let encoding = self
             .tokenizer
             .encode(text, false)
-            .map_err(|e| anyhow::anyhow!("Token counting failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Token counting failed: {e}"))?;
 
         Ok(encoding.get_ids().len())
     }
@@ -185,7 +185,7 @@ impl TextTokenizer {
         let encoding = self
             .tokenizer
             .encode(text, false)
-            .map_err(|e| anyhow::anyhow!("Chunking failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Chunking failed: {e}"))?;
 
         let ids = encoding.get_ids();
         let offsets = encoding.get_offsets();

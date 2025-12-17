@@ -471,7 +471,7 @@ mod tests {
         assert_eq!(summary.instance_distribution.len(), 3);
 
         // Each instance should have 8 slots
-        for (_, count) in &summary.instance_distribution {
+        for count in summary.instance_distribution.values() {
             assert_eq!(*count, 8);
         }
     }

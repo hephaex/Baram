@@ -250,10 +250,10 @@ pub enum ServerError {
 impl std::fmt::Display for ServerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ConfigError(msg) => write!(f, "Configuration error: {}", msg),
-            Self::InitError(msg) => write!(f, "Initialization error: {}", msg),
-            Self::BindError(msg) => write!(f, "Failed to bind: {}", msg),
-            Self::ServeError(msg) => write!(f, "Server error: {}", msg),
+            Self::ConfigError(msg) => write!(f, "Configuration error: {msg}"),
+            Self::InitError(msg) => write!(f, "Initialization error: {msg}"),
+            Self::BindError(msg) => write!(f, "Failed to bind: {msg}"),
+            Self::ServeError(msg) => write!(f, "Server error: {msg}"),
         }
     }
 }

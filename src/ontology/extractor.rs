@@ -73,7 +73,7 @@ impl ExtractionConfig {
         if self.confidence_threshold < 0.0 || self.confidence_threshold > 1.0 {
             return Err(super::error::OntologyError::invalid_config(
                 "confidence_threshold",
-                &self.confidence_threshold.to_string(),
+                self.confidence_threshold.to_string(),
                 "Must be between 0.0 and 1.0",
             ));
         }
@@ -321,7 +321,7 @@ impl HallucinationVerifier {
     pub fn verify(&self, relation: &ExtractedRelation, source_text: &str) -> VerificationResult {
         let mut failures = Vec::new();
         let original_confidence = relation.confidence;
-        let adjusted_confidence: f32;
+        
 
         // Verify subject
         let subject_match = self.find_match(&relation.subject, source_text);
@@ -364,7 +364,7 @@ impl HallucinationVerifier {
         };
 
         // Adjust confidence based on matches
-        adjusted_confidence = self.calculate_adjusted_confidence(
+        let adjusted_confidence: f32 = self.calculate_adjusted_confidence(
             original_confidence,
             &subject_match,
             &object_match,
@@ -1012,8 +1012,7 @@ impl LlmExtractionResponse {
     pub fn to_entities(&self, source: EntitySource) -> Vec<ExtractedEntity> {
         self.entities
             .iter()
-            .enumerate()
-            .map(|(_idx, e)| ExtractedEntity {
+            .map(|e| ExtractedEntity {
                 text: e.text.clone(),
                 canonical_name: None,
                 entity_type: EntityType::from_string(&e.entity_type),
@@ -1250,7 +1249,7 @@ impl TripleStore {
             output.push_str(&triple.to_turtle());
             output.push('\n');
             if let Some(evidence) = &triple.evidence {
-                output.push_str(&format!("# Evidence: {}\n", evidence));
+                output.push_str(&format!("# Evidence: {evidence}\n"));
             }
             output.push('\n');
         }
@@ -1292,7 +1291,7 @@ fn slug(text: &str) -> String {
 /// Helper: Escape string for Turtle format
 fn turtle_escape(s: &str) -> String {
     if s.starts_with("http://") || s.starts_with("https://") || s.contains(':') {
-        format!("<{}>", s)
+        format!("<{s}>")
     } else {
         format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
     }
@@ -1540,7 +1539,7 @@ impl RelationExtractor {
 
         // Split text into sentences
         let sentences: Vec<&str> = text
-            .split(|c| c == '.' || c == '。' || c == '!' || c == '?')
+            .split(['.', '。', '!', '?'])
             .filter(|s| !s.trim().is_empty())
             .collect();
 

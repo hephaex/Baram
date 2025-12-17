@@ -96,7 +96,7 @@ impl CoordinatorConfigBuilder {
     pub fn bind_address_str(mut self, addr: &str) -> Result<Self, ConfigError> {
         self.bind_address = Some(addr.parse().map_err(|_| ConfigError::InvalidValue {
             field: "bind_address".to_string(),
-            reason: format!("Invalid address: {}", addr),
+            reason: format!("Invalid address: {addr}"),
         })?);
         Ok(self)
     }
@@ -172,10 +172,10 @@ impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidValue { field, reason } => {
-                write!(f, "Invalid value for '{}': {}", field, reason)
+                write!(f, "Invalid value for '{field}': {reason}")
             }
             Self::MissingField { field } => {
-                write!(f, "Missing required field: {}", field)
+                write!(f, "Missing required field: {field}")
             }
         }
     }

@@ -51,7 +51,7 @@ impl LinkerConfig {
         if self.similarity_threshold < 0.0 || self.similarity_threshold > 1.0 {
             return Err(super::error::OntologyError::invalid_config(
                 "similarity_threshold",
-                &self.similarity_threshold.to_string(),
+                self.similarity_threshold.to_string(),
                 "Must be between 0.0 and 1.0",
             ));
         }
@@ -173,9 +173,9 @@ impl LinkedEntity {
     /// Generate RDF URI for this entity
     pub fn generate_rdf_uri(&self, base_uri: &str) -> String {
         if let Some(wikidata_id) = self.external_ids.get("wikidata") {
-            format!("http://www.wikidata.org/entity/{}", wikidata_id)
+            format!("http://www.wikidata.org/entity/{wikidata_id}")
         } else if let Some(dbpedia_id) = self.external_ids.get("dbpedia") {
-            format!("http://dbpedia.org/resource/{}", dbpedia_id)
+            format!("http://dbpedia.org/resource/{dbpedia_id}")
         } else {
             format!("{}{}", base_uri, url_encode(&self.canonical))
         }
@@ -190,7 +190,7 @@ impl LinkedEntity {
     pub fn dbpedia_uri(&self) -> Option<String> {
         self.external_ids
             .get("dbpedia")
-            .map(|id| format!("http://dbpedia.org/resource/{}", id))
+            .map(|id| format!("http://dbpedia.org/resource/{id}"))
     }
 }
 
@@ -206,7 +206,7 @@ fn url_encode(s: &str) -> String {
                 // Percent-encode non-ASCII characters byte by byte
                 let mut buf = [0u8; 4];
                 let bytes = c.encode_utf8(&mut buf);
-                bytes.bytes().map(|b| format!("%{:02X}", b)).collect()
+                bytes.bytes().map(|b| format!("%{b:02X}")).collect()
             }
         })
         .collect()
@@ -546,7 +546,7 @@ impl EntityLinker {
                 let rdf_uri = kb_entry
                     .external_ids
                     .get("wikidata")
-                    .map(|qid| format!("http://www.wikidata.org/entity/{}", qid));
+                    .map(|qid| format!("http://www.wikidata.org/entity/{qid}"));
 
                 let linked = LinkedEntity {
                     original: entity.text.clone(),
@@ -576,7 +576,7 @@ impl EntityLinker {
                         let rdf_uri = kb_entry
                             .external_ids
                             .get("wikidata")
-                            .map(|qid| format!("http://www.wikidata.org/entity/{}", qid));
+                            .map(|qid| format!("http://www.wikidata.org/entity/{qid}"));
 
                         let linked = LinkedEntity {
                             original: entity.text.clone(),
@@ -636,7 +636,7 @@ impl EntityLinker {
                             normalized = normalized.trim_end_matches(suffix).trim().to_string();
                         }
                         // Also handle with space
-                        let with_space = format!(" {}", suffix);
+                        let with_space = format!(" {suffix}");
                         if normalized.ends_with(&with_space) {
                             normalized = normalized.trim_end_matches(&with_space).trim().to_string();
                         }
@@ -650,8 +650,8 @@ impl EntityLinker {
             }
         }
 
-        // Remove quotes
-        normalized = normalized.trim_matches(|c| c == '\'' || c == '"' || c == '"' || c == '"').to_string();
+        // Remove quotes (straight and curly quotes)
+        normalized = normalized.trim_matches(|c| c == '\'' || c == '"' || c == '\u{201C}' || c == '\u{201D}').to_string();
 
         // Normalize whitespace
         normalized = normalized.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -1065,7 +1065,7 @@ impl LinkedTripleStore {
         output.push_str("# === Entities ===\n\n");
         for entity in &self.entities {
             if let Some(uri) = &entity.rdf_uri {
-                output.push_str(&format!("<{}>\n", uri));
+                output.push_str(&format!("<{uri}>\n"));
                 output.push_str(&format!("    a {} ;\n", entity.entity_type.rdf_type()));
                 output.push_str(&format!(
                     "    rdfs:label \"{}\"@ko ;\n",
@@ -1082,11 +1082,11 @@ impl LinkedTripleStore {
                 }
 
                 if let Some(qid) = entity.external_ids.get("wikidata") {
-                    output.push_str(&format!("    schema:sameAs wd:{} ;\n", qid));
+                    output.push_str(&format!("    schema:sameAs wd:{qid} ;\n"));
                 }
 
                 if let Some(dbp) = entity.external_ids.get("dbpedia") {
-                    output.push_str(&format!("    schema:sameAs dbpedia:{} ;\n", dbp));
+                    output.push_str(&format!("    schema:sameAs dbpedia:{dbp} ;\n"));
                 }
 
                 output.push_str(&format!(
@@ -1163,7 +1163,7 @@ impl LinkedTripleStore {
         });
 
         serde_json::to_string_pretty(&json_ld)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize JSON-LD: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to serialize JSON-LD: {e}"))
     }
 
     /// Export to RDF/XML format
@@ -1192,8 +1192,7 @@ impl LinkedTripleStore {
 
                 if let Some(qid) = entity.external_ids.get("wikidata") {
                     output.push_str(&format!(
-                        "    <schema:sameAs rdf:resource=\"http://www.wikidata.org/entity/{}\"/>\n",
-                        qid
+                        "    <schema:sameAs rdf:resource=\"http://www.wikidata.org/entity/{qid}\"/>\n"
                     ));
                 }
 
@@ -1206,7 +1205,7 @@ impl LinkedTripleStore {
             output.push_str(&format!("  <rdf:Description rdf:about=\"{}\">\n", xml_escape(&triple.subject_uri)));
             output.push_str(&format!(
                 "    <{} rdf:resource=\"{}\"/>\n",
-                triple.predicate_uri.replace("schema:", "schema:"),
+                &triple.predicate_uri,
                 xml_escape(&triple.object_uri)
             ));
             output.push_str("  </rdf:Description>\n\n");

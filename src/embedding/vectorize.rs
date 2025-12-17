@@ -135,7 +135,7 @@ impl Embedder {
     ) -> Result<Self> {
         // Load tokenizer
         let tokenizer = Tokenizer::from_file(&tokenizer_path)
-            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {e}"))?;
 
         // Load model config
         let bert_config: BertConfig = serde_json::from_str(
@@ -214,7 +214,7 @@ impl Embedder {
             .map(|text| {
                 self.tokenizer
                     .encode(text.as_str(), true)
-                    .map_err(|e| anyhow::anyhow!("Tokenization failed: {}", e))
+                    .map_err(|e| anyhow::anyhow!("Tokenization failed: {e}"))
             })
             .collect::<Result<Vec<_>>>()?;
 

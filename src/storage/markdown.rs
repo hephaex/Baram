@@ -416,7 +416,7 @@ impl CommentRenderer {
         // Handle deleted comments
         if comment.is_deleted {
             if self.config.show_deleted_placeholder {
-                writeln!(output, "{}*[삭제된 댓글입니다]*\n", prefix).unwrap();
+                writeln!(output, "{prefix}*[삭제된 댓글입니다]*\n").unwrap();
             }
             return output;
         }
@@ -448,13 +448,13 @@ impl CommentRenderer {
 
         // Write header
         writeln!(output, "{}{}", prefix, header_parts.join(" | ")).unwrap();
-        writeln!(output, "{}", prefix).unwrap();
+        writeln!(output, "{prefix}").unwrap();
 
         // Comment content (wrap each line with prefix)
         for line in comment.content.lines() {
-            writeln!(output, "{}{}", prefix, line).unwrap();
+            writeln!(output, "{prefix}{line}").unwrap();
         }
-        writeln!(output, "{}", prefix).unwrap();
+        writeln!(output, "{prefix}").unwrap();
 
         // Recursively render replies
         if !comment.replies.is_empty() {
@@ -510,8 +510,7 @@ impl CommentRenderer {
         let max_depth = Self::calculate_max_depth(comments);
 
         format!(
-            "📊 **댓글 통계**: 총 {} 개 (최상위 {} | 답글 {} | BEST {}) | 최대 깊이: {}",
-            total, top_level, replies, best_count, max_depth
+            "📊 **댓글 통계**: 총 {total} 개 (최상위 {top_level} | 답글 {replies} | BEST {best_count}) | 최대 깊이: {max_depth}"
         )
     }
 
@@ -857,7 +856,7 @@ mod tests {
         let mut articles = Vec::new();
         for i in 0..3 {
             let mut article = create_test_article();
-            article.aid = format!("{:010}", i);
+            article.aid = format!("{i:010}");
             articles.push(article);
         }
 

@@ -557,10 +557,10 @@ impl std::fmt::Display for FailoverError {
         match self {
             Self::NoAvailableTarget => write!(f, "No available target for failover"),
             Self::CooldownActive { remaining_secs } => {
-                write!(f, "Failover cooldown active, {} seconds remaining", remaining_secs)
+                write!(f, "Failover cooldown active, {remaining_secs} seconds remaining")
             }
-            Self::InstanceNotFound(i) => write!(f, "Instance not found: {}", i),
-            Self::ScheduleUpdateFailed(msg) => write!(f, "Schedule update failed: {}", msg),
+            Self::InstanceNotFound(i) => write!(f, "Instance not found: {i}"),
+            Self::ScheduleUpdateFailed(msg) => write!(f, "Schedule update failed: {msg}"),
         }
     }
 }
@@ -748,10 +748,10 @@ pub enum OverrideError {
 impl std::fmt::Display for OverrideError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidHour(h) => write!(f, "Invalid hour: {}", h),
-            Self::NotFound(id) => write!(f, "Override not found: {}", id),
+            Self::InvalidHour(h) => write!(f, "Invalid hour: {h}"),
+            Self::NotFound(id) => write!(f, "Override not found: {id}"),
             Self::AlreadyExists => write!(f, "Override already exists"),
-            Self::ScheduleUpdateFailed(msg) => write!(f, "Schedule update failed: {}", msg),
+            Self::ScheduleUpdateFailed(msg) => write!(f, "Schedule update failed: {msg}"),
         }
     }
 }

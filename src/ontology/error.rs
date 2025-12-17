@@ -186,106 +186,105 @@ impl fmt::Display for OntologyError {
         match self {
             // Extraction
             OntologyError::ExtractionFailed { article_id, reason } => {
-                write!(f, "Extraction failed for article '{}': {}", article_id, reason)
+                write!(f, "Extraction failed for article '{article_id}': {reason}")
             }
             OntologyError::NoEntitiesFound { article_id } => {
-                write!(f, "No entities found in article '{}'", article_id)
+                write!(f, "No entities found in article '{article_id}'")
             }
             OntologyError::InvalidEntityType { value } => {
-                write!(f, "Invalid entity type: '{}'", value)
+                write!(f, "Invalid entity type: '{value}'")
             }
             OntologyError::InvalidRelationType { value } => {
-                write!(f, "Invalid relation type: '{}'", value)
+                write!(f, "Invalid relation type: '{value}'")
             }
 
             // LLM Response
             OntologyError::LlmResponseParseFailed { reason, .. } => {
-                write!(f, "Failed to parse LLM response: {}", reason)
+                write!(f, "Failed to parse LLM response: {reason}")
             }
             OntologyError::EmptyLlmResponse => {
                 write!(f, "LLM response is empty or malformed")
             }
             OntologyError::InvalidLlmJson { reason } => {
-                write!(f, "Invalid JSON in LLM response: {}", reason)
+                write!(f, "Invalid JSON in LLM response: {reason}")
             }
 
             // Verification
             OntologyError::HallucinationDetected { entity, reason } => {
-                write!(f, "Hallucination detected for '{}': {}", entity, reason)
+                write!(f, "Hallucination detected for '{entity}': {reason}")
             }
             OntologyError::VerificationFailed { subject, predicate, object, reason } => {
                 write!(
                     f,
-                    "Verification failed for relation ({} {} {}): {}",
-                    subject, predicate, object, reason
+                    "Verification failed for relation ({subject} {predicate} {object}): {reason}"
                 )
             }
 
             // Linking
             OntologyError::LinkingFailed { entity, reason } => {
-                write!(f, "Entity linking failed for '{}': {}", entity, reason)
+                write!(f, "Entity linking failed for '{entity}': {reason}")
             }
             OntologyError::KnowledgeBaseEntryNotFound { canonical_name } => {
-                write!(f, "Knowledge base entry not found: '{}'", canonical_name)
+                write!(f, "Knowledge base entry not found: '{canonical_name}'")
             }
             OntologyError::InvalidKnowledgeBase { reason } => {
-                write!(f, "Invalid knowledge base: {}", reason)
+                write!(f, "Invalid knowledge base: {reason}")
             }
 
             // Storage
             OntologyError::StorageDirectoryNotFound { path } => {
-                write!(f, "Storage directory not found: {:?}", path)
+                write!(f, "Storage directory not found: {path:?}")
             }
             OntologyError::StorageDirectoryCreationFailed { path, reason } => {
-                write!(f, "Failed to create storage directory {:?}: {}", path, reason)
+                write!(f, "Failed to create storage directory {path:?}: {reason}")
             }
             OntologyError::StorageSaveFailed { article_id, reason } => {
-                write!(f, "Failed to save article '{}': {}", article_id, reason)
+                write!(f, "Failed to save article '{article_id}': {reason}")
             }
             OntologyError::StorageLoadFailed { article_id, reason } => {
-                write!(f, "Failed to load article '{}': {}", article_id, reason)
+                write!(f, "Failed to load article '{article_id}': {reason}")
             }
             OntologyError::ArticleNotFound { article_id } => {
-                write!(f, "Article not found in storage: '{}'", article_id)
+                write!(f, "Article not found in storage: '{article_id}'")
             }
             OntologyError::IndexCorrupted { reason } => {
-                write!(f, "Storage index corrupted: {}", reason)
+                write!(f, "Storage index corrupted: {reason}")
             }
 
             // Serialization
             OntologyError::JsonSerializationFailed { reason } => {
-                write!(f, "JSON serialization failed: {}", reason)
+                write!(f, "JSON serialization failed: {reason}")
             }
             OntologyError::JsonDeserializationFailed { reason } => {
-                write!(f, "JSON deserialization failed: {}", reason)
+                write!(f, "JSON deserialization failed: {reason}")
             }
             OntologyError::RdfExportFailed { format, reason } => {
-                write!(f, "RDF export to {} failed: {}", format, reason)
+                write!(f, "RDF export to {format} failed: {reason}")
             }
 
             // Configuration
             OntologyError::InvalidConfig { field, value, reason } => {
-                write!(f, "Invalid config '{}' = '{}': {}", field, value, reason)
+                write!(f, "Invalid config '{field}' = '{value}': {reason}")
             }
             OntologyError::MissingConfig { field } => {
-                write!(f, "Missing required config: '{}'", field)
+                write!(f, "Missing required config: '{field}'")
             }
 
             // I/O
             OntologyError::IoError { operation, path, source } => {
                 if let Some(p) = path {
-                    write!(f, "I/O error during {} on {:?}: {}", operation, p, source)
+                    write!(f, "I/O error during {operation} on {p:?}: {source}")
                 } else {
-                    write!(f, "I/O error during {}: {}", operation, source)
+                    write!(f, "I/O error during {operation}: {source}")
                 }
             }
 
             // Generic
             OntologyError::Other { context, source } => {
                 if let Some(src) = source {
-                    write!(f, "{}: {}", context, src)
+                    write!(f, "{context}: {src}")
                 } else {
-                    write!(f, "{}", context)
+                    write!(f, "{context}")
                 }
             }
         }

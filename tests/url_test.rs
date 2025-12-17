@@ -21,8 +21,7 @@ fn test_url_extraction_from_fixture() {
     for url in &urls {
         assert!(
             extractor.is_valid_article_url(url),
-            "URL should be valid: {}",
-            url
+            "URL should be valid: {url}"
         );
     }
 }
@@ -38,7 +37,7 @@ fn test_url_deduplication() {
     // Check for no duplicates
     let mut seen = std::collections::HashSet::new();
     for url in &urls {
-        assert!(seen.insert(url), "Duplicate URL found: {}", url);
+        assert!(seen.insert(url), "Duplicate URL found: {url}");
     }
 }
 
@@ -67,11 +66,11 @@ fn test_id_extraction_new_format() {
 
     for (url, expected_oid, expected_aid) in test_cases {
         let result = extractor.extract_ids(url);
-        assert!(result.is_ok(), "Should extract IDs from: {}", url);
+        assert!(result.is_ok(), "Should extract IDs from: {url}");
 
         let (oid, aid) = result.unwrap();
-        assert_eq!(oid, expected_oid, "OID mismatch for {}", url);
-        assert_eq!(aid, expected_aid, "AID mismatch for {}", url);
+        assert_eq!(oid, expected_oid, "OID mismatch for {url}");
+        assert_eq!(aid, expected_aid, "AID mismatch for {url}");
     }
 }
 
@@ -110,12 +109,10 @@ fn test_url_normalization() {
 
     for (input, expected_contains) in test_cases {
         let normalized = extractor.normalize_url(input);
-        assert!(normalized.is_some(), "Should normalize: {}", input);
+        assert!(normalized.is_some(), "Should normalize: {input}");
         assert!(
             normalized.as_ref().unwrap().contains(expected_contains),
-            "Normalized URL should contain '{}': {:?}",
-            expected_contains,
-            normalized
+            "Normalized URL should contain '{expected_contains}': {normalized:?}"
         );
     }
 }
@@ -135,8 +132,7 @@ fn test_article_url_validation() {
     for url in valid_urls {
         assert!(
             extractor.is_valid_article_url(url),
-            "Should be valid: {}",
-            url
+            "Should be valid: {url}"
         );
     }
 
@@ -151,8 +147,7 @@ fn test_article_url_validation() {
     for url in invalid_urls {
         assert!(
             !extractor.is_valid_article_url(url),
-            "Should be invalid: {}",
-            url
+            "Should be invalid: {url}"
         );
     }
 }
@@ -174,8 +169,7 @@ fn test_ssrf_prevention() {
     for url in dangerous_urls {
         assert!(
             !validators::is_safe_url(url),
-            "Should block dangerous URL: {}",
-            url
+            "Should block dangerous URL: {url}"
         );
     }
 
@@ -189,8 +183,7 @@ fn test_ssrf_prevention() {
     for url in safe_urls {
         assert!(
             validators::is_safe_url(url),
-            "Should allow safe URL: {}",
-            url
+            "Should allow safe URL: {url}"
         );
     }
 }
@@ -209,8 +202,7 @@ fn test_allowed_domains() {
     for url in allowed {
         assert!(
             validators::is_allowed_domain(url),
-            "Should allow domain: {}",
-            url
+            "Should allow domain: {url}"
         );
     }
 
@@ -224,8 +216,7 @@ fn test_allowed_domains() {
     for url in disallowed {
         assert!(
             !validators::is_allowed_domain(url),
-            "Should block domain: {}",
-            url
+            "Should block domain: {url}"
         );
     }
 }
@@ -246,10 +237,8 @@ fn test_list_url_builder_all_categories() {
         let url = ListUrlBuilder::main_list(category, "20241215", 1);
 
         assert!(
-            url.contains(&format!("sid1={}", expected_sid)),
-            "URL should contain sid1={}: {}",
-            expected_sid,
-            url
+            url.contains(&format!("sid1={expected_sid}")),
+            "URL should contain sid1={expected_sid}: {url}"
         );
         assert!(url.contains("date=20241215"), "URL should contain date");
         assert!(url.contains("page=1"), "URL should contain page");

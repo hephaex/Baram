@@ -75,31 +75,31 @@ impl fmt::Display for SchedulerError {
                 )
             }
             Self::InvalidHour { hour } => {
-                write!(f, "Invalid hour '{}'. Must be 0-23", hour)
+                write!(f, "Invalid hour '{hour}'. Must be 0-23")
             }
             Self::ScheduleNotFound { date } => {
-                write!(f, "Schedule not found for date: {}", date)
+                write!(f, "Schedule not found for date: {date}")
             }
             Self::ScheduleGenerationFailed { reason } => {
-                write!(f, "Failed to generate schedule: {}", reason)
+                write!(f, "Failed to generate schedule: {reason}")
             }
             Self::TriggerConfigError { field, reason } => {
-                write!(f, "Trigger config error in '{}': {}", field, reason)
+                write!(f, "Trigger config error in '{field}': {reason}")
             }
             Self::TriggerExecutionFailed { reason } => {
-                write!(f, "Trigger execution failed: {}", reason)
+                write!(f, "Trigger execution failed: {reason}")
             }
             Self::CacheError { operation, reason } => {
-                write!(f, "Cache error during '{}': {}", operation, reason)
+                write!(f, "Cache error during '{operation}': {reason}")
             }
             Self::SerializationError { reason } => {
-                write!(f, "Serialization error: {}", reason)
+                write!(f, "Serialization error: {reason}")
             }
             Self::IoError { operation, reason } => {
-                write!(f, "IO error during '{}': {}", operation, reason)
+                write!(f, "IO error during '{operation}': {reason}")
             }
             Self::InvalidTimezone { tz } => {
-                write!(f, "Invalid timezone: {}", tz)
+                write!(f, "Invalid timezone: {tz}")
             }
         }
     }
@@ -171,34 +171,34 @@ impl SchedulerError {
     pub fn korean_desc(&self) -> String {
         match self {
             Self::InvalidInstance { id, .. } => {
-                format!("잘못된 인스턴스 ID: '{}'", id)
+                format!("잘못된 인스턴스 ID: '{id}'")
             }
             Self::InvalidHour { hour } => {
-                format!("잘못된 시간: {} (0-23 범위여야 함)", hour)
+                format!("잘못된 시간: {hour} (0-23 범위여야 함)")
             }
             Self::ScheduleNotFound { date } => {
-                format!("스케줄을 찾을 수 없음: {}", date)
+                format!("스케줄을 찾을 수 없음: {date}")
             }
             Self::ScheduleGenerationFailed { reason } => {
-                format!("스케줄 생성 실패: {}", reason)
+                format!("스케줄 생성 실패: {reason}")
             }
             Self::TriggerConfigError { field, reason } => {
-                format!("트리거 설정 오류 ({}): {}", field, reason)
+                format!("트리거 설정 오류 ({field}): {reason}")
             }
             Self::TriggerExecutionFailed { reason } => {
-                format!("트리거 실행 실패: {}", reason)
+                format!("트리거 실행 실패: {reason}")
             }
             Self::CacheError { operation, reason } => {
-                format!("캐시 오류 ({}): {}", operation, reason)
+                format!("캐시 오류 ({operation}): {reason}")
             }
             Self::SerializationError { reason } => {
-                format!("직렬화 오류: {}", reason)
+                format!("직렬화 오류: {reason}")
             }
             Self::IoError { operation, reason } => {
-                format!("입출력 오류 ({}): {}", operation, reason)
+                format!("입출력 오류 ({operation}): {reason}")
             }
             Self::InvalidTimezone { tz } => {
-                format!("잘못된 시간대: {}", tz)
+                format!("잘못된 시간대: {tz}")
             }
         }
     }

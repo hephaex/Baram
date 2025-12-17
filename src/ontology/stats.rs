@@ -236,7 +236,7 @@ impl BatchStats {
     pub fn add_failure(&mut self, article_id: &str, error: &str) {
         self.total_articles += 1;
         self.failed += 1;
-        self.errors.push(format!("{}: {}", article_id, error));
+        self.errors.push(format!("{article_id}: {error}"));
     }
 
     /// Get success rate as percentage
@@ -333,7 +333,7 @@ impl BatchStats {
         if !self.entities_by_type.is_empty() {
             report.push_str("  - By Type:\n");
             for (t, c) in &self.entities_by_type {
-                report.push_str(&format!("    - {}: {}\n", t, c));
+                report.push_str(&format!("    - {t}: {c}\n"));
             }
         }
 
@@ -350,7 +350,7 @@ impl BatchStats {
         if !self.relations_by_type.is_empty() {
             report.push_str("  - By Type:\n");
             for (t, c) in &self.relations_by_type {
-                report.push_str(&format!("    - {}: {}\n", t, c));
+                report.push_str(&format!("    - {t}: {c}\n"));
             }
         }
 
@@ -596,7 +596,7 @@ pub fn format_bytes(bytes: usize) -> String {
     } else if bytes >= KB {
         format!("{:.2} KB", bytes as f64 / KB as f64)
     } else {
-        format!("{} B", bytes)
+        format!("{bytes} B")
     }
 }
 

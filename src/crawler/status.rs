@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-use crate::coordinator::client::{ClientError, CoordinatorClient};
+use crate::coordinator::client::CoordinatorClient;
 use crate::scheduler::rotation::CrawlerInstance;
 
 // ============================================================================

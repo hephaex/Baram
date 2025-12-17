@@ -227,11 +227,11 @@ impl CheckpointManager {
 
     /// Save checkpoint state
     pub fn save<T: Serialize>(&self, name: &str, state: &T) -> Result<PathBuf> {
-        let filename = format!("{}.checkpoint.json", name);
+        let filename = format!("{name}.checkpoint.json");
         let filepath = self.checkpoint_dir.join(&filename);
 
         // Write to temp file first, then rename (atomic)
-        let temp_path = self.checkpoint_dir.join(format!("{}.tmp", filename));
+        let temp_path = self.checkpoint_dir.join(format!("{filename}.tmp"));
 
         let file = File::create(&temp_path)
             .with_context(|| format!("Failed to create checkpoint file: {}", temp_path.display()))?;
@@ -249,7 +249,7 @@ impl CheckpointManager {
 
     /// Load checkpoint state
     pub fn load<T: for<'de> Deserialize<'de>>(&self, name: &str) -> Result<Option<T>> {
-        let filename = format!("{}.checkpoint.json", name);
+        let filename = format!("{name}.checkpoint.json");
         let filepath = self.checkpoint_dir.join(&filename);
 
         if !filepath.exists() {
@@ -268,13 +268,13 @@ impl CheckpointManager {
 
     /// Check if checkpoint exists
     pub fn exists(&self, name: &str) -> bool {
-        let filename = format!("{}.checkpoint.json", name);
+        let filename = format!("{name}.checkpoint.json");
         self.checkpoint_dir.join(filename).exists()
     }
 
     /// Delete checkpoint
     pub fn delete(&self, name: &str) -> Result<()> {
-        let filename = format!("{}.checkpoint.json", name);
+        let filename = format!("{name}.checkpoint.json");
         let filepath = self.checkpoint_dir.join(&filename);
 
         if filepath.exists() {
@@ -567,7 +567,7 @@ fn generate_session_id() -> String {
         .unwrap()
         .as_millis();
 
-    format!("session_{}", timestamp)
+    format!("session_{timestamp}")
 }
 
 // ============================================================================
@@ -676,9 +676,9 @@ mod tests {
         for i in 1..=10 {
             let should_save = manager.should_auto_save();
             if i % 5 == 0 {
-                assert!(should_save, "Should auto-save at item {}", i);
+                assert!(should_save, "Should auto-save at item {i}");
             } else {
-                assert!(!should_save, "Should not auto-save at item {}", i);
+                assert!(!should_save, "Should not auto-save at item {i}");
             }
         }
     }

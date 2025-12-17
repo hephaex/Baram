@@ -448,12 +448,12 @@ impl TriggerStatus {
         if let Some(secs) = self.seconds_until_rotation {
             let hours = secs / 3600;
             let mins = (secs % 3600) / 60;
-            output.push_str(&format!("Until Rotation: {}h {}m\n", hours, mins));
+            output.push_str(&format!("Until Rotation: {hours}h {mins}m\n"));
         }
 
         let mins = self.seconds_until_next_hour / 60;
         let secs = self.seconds_until_next_hour % 60;
-        output.push_str(&format!("Until Next Hour: {}m {}s\n", mins, secs));
+        output.push_str(&format!("Until Next Hour: {mins}m {secs}s\n"));
 
         output.push_str(&format!("Cache Valid: {}\n", self.cache_valid));
         output.push_str(&format!("Has Schedule: {}\n", self.cache_has_schedule));

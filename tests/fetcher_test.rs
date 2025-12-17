@@ -207,8 +207,7 @@ async fn test_rate_limiting() {
     // (first request immediate, second after 0.5s, third after 1s)
     assert!(
         elapsed >= Duration::from_millis(500),
-        "Rate limiting should slow down requests: {:?}",
-        elapsed
+        "Rate limiting should slow down requests: {elapsed:?}"
     );
 }
 

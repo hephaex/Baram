@@ -394,11 +394,11 @@ pub enum ConfigError {
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MissingEnvVar(var) => write!(f, "Missing environment variable: {}", var),
-            Self::MissingField(field) => write!(f, "Missing required field: {}", field),
-            Self::InvalidInstanceId(id) => write!(f, "Invalid instance ID: {}", id),
-            Self::InvalidValue(field, msg) => write!(f, "Invalid value for {}: {}", field, msg),
-            Self::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            Self::MissingEnvVar(var) => write!(f, "Missing environment variable: {var}"),
+            Self::MissingField(field) => write!(f, "Missing required field: {field}"),
+            Self::InvalidInstanceId(id) => write!(f, "Invalid instance ID: {id}"),
+            Self::InvalidValue(field, msg) => write!(f, "Invalid value for {field}: {msg}"),
+            Self::ParseError(msg) => write!(f, "Parse error: {msg}"),
         }
     }
 }

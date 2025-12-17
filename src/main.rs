@@ -677,7 +677,7 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embeddin
     let embedding = vec![0.0f32; 384];
 
     Ok(ntimes::embedding::IndexDocument {
-        id: format!("{}_{}", oid, aid),
+        id: format!("{oid}_{aid}"),
         oid,
         aid,
         title,
@@ -746,7 +746,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
             result.publisher.as_deref().unwrap_or("Unknown")
         );
         if let Some(date) = &result.published_at {
-            println!("   Published: {}", date);
+            println!("   Published: {date}");
         }
 
         // Show highlights if available
@@ -761,7 +761,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
             } else {
                 result.content.clone()
             };
-            println!("   > {}", preview);
+            println!("   > {preview}");
         }
         println!("   URL: {}", result.url);
         println!();

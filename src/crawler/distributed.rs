@@ -84,7 +84,7 @@ impl DistributedRunner {
 
         let checker = crate::storage::dedup::create_shared_checker(dedup_config)
             .await
-            .map_err(|e| RunnerError::InitError(format!("Failed to init dedup: {}", e)))?;
+            .map_err(|e| RunnerError::InitError(format!("Failed to init dedup: {e}")))?;
 
         self.dedup_checker = Some(checker);
 
@@ -115,7 +115,7 @@ impl DistributedRunner {
                 let result = checker
                     .batch_check_urls(urls)
                     .await
-                    .map_err(|e| RunnerError::CrawlError(format!("Dedup check failed: {}", e)))?;
+                    .map_err(|e| RunnerError::CrawlError(format!("Dedup check failed: {e}")))?;
 
                 tracing::debug!(
                     "Dedup check: {} new, {} existing, {} total",
@@ -139,7 +139,7 @@ impl DistributedRunner {
             Some(checker) => checker
                 .exists_by_url(url)
                 .await
-                .map_err(|e| RunnerError::CrawlError(format!("Dedup check failed: {}", e))),
+                .map_err(|e| RunnerError::CrawlError(format!("Dedup check failed: {e}"))),
             None => Ok(false),
         }
     }
@@ -162,7 +162,7 @@ impl DistributedRunner {
             checker
                 .record_crawl(&record)
                 .await
-                .map_err(|e| RunnerError::CrawlError(format!("Failed to record crawl: {}", e)))?;
+                .map_err(|e| RunnerError::CrawlError(format!("Failed to record crawl: {e}")))?;
         }
 
         Ok(())
@@ -181,7 +181,7 @@ impl DistributedRunner {
             checker
                 .record_crawl(&record)
                 .await
-                .map_err(|e| RunnerError::CrawlError(format!("Failed to record failure: {}", e)))?;
+                .map_err(|e| RunnerError::CrawlError(format!("Failed to record failure: {e}")))?;
         }
 
         Ok(())
@@ -205,7 +205,7 @@ impl DistributedRunner {
                     .batch_record_crawls(&dedup_records)
                     .await
                     .map_err(|e| {
-                        RunnerError::CrawlError(format!("Failed to batch record: {}", e))
+                        RunnerError::CrawlError(format!("Failed to batch record: {e}"))
                     })?;
 
                 Ok(count)
@@ -223,7 +223,7 @@ impl DistributedRunner {
                 let stats = checker
                     .get_stats_by_instance(self.config.instance_id.id())
                     .await
-                    .map_err(|e| RunnerError::CrawlError(format!("Failed to get stats: {}", e)))?;
+                    .map_err(|e| RunnerError::CrawlError(format!("Failed to get stats: {e}")))?;
 
                 Ok(Some(stats))
             }
@@ -609,11 +609,11 @@ pub enum RunnerError {
 impl std::fmt::Display for RunnerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InitError(msg) => write!(f, "Initialization error: {}", msg),
-            Self::CoordinatorError(msg) => write!(f, "Coordinator error: {}", msg),
-            Self::CrawlError(msg) => write!(f, "Crawl error: {}", msg),
-            Self::ConfigError(msg) => write!(f, "Config error: {}", msg),
-            Self::ShutdownError(msg) => write!(f, "Shutdown error: {}", msg),
+            Self::InitError(msg) => write!(f, "Initialization error: {msg}"),
+            Self::CoordinatorError(msg) => write!(f, "Coordinator error: {msg}"),
+            Self::CrawlError(msg) => write!(f, "Crawl error: {msg}"),
+            Self::ConfigError(msg) => write!(f, "Config error: {msg}"),
+            Self::ShutdownError(msg) => write!(f, "Shutdown error: {msg}"),
         }
     }
 }

@@ -460,7 +460,7 @@ impl CrawlerPipeline {
                                     let _ = result_tx.send(JobResult::Failed {
                                         job_id: job.job_id,
                                         url: job.url,
-                                        error: format!("Failed to read response: {}", e),
+                                        error: format!("Failed to read response: {e}"),
                                     }).await;
                                 }
                             }
@@ -545,7 +545,7 @@ impl CrawlerPipeline {
                             let _ = result_tx.send(JobResult::Failed {
                                 job_id: job.job_id,
                                 url: job.url,
-                                error: format!("Parse error: {}", e),
+                                error: format!("Parse error: {e}"),
                             }).await;
                         }
                     }
@@ -617,7 +617,7 @@ impl CrawlerPipeline {
                             let _ = result_tx.send(JobResult::Failed {
                                 job_id: job.job_id,
                                 url: job.article.url.clone(),
-                                error: format!("Storage error: {}", e),
+                                error: format!("Storage error: {e}"),
                             }).await;
                         }
                     }

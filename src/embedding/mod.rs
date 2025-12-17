@@ -337,7 +337,7 @@ impl VectorStore {
 
         if !response.status_code().is_success() {
             let error_body = response.text().await?;
-            anyhow::bail!("Index creation failed: {}", error_body);
+            anyhow::bail!("Index creation failed: {error_body}");
         }
 
         tracing::info!(index = %self.index_name, "Index created successfully");
@@ -370,7 +370,7 @@ impl VectorStore {
 
         if !response.status_code().is_success() {
             let error_body = response.text().await?;
-            anyhow::bail!("Document indexing failed: {}", error_body);
+            anyhow::bail!("Document indexing failed: {error_body}");
         }
 
         Ok(())
@@ -414,7 +414,7 @@ impl VectorStore {
             for item in items {
                 if let Some(index_result) = item.get("index") {
                     let status = index_result["status"].as_u64().unwrap_or(0);
-                    if status >= 200 && status < 300 {
+                    if (200..300).contains(&status) {
                         result.success += 1;
                     } else {
                         result.failed += 1;

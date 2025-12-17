@@ -455,7 +455,7 @@ impl AsyncDedupChecker {
             .collect();
 
         let placeholders: Vec<String> = (1..=urls_to_check.len())
-            .map(|i| format!("${}", i))
+            .map(|i| format!("${i}"))
             .collect();
 
         let query = format!(
@@ -650,9 +650,9 @@ impl AsyncDedupChecker {
     pub fn pool_status(&self) -> PoolStatus {
         let status = self.pool.status();
         PoolStatus {
-            size: status.size as usize,
-            available: status.available as usize,
-            waiting: status.waiting as usize,
+            size: status.size,
+            available: status.available,
+            waiting: status.waiting,
             max_size: self.config.pool_size,
         }
     }
@@ -810,7 +810,7 @@ mod tests {
 
         // Insert more than max_size
         for i in 0..20 {
-            cache.insert_url(format!("url{}", i));
+            cache.insert_url(format!("url{i}"));
         }
 
         // Some should have been evicted

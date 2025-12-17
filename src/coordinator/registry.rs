@@ -279,7 +279,7 @@ impl InstanceRegistry {
 
         let info = instances
             .get_mut(&instance)
-            .ok_or_else(|| RegistryError::InstanceNotFound(instance))?;
+            .ok_or(RegistryError::InstanceNotFound(instance))?;
 
         info.update_heartbeat();
         info.articles_crawled = request.articles_crawled;
@@ -380,7 +380,7 @@ impl InstanceRegistry {
 
         let info = instances
             .get_mut(&instance)
-            .ok_or_else(|| RegistryError::InstanceNotFound(instance))?;
+            .ok_or(RegistryError::InstanceNotFound(instance))?;
 
         info.set_maintenance(enabled);
         Ok(())
@@ -470,13 +470,13 @@ pub enum RegistryError {
 impl std::fmt::Display for RegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidInstanceId(id) => write!(f, "Invalid instance ID: {}", id),
-            Self::InstanceNotFound(instance) => write!(f, "Instance not found: {}", instance),
+            Self::InvalidInstanceId(id) => write!(f, "Invalid instance ID: {id}"),
+            Self::InstanceNotFound(instance) => write!(f, "Instance not found: {instance}"),
             Self::CapacityExceeded { current, max } => {
-                write!(f, "Registry at capacity: {}/{}", current, max)
+                write!(f, "Registry at capacity: {current}/{max}")
             }
             Self::AlreadyRegistered(instance) => {
-                write!(f, "Instance already registered: {}", instance)
+                write!(f, "Instance already registered: {instance}")
             }
         }
     }

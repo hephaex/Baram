@@ -58,15 +58,13 @@ fn test_rotation_determinism_across_calls() {
         assert_eq!(
             schedule.slots.len(),
             schedules[0].slots.len(),
-            "Schedule {} has different slot count",
-            i
+            "Schedule {i} has different slot count"
         );
 
         for (j, slot) in schedule.slots.iter().enumerate() {
             assert_eq!(
                 slot.instance, schedules[0].slots[j].instance,
-                "Schedule {} differs at hour {}",
-                i, j
+                "Schedule {i} differs at hour {j}"
             );
         }
     }
@@ -121,8 +119,7 @@ fn test_category_coverage_over_day() {
     for category in NewsCategory::all() {
         assert!(
             category_counts.contains_key(&category),
-            "Category {:?} was never assigned",
-            category
+            "Category {category:?} was never assigned"
         );
     }
 }
@@ -208,7 +205,7 @@ async fn test_distribution_workflow() {
     // Verify all instances have state
     for instance in CrawlerInstance::all() {
         let state = distributor.get_instance_state(instance).await;
-        assert!(state.is_some(), "Instance {:?} should have state", instance);
+        assert!(state.is_some(), "Instance {instance:?} should have state");
         assert!(!state.unwrap().assigned_hours.is_empty());
     }
 }
@@ -264,8 +261,7 @@ async fn test_distribution_update() {
         assert_eq!(
             slot.instance,
             CrawlerInstance::Sub2,
-            "Hour {} should be assigned to Sub2",
-            hour
+            "Hour {hour} should be assigned to Sub2"
         );
     }
 }
@@ -292,7 +288,7 @@ async fn test_failover_on_consecutive_failures() {
     // Simulate failures for Main
     for i in 0..3 {
         manager
-            .process_failure(CrawlerInstance::Main, Some(format!("Error {}", i)))
+            .process_failure(CrawlerInstance::Main, Some(format!("Error {i}")))
             .await;
     }
 
