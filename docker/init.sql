@@ -6,6 +6,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- Trigram matching for fuzzy search
 CREATE EXTENSION IF NOT EXISTS "btree_gin"; -- GIN indexes on B-tree types
+CREATE EXTENSION IF NOT EXISTS "vector";   -- pgvector for vector similarity search
 
 -- Set timezone to UTC for consistency
 SET timezone = 'UTC';
@@ -64,6 +65,10 @@ CREATE TABLE IF NOT EXISTS articles_raw (
     -- Full-text search vector
     search_vector tsvector,
 
+    -- Vector embeddings for semantic search (1024 dimensions for multilingual-e5-large)
+    title_embedding vector(1024),
+    content_embedding vector(1024),
+
     -- Audit fields
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -84,6 +89,14 @@ CREATE INDEX idx_articles_search_vector ON articles_raw USING GIN(search_vector)
 -- Composite index for common query patterns
 CREATE INDEX idx_articles_category_published ON articles_raw(category, published_at DESC);
 CREATE INDEX idx_articles_oid_aid ON articles_raw(oid, aid);
+
+-- HNSW indexes for vector similarity search (cosine distance)
+CREATE INDEX idx_articles_title_embedding ON articles_raw
+    USING hnsw (title_embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+CREATE INDEX idx_articles_content_embedding ON articles_raw
+    USING hnsw (content_embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
 
 -- Trigger to automatically update search_vector
 CREATE OR REPLACE FUNCTION articles_search_vector_update() RETURNS trigger AS $$
@@ -390,6 +403,74 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to search articles by semantic similarity (vector search)
+CREATE OR REPLACE FUNCTION search_articles_by_embedding(
+    p_query_embedding vector(1024),
+    p_limit INTEGER DEFAULT 10,
+    p_threshold REAL DEFAULT 0.7
+)
+RETURNS TABLE (
+    article_id UUID,
+    title TEXT,
+    publisher VARCHAR(255),
+    published_at TIMESTAMPTZ,
+    similarity_score REAL
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        a.id,
+        a.title,
+        a.publisher,
+        a.published_at,
+        (1 - (a.content_embedding <=> p_query_embedding))::REAL AS similarity_score
+    FROM articles_raw a
+    WHERE a.content_embedding IS NOT NULL
+      AND (1 - (a.content_embedding <=> p_query_embedding)) >= p_threshold
+    ORDER BY a.content_embedding <=> p_query_embedding
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to find similar articles
+CREATE OR REPLACE FUNCTION find_similar_articles(
+    p_article_id UUID,
+    p_limit INTEGER DEFAULT 5
+)
+RETURNS TABLE (
+    article_id UUID,
+    title TEXT,
+    publisher VARCHAR(255),
+    published_at TIMESTAMPTZ,
+    similarity_score REAL
+) AS $$
+DECLARE
+    v_embedding vector(1024);
+BEGIN
+    -- Get the embedding of the source article
+    SELECT content_embedding INTO v_embedding
+    FROM articles_raw
+    WHERE id = p_article_id;
+
+    IF v_embedding IS NULL THEN
+        RETURN;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        a.id,
+        a.title,
+        a.publisher,
+        a.published_at,
+        (1 - (a.content_embedding <=> v_embedding))::REAL AS similarity_score
+    FROM articles_raw a
+    WHERE a.id != p_article_id
+      AND a.content_embedding IS NOT NULL
+    ORDER BY a.content_embedding <=> v_embedding
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ============================================================================
 -- Initial Data and Configuration
 -- ============================================================================
@@ -428,6 +509,8 @@ COMMENT ON COLUMN articles_raw.oid IS 'Naver publisher/organization ID';
 COMMENT ON COLUMN articles_raw.aid IS 'Naver article ID';
 COMMENT ON COLUMN articles_raw.content_hash IS 'SHA256 hash for duplicate detection';
 COMMENT ON COLUMN articles_raw.search_vector IS 'Auto-generated tsvector for full-text search';
+COMMENT ON COLUMN articles_raw.title_embedding IS 'Vector embedding (1024d) for title semantic search';
+COMMENT ON COLUMN articles_raw.content_embedding IS 'Vector embedding (1024d) for content semantic search';
 
 COMMENT ON COLUMN comments_raw.comment_no IS 'Naver unique comment identifier';
 COMMENT ON COLUMN comments_raw.parent_comment_no IS 'Parent comment for nested replies (NULL = top-level)';

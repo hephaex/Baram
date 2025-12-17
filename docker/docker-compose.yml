@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # PostgreSQL 18 - Primary data storage for articles and comments
+  # PostgreSQL 18 with pgvector - Primary data storage with vector search
   postgres:
-    image: postgres:18-alpine
+    image: pgvector/pgvector:pg18
     container_name: ntimes-postgres
     restart: unless-stopped
     environment:

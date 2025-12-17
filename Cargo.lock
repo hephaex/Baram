@@ -2329,6 +2329,7 @@ dependencies = [
  "hf-hub",
  "html-escape",
  "opensearch",
+ "pgvector",
  "proptest",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -2684,6 +2685,16 @@ checksum = "bf1d70880e76bdc13ba52eafa6239ce793d85c8e43896507e43dd8984ff05b82"
 dependencies = [
  "pest",
  "sha2",
+]
+
+[[package]]
+name = "pgvector"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc58e2d255979a31caa7cabfa7aac654af0354220719ab7a68520ae7a91e8c0b"
+dependencies = [
+ "bytes",
+ "postgres-types",
 ]
 
 [[package]]
