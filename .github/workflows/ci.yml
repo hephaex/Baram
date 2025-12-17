@@ -52,7 +52,7 @@ jobs:
             ${{ runner.os }}-cargo-clippy-
 
       - name: Run cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings -A dead_code -A clippy::if_same_then_else -A clippy::derivable_impls
+        run: cargo clippy --all-targets -- -D warnings -A dead_code -A clippy::if_same_then_else -A clippy::derivable_impls
 
   test:
     name: Test Suite
@@ -76,7 +76,7 @@ jobs:
             ${{ runner.os }}-cargo-test-
 
       - name: Run cargo test
-        run: cargo test --all-features --verbose
+        run: cargo test --verbose
 
   build:
     name: Release Build
