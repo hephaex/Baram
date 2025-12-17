@@ -58,9 +58,9 @@ services:
       - "-c"
       - "log_line_prefix=%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
 
-  # OpenSearch 2.11+ - Vector database with Korean (Nori) analyzer
+  # OpenSearch 3.4+ - Vector database with Korean (Nori) analyzer
   opensearch:
-    image: opensearchproject/opensearch:2.11.1
+    image: opensearchproject/opensearch:3.4.0
     container_name: ntimes-opensearch
     restart: unless-stopped
     environment:
@@ -135,7 +135,7 @@ services:
 
   # OpenSearch Dashboards (Optional - for development/debugging)
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.11.1
+    image: opensearchproject/opensearch-dashboards:3.4.0
     container_name: ntimes-dashboards
     restart: unless-stopped
     profiles:
