@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile.gpu
     container_name: ntimes-crawler-gpu
     restart: unless-stopped
-    command: ["crawler", "--instance", "gpu", "--coordinator", "http://coordinator:8000"]
+    command: ["crawl", "--help"]  # TODO: Add proper crawl arguments when coordinator is implemented
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: gpu
@@ -83,7 +83,7 @@ services:
       dockerfile: Dockerfile.gpu
     container_name: ntimes-embedding-gpu
     restart: unless-stopped
-    command: ["embedding-server", "--port", "8090"]
+    command: ["--help"]  # TODO: Implement embedding-server subcommand
     environment:
       RUST_LOG: ${EMBEDDING_LOG_LEVEL:-info}
       DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"

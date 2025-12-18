@@ -1,4 +1,4 @@
-# OpenSearch Configuration for nTimes Naver News Crawler
+# OpenSearch 3.x Configuration for nTimes Naver News Crawler
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
 
@@ -8,9 +8,9 @@
 cluster.name: ntimes-cluster
 node.name: ntimes-node-1
 
-# Node roles
+# Node roles (use cluster_manager instead of deprecated master)
 node.roles:
-  - master
+  - cluster_manager
   - data
   - ingest
 
@@ -32,10 +32,6 @@ http.cors.allow-headers: X-Requested-With, X-Auth-Token, Content-Type, Content-L
 # ============================================================================
 discovery.type: single-node
 
-# Disable bootstrap checks for single-node development
-discovery.seed_hosts: []
-cluster.initial_master_nodes: []
-
 # ============================================================================
 # Memory Settings
 # ============================================================================
@@ -49,138 +45,28 @@ indices.breaker.request.limit: 40%
 # ============================================================================
 # Performance Tuning
 # ============================================================================
-
-# Thread pools
 thread_pool.write.queue_size: 1000
 thread_pool.search.queue_size: 1000
-
-# Index settings
 indices.memory.index_buffer_size: 20%
 indices.queries.cache.size: 10%
 
-# Refresh interval (default 1s, increase for better indexing performance)
-index.refresh_interval: 5s
-
-# Translog settings for durability vs performance
-index.translog.durability: async
-index.translog.sync_interval: 5s
-index.translog.flush_threshold_size: 512mb
+# ============================================================================
+# Security Configuration (Disabled for development)
+# ============================================================================
+plugins.security.disabled: true
 
 # ============================================================================
-# Korean Language Support - Nori Plugin
+# k-NN Settings for Vector Search
 # ============================================================================
-# Note: Nori plugin must be installed in the Docker image
-# The plugin provides Korean text analysis using mecab-ko dictionary
-
-# ============================================================================
-# Security Configuration
-# ============================================================================
-# Security plugin settings (disabled for development, enable for production)
-plugins.security.disabled: false
-
-# SSL/TLS settings (disabled for development)
-plugins.security.ssl.http.enabled: false
-plugins.security.ssl.transport.enabled: false
-
-# Authentication (basic auth enabled)
-plugins.security.allow_default_init_securityindex: true
-plugins.security.audit.type: internal_opensearch
-plugins.security.enable_snapshot_restore_privilege: true
-plugins.security.check_snapshot_restore_write_privileges: true
-
-# Admin certificates (not used in single-node dev setup)
-plugins.security.authcz.admin_dn: []
-plugins.security.nodes_dn: []
-
-# REST API authentication
-plugins.security.restapi.roles_enabled: ["all_access", "security_rest_api_access"]
+# Note: k-NN plugin settings configured at index level in OpenSearch 3.x
 
 # ============================================================================
-# Index Templates and Defaults
+# Advanced Settings
 # ============================================================================
-
-# Default number of shards (1 for development, increase for production)
-index.number_of_shards: 1
-index.number_of_replicas: 0
-
-# Codec for compression
-index.codec: best_compression
-
-# ============================================================================
-# Logging Configuration
-# ============================================================================
-logger.level: INFO
-logger.org.opensearch: INFO
-
-# Slow query logging
-index.search.slowlog.threshold.query.warn: 10s
-index.search.slowlog.threshold.query.info: 5s
-index.search.slowlog.threshold.fetch.warn: 1s
-index.indexing.slowlog.threshold.index.warn: 10s
-index.indexing.slowlog.threshold.index.info: 5s
+action.destructive_requires_name: true
+action.auto_create_index: true
 
 # ============================================================================
 # Snapshot and Restore
 # ============================================================================
 path.repo: ["/usr/share/opensearch/backup"]
-
-# ============================================================================
-# Machine Learning (if using k-NN for vector search)
-# ============================================================================
-# Enable k-NN plugin for vector similarity search
-plugins.ml_commons.enabled: true
-plugins.ml_commons.native_memory_threshold: 90
-
-# k-NN settings for vector search
-knn.plugin.enabled: true
-knn.algo_param.index_thread_qty: 1
-knn.memory.circuit_breaker.enabled: true
-knn.memory.circuit_breaker.limit: 50%
-
-# ============================================================================
-# Advanced Settings
-# ============================================================================
-
-# Action destructive requires name
-action.destructive_requires_name: true
-
-# Automatic index creation
-action.auto_create_index: true
-
-# Script settings (enable for aggregations and custom scoring)
-script.allowed_types: inline
-script.allowed_contexts: score, filter, update, search
-
-# Maximum result window
-index.max_result_window: 10000
-
-# Maximum terms count
-index.max_terms_count: 65536
-
-# ============================================================================
-# Monitoring and Stats
-# ============================================================================
-monitor.jvm.gc.enabled: true
-monitor.process.enabled: true
-monitor.os.enabled: true
-monitor.fs.enabled: true
-
-# ============================================================================
-# Compatibility
-# ============================================================================
-compatibility.override_main_response_version: false
-
-# ============================================================================
-# Notes
-# ============================================================================
-# Production recommendations:
-# 1. Enable SSL/TLS for all communications
-# 2. Set up proper authentication and authorization
-# 3. Increase number_of_shards based on data volume
-# 4. Set number_of_replicas >= 1 for high availability
-# 5. Configure snapshot repository for backups
-# 6. Adjust heap size based on available memory (50% of RAM, max 32GB)
-# 7. Enable audit logging
-# 8. Use dedicated master nodes for large clusters
-# 9. Monitor JVM heap usage and adjust settings accordingly
-# 10. Configure proper index lifecycle management (ILM)
