@@ -18,7 +18,7 @@ use ntimes::config::{Config, DatabaseConfig};
 use ntimes::crawler::fetcher::NaverFetcher;
 use ntimes::crawler::list::NewsListCrawler;
 use ntimes::crawler::Crawler;
-use ntimes::embedding::{EmbeddingConfig, Embedder};
+use ntimes::embedding::{Embedder, EmbeddingConfig};
 use ntimes::models::{CrawlState, NewsCategory};
 use ntimes::parser::ArticleParser;
 use ntimes::storage::{ArticleStorage, CrawlStatus, Database};
@@ -1035,9 +1035,7 @@ async fn embedding_server(
     println!("  POST /embed/batch - Batch text embedding");
     println!();
 
-    axum::serve(listener, app)
-        .await
-        .context("Server error")?;
+    axum::serve(listener, app).await.context("Server error")?;
 
     Ok(())
 }
@@ -1056,12 +1054,14 @@ async fn root_handler() -> Json<serde_json::Value> {
 }
 
 /// Health check handler
-async fn health_handler(
-    State(state): State<Arc<EmbeddingServerState>>,
-) -> Json<HealthResponse> {
+async fn health_handler(State(state): State<Arc<EmbeddingServerState>>) -> Json<HealthResponse> {
     let ready = state.ready.load(std::sync::atomic::Ordering::Relaxed);
     Json(HealthResponse {
-        status: if ready { "healthy".to_string() } else { "loading".to_string() },
+        status: if ready {
+            "healthy".to_string()
+        } else {
+            "loading".to_string()
+        },
         model: state.model_name.clone(),
         ready,
         device: "auto".to_string(),
@@ -1087,7 +1087,10 @@ async fn embed_handler(
     match embedder.embed(&request.text) {
         Ok(embedding) => {
             let dimension = embedding.len();
-            Ok(Json(EmbedResponse { embedding, dimension }))
+            Ok(Json(EmbedResponse {
+                embedding,
+                dimension,
+            }))
         }
         Err(e) => {
             tracing::error!(error = %e, "Embedding failed");
