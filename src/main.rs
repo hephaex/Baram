@@ -1,12 +1,24 @@
 use anyhow::{Context, Result};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use clap::{Parser, Subcommand};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ntimes::config::{Config, DatabaseConfig};
 use ntimes::crawler::fetcher::NaverFetcher;
 use ntimes::crawler::list::NewsListCrawler;
 use ntimes::crawler::Crawler;
+use ntimes::embedding::{EmbeddingConfig, Embedder};
 use ntimes::models::{CrawlState, NewsCategory};
 use ntimes::parser::ArticleParser;
 use ntimes::storage::{ArticleStorage, CrawlStatus, Database};
@@ -129,6 +141,33 @@ enum Commands {
         #[arg(short, long, default_value = "./output/crawl.db")]
         database: PathBuf,
     },
+
+    /// Start embedding server for vector generation
+    EmbeddingServer {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8090")]
+        port: u16,
+
+        /// Host to bind to
+        #[arg(long, default_value = "0.0.0.0")]
+        host: String,
+
+        /// Model ID (HuggingFace model or local path)
+        #[arg(short, long, default_value = "intfloat/multilingual-e5-large")]
+        model: String,
+
+        /// Maximum sequence length
+        #[arg(long, default_value = "512")]
+        max_seq_length: usize,
+
+        /// Batch size for inference
+        #[arg(long, default_value = "32")]
+        batch_size: usize,
+
+        /// Use GPU if available
+        #[arg(long, default_value = "true")]
+        use_gpu: bool,
+    },
 }
 
 #[tokio::main]
@@ -234,6 +273,24 @@ async fn main() -> Result<()> {
 
         Commands::Stats { database } => {
             stats(database)?;
+        }
+
+        Commands::EmbeddingServer {
+            port,
+            host,
+            model,
+            max_seq_length,
+            batch_size,
+            use_gpu,
+        } => {
+            tracing::info!(
+                host = %host,
+                port = %port,
+                model = %model,
+                use_gpu = %use_gpu,
+                "Starting embedding server"
+            );
+            embedding_server(host, port, model, max_seq_length, batch_size, use_gpu).await?;
         }
     }
 
@@ -845,4 +902,248 @@ async fn ontology(input: String, format: String, output: Option<String>) -> Resu
         println!("  Output: {output}");
     }
     Ok(())
+}
+
+// ============================================================================
+// Embedding Server Implementation
+// ============================================================================
+
+/// Shared state for embedding server
+struct EmbeddingServerState {
+    embedder: RwLock<Embedder>,
+    model_name: String,
+    ready: std::sync::atomic::AtomicBool,
+}
+
+/// Request for single text embedding
+#[derive(Debug, Deserialize)]
+struct EmbedRequest {
+    text: String,
+}
+
+/// Request for batch text embedding
+#[derive(Debug, Deserialize)]
+struct BatchEmbedRequest {
+    texts: Vec<String>,
+}
+
+/// Response for embedding requests
+#[derive(Debug, Serialize)]
+struct EmbedResponse {
+    embedding: Vec<f32>,
+    dimension: usize,
+}
+
+/// Response for batch embedding requests
+#[derive(Debug, Serialize)]
+struct BatchEmbedResponse {
+    embeddings: Vec<Vec<f32>>,
+    count: usize,
+    dimension: usize,
+}
+
+/// Health check response
+#[derive(Debug, Serialize)]
+struct HealthResponse {
+    status: String,
+    model: String,
+    ready: bool,
+    device: String,
+}
+
+/// Error response
+#[derive(Debug, Serialize)]
+struct ErrorResponse {
+    error: String,
+}
+
+/// Start the embedding server
+async fn embedding_server(
+    host: String,
+    port: u16,
+    model: String,
+    max_seq_length: usize,
+    batch_size: usize,
+    use_gpu: bool,
+) -> Result<()> {
+    println!("Starting Embedding Server");
+    println!("=========================");
+    println!("  Host: {host}");
+    println!("  Port: {port}");
+    println!("  Model: {model}");
+    println!("  Max Sequence Length: {max_seq_length}");
+    println!("  Batch Size: {batch_size}");
+    println!("  Use GPU: {use_gpu}");
+    println!();
+
+    // Initialize embedding model
+    println!("Loading embedding model...");
+    let config = EmbeddingConfig {
+        model_id: model.clone(),
+        embedding_dim: 1024, // multilingual-e5-large uses 1024 dimensions
+        max_seq_length,
+        use_gpu,
+        batch_size,
+        normalize: true,
+    };
+
+    let embedder = Embedder::from_pretrained(config).context("Failed to load embedding model")?;
+
+    let device = if use_gpu {
+        "cuda (if available)"
+    } else {
+        "cpu"
+    };
+
+    println!("Model loaded successfully!");
+    println!("  Device: {device}");
+    println!();
+
+    // Create shared state
+    let state = Arc::new(EmbeddingServerState {
+        embedder: RwLock::new(embedder),
+        model_name: model,
+        ready: std::sync::atomic::AtomicBool::new(true),
+    });
+
+    // Build router
+    let app = Router::new()
+        .route("/health", get(health_handler))
+        .route("/embed", post(embed_handler))
+        .route("/embed/batch", post(batch_embed_handler))
+        .route("/", get(root_handler))
+        .layer(TraceLayer::new_for_http())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
+        .with_state(state);
+
+    // Start server
+    let addr = format!("{host}:{port}");
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .context(format!("Failed to bind to {addr}"))?;
+
+    println!("Embedding server listening on http://{addr}");
+    println!();
+    println!("Endpoints:");
+    println!("  GET  /health      - Health check");
+    println!("  POST /embed       - Single text embedding");
+    println!("  POST /embed/batch - Batch text embedding");
+    println!();
+
+    axum::serve(listener, app)
+        .await
+        .context("Server error")?;
+
+    Ok(())
+}
+
+/// Root handler - welcome message
+async fn root_handler() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "service": "nTimes Embedding Server",
+        "version": env!("CARGO_PKG_VERSION"),
+        "endpoints": {
+            "health": "GET /health",
+            "embed": "POST /embed",
+            "batch_embed": "POST /embed/batch"
+        }
+    }))
+}
+
+/// Health check handler
+async fn health_handler(
+    State(state): State<Arc<EmbeddingServerState>>,
+) -> Json<HealthResponse> {
+    let ready = state.ready.load(std::sync::atomic::Ordering::Relaxed);
+    Json(HealthResponse {
+        status: if ready { "healthy".to_string() } else { "loading".to_string() },
+        model: state.model_name.clone(),
+        ready,
+        device: "auto".to_string(),
+    })
+}
+
+/// Single text embedding handler
+async fn embed_handler(
+    State(state): State<Arc<EmbeddingServerState>>,
+    Json(request): Json<EmbedRequest>,
+) -> Result<Json<EmbedResponse>, (StatusCode, Json<ErrorResponse>)> {
+    if request.text.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Text cannot be empty".to_string(),
+            }),
+        ));
+    }
+
+    let mut embedder = state.embedder.write().await;
+
+    match embedder.embed(&request.text) {
+        Ok(embedding) => {
+            let dimension = embedding.len();
+            Ok(Json(EmbedResponse { embedding, dimension }))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Embedding failed");
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: format!("Embedding failed: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// Batch text embedding handler
+async fn batch_embed_handler(
+    State(state): State<Arc<EmbeddingServerState>>,
+    Json(request): Json<BatchEmbedRequest>,
+) -> Result<Json<BatchEmbedResponse>, (StatusCode, Json<ErrorResponse>)> {
+    if request.texts.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Texts array cannot be empty".to_string(),
+            }),
+        ));
+    }
+
+    if request.texts.len() > 100 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Maximum 100 texts per batch".to_string(),
+            }),
+        ));
+    }
+
+    let mut embedder = state.embedder.write().await;
+
+    match embedder.embed_batch(&request.texts) {
+        Ok(embeddings) => {
+            let count = embeddings.len();
+            let dimension = embeddings.first().map(|e| e.len()).unwrap_or(0);
+            Ok(Json(BatchEmbedResponse {
+                embeddings,
+                count,
+                dimension,
+            }))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Batch embedding failed");
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: format!("Batch embedding failed: {e}"),
+                }),
+            ))
+        }
+    }
 }
