@@ -347,7 +347,7 @@ async fn main() -> Result<()> {
                 once = %once,
                 "Starting distributed crawler"
             );
-            distributed_crawler(
+            distributed_crawler(DistributedCrawlerParams {
                 instance,
                 coordinator,
                 database,
@@ -356,7 +356,7 @@ async fn main() -> Result<()> {
                 output,
                 with_comments,
                 once,
-            )
+            })
             .await?;
         }
     }
@@ -1222,8 +1222,8 @@ async fn batch_embed_handler(
 // Distributed Crawler Implementation
 // ============================================================================
 
-/// Start the distributed crawler
-async fn distributed_crawler(
+/// Configuration parameters for distributed crawler
+struct DistributedCrawlerParams {
     instance: String,
     coordinator: String,
     database: String,
@@ -1232,7 +1232,20 @@ async fn distributed_crawler(
     output: String,
     with_comments: bool,
     once: bool,
-) -> Result<()> {
+}
+
+/// Start the distributed crawler
+async fn distributed_crawler(params: DistributedCrawlerParams) -> Result<()> {
+    let DistributedCrawlerParams {
+        instance,
+        coordinator,
+        database,
+        heartbeat_interval,
+        rps,
+        output,
+        with_comments,
+        once,
+    } = params;
     println!("Starting Distributed Crawler");
     println!("============================");
     println!("  Instance ID: {instance}");
