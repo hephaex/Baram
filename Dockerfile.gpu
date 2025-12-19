@@ -33,8 +33,10 @@ ENV CUDA_HOME=/usr/local/cuda
 ENV PATH="${CUDA_HOME}/bin:${PATH}"
 ENV LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}"
 # Set CUDA compute capability for candle-cuda (supports most modern GPUs)
-# 75=Turing, 80=Ampere, 86=GA102, 89=Ada, 90=Hopper
-ENV CUDA_COMPUTE_CAP=80
+# 75=Turing (RTX 20xx, Quadro RTX), 80=Ampere (RTX 30xx), 86=GA102, 89=Ada, 90=Hopper
+# Default to 75 for Turing GPUs, override with build arg if needed
+ARG CUDA_COMPUTE_CAP=75
+ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
 
 # Set working directory
 WORKDIR /build

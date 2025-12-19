@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config as BertConfig};
-use hf_hub::{api::sync::Api, Repo, RepoType};
+use hf_hub::{api::sync::ApiBuilder, Cache, Repo, RepoType};
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
@@ -106,7 +106,23 @@ impl Embedder {
         );
 
         // Download model from HuggingFace Hub
-        let api = Api::new().context("Failed to create HuggingFace API")?;
+        let cache_dir = std::env::var("HF_HOME")
+            .or_else(|_| std::env::var("HUGGINGFACE_HUB_CACHE"))
+            .unwrap_or_else(|_| {
+                std::env::var("HOME")
+                    .map(|h| format!("{}/.cache/huggingface/hub", h))
+                    .unwrap_or_else(|_| ".cache/huggingface/hub".to_string())
+            });
+
+        tracing::info!(cache_dir = %cache_dir, "Using HuggingFace cache directory");
+
+        // Create cache directory if it doesn't exist
+        std::fs::create_dir_all(&cache_dir).context("Failed to create cache directory")?;
+
+        let api = ApiBuilder::from_cache(Cache::new(PathBuf::from(&cache_dir)))
+            .with_progress(true)
+            .build()
+            .context("Failed to create HuggingFace API")?;
         let repo = api.repo(Repo::new(config.model_id.clone(), RepoType::Model));
 
         let tokenizer_path = repo

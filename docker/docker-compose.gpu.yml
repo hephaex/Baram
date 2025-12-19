@@ -94,6 +94,10 @@ services:
       MODEL_NAME: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-large}
       EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
       MAX_SEQ_LENGTH: ${MAX_SEQ_LENGTH:-512}
+      # HuggingFace settings
+      HF_HOME: /app/models
+      TRANSFORMERS_CACHE: /app/models/transformers
+      HF_HUB_ENABLE_HF_TRANSFER: "0"
     ports:
       - "${EMBEDDING_PORT:-8090}:8090"
     depends_on:
