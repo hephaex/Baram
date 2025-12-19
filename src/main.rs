@@ -15,12 +15,15 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ntimes::config::{Config, DatabaseConfig};
+use ntimes::crawler::distributed::DistributedRunner;
 use ntimes::crawler::fetcher::NaverFetcher;
+use ntimes::crawler::instance::InstanceConfig;
 use ntimes::crawler::list::NewsListCrawler;
 use ntimes::crawler::Crawler;
 use ntimes::embedding::{Embedder, EmbeddingConfig};
 use ntimes::models::{CrawlState, NewsCategory};
 use ntimes::parser::ArticleParser;
+use ntimes::scheduler::rotation::CrawlerInstance;
 use ntimes::storage::{ArticleStorage, CrawlStatus, Database};
 
 #[derive(Parser)]
@@ -168,6 +171,41 @@ enum Commands {
         #[arg(long, default_value = "true")]
         use_gpu: bool,
     },
+
+    /// Run distributed crawler mode
+    Distributed {
+        /// Instance ID (main, sub1, sub2)
+        #[arg(short, long)]
+        instance: String,
+
+        /// Coordinator server URL
+        #[arg(short = 'C', long, default_value = "http://localhost:8080")]
+        coordinator: String,
+
+        /// PostgreSQL database URL for deduplication
+        #[arg(short, long)]
+        database: String,
+
+        /// Heartbeat interval in seconds
+        #[arg(long, default_value = "30")]
+        heartbeat_interval: u64,
+
+        /// Requests per second
+        #[arg(long, default_value = "1.0")]
+        rps: f64,
+
+        /// Output directory
+        #[arg(short, long, default_value = "./output")]
+        output: String,
+
+        /// Include comments
+        #[arg(long, default_value = "true")]
+        with_comments: bool,
+
+        /// Run once (execute current slot and exit)
+        #[arg(long, default_value = "false")]
+        once: bool,
+    },
 }
 
 #[tokio::main]
@@ -291,6 +329,35 @@ async fn main() -> Result<()> {
                 "Starting embedding server"
             );
             embedding_server(host, port, model, max_seq_length, batch_size, use_gpu).await?;
+        }
+
+        Commands::Distributed {
+            instance,
+            coordinator,
+            database,
+            heartbeat_interval,
+            rps,
+            output,
+            with_comments,
+            once,
+        } => {
+            tracing::info!(
+                instance = %instance,
+                coordinator = %coordinator,
+                once = %once,
+                "Starting distributed crawler"
+            );
+            distributed_crawler(
+                instance,
+                coordinator,
+                database,
+                heartbeat_interval,
+                rps,
+                output,
+                with_comments,
+                once,
+            )
+            .await?;
         }
     }
 
@@ -1149,4 +1216,129 @@ async fn batch_embed_handler(
             ))
         }
     }
+}
+
+// ============================================================================
+// Distributed Crawler Implementation
+// ============================================================================
+
+/// Start the distributed crawler
+async fn distributed_crawler(
+    instance: String,
+    coordinator: String,
+    database: String,
+    heartbeat_interval: u64,
+    rps: f64,
+    output: String,
+    with_comments: bool,
+    once: bool,
+) -> Result<()> {
+    println!("Starting Distributed Crawler");
+    println!("============================");
+    println!("  Instance ID: {instance}");
+    println!("  Coordinator: {coordinator}");
+    println!("  Database: {}...***", &database[..20.min(database.len())]);
+    println!("  Heartbeat: {heartbeat_interval}s");
+    println!("  Rate limit: {rps} req/s");
+    println!("  Output: {output}");
+    println!("  Comments: {with_comments}");
+    println!("  Run once: {once}");
+    println!();
+
+    // Parse instance ID
+    let instance_id = CrawlerInstance::from_id(&instance)
+        .map_err(|_| anyhow::anyhow!("Invalid instance ID: {instance}. Valid: main, sub1, sub2"))?;
+
+    // Create instance config
+    let config = InstanceConfig::builder()
+        .instance_id(instance_id)
+        .coordinator_url(&coordinator)
+        .database_url(&database)
+        .heartbeat_interval_secs(heartbeat_interval)
+        .requests_per_second(rps)
+        .output_dir(&output)
+        .include_comments(with_comments)
+        .build()
+        .context("Failed to build instance config")?;
+
+    println!("{}", config.display());
+    println!();
+
+    // Create distributed runner with deduplication
+    let runner = DistributedRunner::with_dedup(config)
+        .await
+        .context("Failed to create distributed runner")?;
+
+    if once {
+        // Run once mode: execute current slot and exit
+        println!("Running in 'once' mode - executing current slot...");
+
+        if let Some(slot) = runner
+            .check_current_slot()
+            .await
+            .context("Failed to check current slot")?
+        {
+            println!(
+                "Current slot: hour {} with categories {:?}",
+                slot.hour, slot.categories
+            );
+
+            let result = runner.run_slot(&slot).await.context("Failed to run slot")?;
+
+            println!("\nSlot Execution Complete");
+            println!("=======================");
+            println!("Hour: {}", result.hour);
+            println!("Articles crawled: {}", result.articles_crawled);
+            println!("Errors: {}", result.errors);
+            println!("Categories: {:?}", result.categories);
+            println!("Success rate: {:.1}%", result.success_rate() * 100.0);
+        } else {
+            println!("This instance is not scheduled for the current hour.");
+            println!(
+                "Use --instance to specify a different instance or wait for the scheduled slot."
+            );
+        }
+    } else {
+        // Continuous mode: start background tasks
+        println!("Starting continuous distributed crawling...");
+        println!("Press Ctrl+C to stop.\n");
+
+        // Start the runner
+        let handle = runner
+            .start()
+            .await
+            .context("Failed to start distributed runner")?;
+
+        // Get list of assigned slots for today
+        match runner.get_my_slots().await {
+            Ok(slots) => {
+                if slots.is_empty() {
+                    println!("No slots assigned for today.");
+                } else {
+                    println!("Assigned slots for today:");
+                    for slot in &slots {
+                        println!("  Hour {}: {:?}", slot.hour, slot.categories);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to get assigned slots: {}", e);
+            }
+        }
+        println!();
+
+        // Wait for shutdown signal
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => {
+                println!("\nShutdown signal received, stopping...");
+                handle.shutdown().await;
+            }
+            Err(e) => {
+                tracing::error!("Failed to wait for Ctrl+C: {}", e);
+            }
+        }
+    }
+
+    println!("Distributed crawler stopped.");
+    Ok(())
 }

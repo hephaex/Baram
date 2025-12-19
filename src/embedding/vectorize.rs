@@ -110,7 +110,7 @@ impl Embedder {
             .or_else(|_| std::env::var("HUGGINGFACE_HUB_CACHE"))
             .unwrap_or_else(|_| {
                 std::env::var("HOME")
-                    .map(|h| format!("{}/.cache/huggingface/hub", h))
+                    .map(|h| format!("{h}/.cache/huggingface/hub"))
                     .unwrap_or_else(|_| ".cache/huggingface/hub".to_string())
             });
 
