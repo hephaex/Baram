@@ -571,6 +571,7 @@ impl RecoveryManager {
         self.last_attempt = Some(Instant::now());
     }
 
+    #[allow(dead_code)]
     fn reset(&mut self) {
         self.attempts = 0;
         self.last_attempt = None;

@@ -178,6 +178,7 @@ pub struct VectorStore {
     index_name: String,
 
     /// Configuration
+    #[allow(dead_code)]
     config: OpenSearchConfig,
 }
 

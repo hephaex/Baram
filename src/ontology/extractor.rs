@@ -1294,8 +1294,6 @@ fn slug(text: &str) -> String {
         .map(|c| {
             if c.is_alphanumeric() || c == '-' || c == '_' {
                 c
-            } else if c.is_whitespace() {
-                '_'
             } else {
                 '_'
             }
