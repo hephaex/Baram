@@ -61,6 +61,45 @@ Test Redis:
 docker-compose exec redis redis-cli ping
 ```
 
+## Distributed Crawler Deployment
+
+For running multiple crawler instances in a distributed setup:
+
+### Start Distributed Crawlers
+
+```bash
+cd docker
+# Start core services + 3 crawler instances (main, sub1, sub2)
+docker-compose -f docker-compose.yml -f docker-compose.distributed.yml up -d
+```
+
+This will start:
+- Core services (PostgreSQL, OpenSearch, Redis)
+- 3 crawler instances with distributed coordination
+- Each instance runs independently with database-backed coordination
+
+### Verify Distributed Setup
+
+```bash
+# Check all services
+docker-compose -f docker-compose.yml -f docker-compose.distributed.yml ps
+
+# View crawler logs
+docker-compose -f docker-compose.yml -f docker-compose.distributed.yml logs -f crawler-main
+docker-compose -f docker-compose.yml -f docker-compose.distributed.yml logs -f crawler-sub1
+docker-compose -f docker-compose.yml -f docker-compose.distributed.yml logs -f crawler-sub2
+```
+
+### Stop Distributed Crawlers
+
+```bash
+# Stop all services
+docker-compose -f docker-compose.yml -f docker-compose.distributed.yml down
+
+# Stop only crawler instances (keep core services running)
+docker stop ntimes-crawler-main ntimes-crawler-sub1 ntimes-crawler-sub2
+```
+
 ## Services Overview
 
 ### PostgreSQL 18
