@@ -14,45 +14,43 @@ version: '3.8'
 services:
   # ============================================================================
   # Coordinator Server - Central schedule management
-  # NOTE: Coordinator service is not yet implemented. Running in standalone mode.
-  # Each crawler instance runs independently with coordination via PostgreSQL.
   # ============================================================================
-  # coordinator:
-  #   build:
-  #     context: ..
-  #     dockerfile: Dockerfile
-  #   container_name: ntimes-coordinator
-  #   restart: unless-stopped
-  #   command: ["coordinator", "--port", "8000"]
-  #   environment:
-  #     RUST_LOG: ${COORDINATOR_LOG_LEVEL:-info}
-  #     COORDINATOR_PORT: 8000
-  #     COORDINATOR_HOST: "0.0.0.0"
-  #     ROTATION_TIME: ${ROTATION_TIME:-23:00}
-  #     TIMEZONE: ${TIMEZONE:-Asia/Seoul}
-  #     DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
-  #     REDIS_URL: "redis://redis:6379"
-  #   ports:
-  #     - "${COORDINATOR_PORT:-8000}:8000"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 3
-  #     start_period: 10s
-  #   networks:
-  #     ntimes-network:
-  #       ipv4_address: 172.28.1.1
-  #   volumes:
-  #     - coordinator_data:/app/data
-  #   labels:
-  #     - "com.ntimes.role=coordinator"
-  #     - "com.ntimes.version=${VERSION:-0.1.0}"
+  coordinator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ntimes-coordinator
+    restart: unless-stopped
+    command:
+      - "coordinator"
+      - "--port"
+      - "8080"
+      - "--host"
+      - "0.0.0.0"
+      - "--heartbeat-timeout"
+      - "${HEARTBEAT_TIMEOUT:-90}"
+      - "--heartbeat-interval"
+      - "${HEARTBEAT_INTERVAL:-30}"
+      - "--max-instances"
+      - "${MAX_INSTANCES:-10}"
+    environment:
+      RUST_LOG: ${COORDINATOR_LOG_LEVEL:-info}
+    ports:
+      - "${COORDINATOR_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      ntimes-network:
+        ipv4_address: 172.28.1.10
+    volumes:
+      - coordinator_data:/app/data
+    labels:
+      - "com.ntimes.role=coordinator"
+      - "com.ntimes.version=${VERSION:-0.1.0}"
 
   # ============================================================================
   # Crawler Instance - Main (ID: 0)
@@ -63,20 +61,34 @@ services:
       dockerfile: Dockerfile
     container_name: ntimes-crawler-main
     restart: unless-stopped
-    command: ["distributed", "--instance", "main", "--database", "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}", "--rps", "${REQUESTS_PER_SECOND:-2.0}", "--output", "/app/output"]
+    command:
+      - "distributed"
+      - "--instance"
+      - "main"
+      - "--coordinator"
+      - "http://coordinator:8080"
+      - "--database"
+      - "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      - "--rps"
+      - "${REQUESTS_PER_SECOND:-2.0}"
+      - "--output"
+      - "/app/output"
+      - "--heartbeat-interval"
+      - "${HEARTBEAT_INTERVAL:-30}"
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: main
       DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
-      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
       REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
       MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
       ENABLE_DEDUP: "true"
       OUTPUT_DIR: /app/output
       CHECKPOINT_DIR: /app/checkpoints
     depends_on:
+      coordinator:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -114,20 +126,34 @@ services:
       dockerfile: Dockerfile
     container_name: ntimes-crawler-sub1
     restart: unless-stopped
-    command: ["distributed", "--instance", "sub1", "--database", "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}", "--rps", "${REQUESTS_PER_SECOND:-2.0}", "--output", "/app/output"]
+    command:
+      - "distributed"
+      - "--instance"
+      - "sub1"
+      - "--coordinator"
+      - "http://coordinator:8080"
+      - "--database"
+      - "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      - "--rps"
+      - "${REQUESTS_PER_SECOND:-2.0}"
+      - "--output"
+      - "/app/output"
+      - "--heartbeat-interval"
+      - "${HEARTBEAT_INTERVAL:-30}"
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: sub1
       DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
-      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
       REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
       MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
       ENABLE_DEDUP: "true"
       OUTPUT_DIR: /app/output
       CHECKPOINT_DIR: /app/checkpoints
     depends_on:
+      coordinator:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -165,20 +191,34 @@ services:
       dockerfile: Dockerfile
     container_name: ntimes-crawler-sub2
     restart: unless-stopped
-    command: ["distributed", "--instance", "sub2", "--database", "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}", "--rps", "${REQUESTS_PER_SECOND:-2.0}", "--output", "/app/output"]
+    command:
+      - "distributed"
+      - "--instance"
+      - "sub2"
+      - "--coordinator"
+      - "http://coordinator:8080"
+      - "--database"
+      - "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
+      - "--rps"
+      - "${REQUESTS_PER_SECOND:-2.0}"
+      - "--output"
+      - "/app/output"
+      - "--heartbeat-interval"
+      - "${HEARTBEAT_INTERVAL:-30}"
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: sub2
       DATABASE_URL: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ntimes}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
-      HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
       REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
       MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT:-5}
       ENABLE_DEDUP: "true"
       OUTPUT_DIR: /app/output
       CHECKPOINT_DIR: /app/checkpoints
     depends_on:
+      coordinator:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -211,6 +251,8 @@ services:
 # Additional Volumes
 # ============================================================================
 volumes:
+  coordinator_data:
+    driver: local
   crawler_main_output:
     driver: local
   crawler_main_checkpoints:

@@ -15,6 +15,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ntimes::config::{Config, DatabaseConfig};
+use ntimes::coordinator::{CoordinatorConfig, CoordinatorServer};
 use ntimes::crawler::distributed::DistributedRunner;
 use ntimes::crawler::fetcher::NaverFetcher;
 use ntimes::crawler::instance::InstanceConfig;
@@ -206,6 +207,41 @@ enum Commands {
         #[arg(long, default_value = "false")]
         once: bool,
     },
+
+    /// Start coordinator server for distributed crawling
+    Coordinator {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+
+        /// Host to bind to
+        #[arg(long, default_value = "0.0.0.0")]
+        host: String,
+
+        /// Heartbeat timeout in seconds
+        #[arg(long, default_value = "90")]
+        heartbeat_timeout: u64,
+
+        /// Expected heartbeat interval in seconds
+        #[arg(long, default_value = "30")]
+        heartbeat_interval: u64,
+
+        /// Maximum registered instances
+        #[arg(long, default_value = "10")]
+        max_instances: usize,
+
+        /// Schedule cache file path
+        #[arg(long)]
+        schedule_cache: Option<String>,
+
+        /// Disable CORS
+        #[arg(long, default_value = "false")]
+        disable_cors: bool,
+
+        /// Disable request logging
+        #[arg(long, default_value = "false")]
+        disable_logging: bool,
+    },
 }
 
 #[tokio::main]
@@ -356,6 +392,35 @@ async fn main() -> Result<()> {
                 output,
                 with_comments,
                 once,
+            })
+            .await?;
+        }
+
+        Commands::Coordinator {
+            port,
+            host,
+            heartbeat_timeout,
+            heartbeat_interval,
+            max_instances,
+            schedule_cache,
+            disable_cors,
+            disable_logging,
+        } => {
+            tracing::info!(
+                host = %host,
+                port = %port,
+                max_instances = %max_instances,
+                "Starting coordinator server"
+            );
+            coordinator_server(CoordinatorParams {
+                host,
+                port,
+                heartbeat_timeout,
+                heartbeat_interval,
+                max_instances,
+                schedule_cache,
+                enable_cors: !disable_cors,
+                enable_logging: !disable_logging,
             })
             .await?;
         }
@@ -1353,5 +1418,115 @@ async fn distributed_crawler(params: DistributedCrawlerParams) -> Result<()> {
     }
 
     println!("Distributed crawler stopped.");
+    Ok(())
+}
+
+// ============================================================================
+// Coordinator Server Implementation
+// ============================================================================
+
+/// Configuration parameters for coordinator server
+struct CoordinatorParams {
+    host: String,
+    port: u16,
+    heartbeat_timeout: u64,
+    heartbeat_interval: u64,
+    max_instances: usize,
+    schedule_cache: Option<String>,
+    enable_cors: bool,
+    enable_logging: bool,
+}
+
+/// Start the coordinator server
+async fn coordinator_server(params: CoordinatorParams) -> Result<()> {
+    let CoordinatorParams {
+        host,
+        port,
+        heartbeat_timeout,
+        heartbeat_interval,
+        max_instances,
+        schedule_cache,
+        enable_cors,
+        enable_logging,
+    } = params;
+
+    println!("Starting Coordinator Server");
+    println!("===========================");
+    println!("  Host: {host}");
+    println!("  Port: {port}");
+    println!("  Heartbeat Timeout: {heartbeat_timeout}s");
+    println!("  Heartbeat Interval: {heartbeat_interval}s");
+    println!("  Max Instances: {max_instances}");
+    println!(
+        "  CORS: {}",
+        if enable_cors { "enabled" } else { "disabled" }
+    );
+    println!(
+        "  Request Logging: {}",
+        if enable_logging {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
+    if let Some(ref cache) = schedule_cache {
+        println!("  Schedule Cache: {cache}");
+    }
+    println!();
+
+    // Build bind address
+    let bind_address = format!("{host}:{port}")
+        .parse()
+        .context("Invalid bind address")?;
+
+    // Create coordinator configuration
+    let config = CoordinatorConfig::builder()
+        .bind_address(bind_address)
+        .heartbeat_timeout_secs(heartbeat_timeout)
+        .heartbeat_interval_secs(heartbeat_interval)
+        .max_instances(max_instances)
+        .enable_cors(enable_cors)
+        .enable_request_logging(enable_logging);
+
+    let config = if let Some(cache_path) = schedule_cache {
+        config.schedule_cache_path(cache_path).build()?
+    } else {
+        config.build()?
+    };
+
+    // Create and start server
+    let server = CoordinatorServer::new(config).context("Failed to create coordinator server")?;
+
+    println!("{}", server.info().display());
+    println!();
+    println!("API Endpoints:");
+    println!("  GET  /api/health              - Health check");
+    println!("  GET  /api/schedule/today      - Get today's schedule");
+    println!("  GET  /api/schedule/tomorrow   - Get tomorrow's schedule");
+    println!("  GET  /api/schedule/:date      - Get schedule by date (YYYY-MM-DD)");
+    println!("  GET  /api/instances           - List all instances");
+    println!("  GET  /api/instances/:id       - Get instance by ID");
+    println!("  POST /api/instances/register  - Register new instance");
+    println!("  POST /api/instances/heartbeat - Send heartbeat");
+    println!("  GET  /api/stats               - Get coordinator stats");
+    println!();
+    println!("Coordinator server listening on http://{bind_address}");
+    println!("Press Ctrl+C to stop.\n");
+
+    // Start with graceful shutdown
+    server
+        .start_with_shutdown(async {
+            match tokio::signal::ctrl_c().await {
+                Ok(()) => {
+                    tracing::info!("Shutdown signal received");
+                }
+                Err(e) => {
+                    tracing::error!("Failed to wait for Ctrl+C: {}", e);
+                }
+            }
+        })
+        .await?;
+
+    println!("Coordinator server stopped.");
     Ok(())
 }

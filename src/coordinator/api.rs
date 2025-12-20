@@ -132,13 +132,13 @@ pub fn create_router(state: AppState) -> Router {
         // Schedule endpoints
         .route("/api/schedule/today", get(get_today_schedule))
         .route("/api/schedule/tomorrow", get(get_tomorrow_schedule))
-        .route("/api/schedule/:date", get(get_schedule_by_date))
+        .route("/api/schedule/{date}", get(get_schedule_by_date))
         // Instance endpoints
         .route("/api/instances", get(list_instances))
-        .route("/api/instances/:id", get(get_instance))
+        .route("/api/instances/{id}", get(get_instance))
         .route("/api/instances/register", post(register_instance))
         .route("/api/instances/heartbeat", post(heartbeat))
-        .route("/api/instances/:id/maintenance", post(set_maintenance))
+        .route("/api/instances/{id}/maintenance", post(set_maintenance))
         // Stats endpoints
         .route("/api/stats", get(get_stats))
         .with_state(state)
