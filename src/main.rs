@@ -1501,6 +1501,7 @@ async fn coordinator_server(params: CoordinatorParams) -> Result<()> {
     println!();
     println!("API Endpoints:");
     println!("  GET  /api/health              - Health check");
+    println!("  GET  /metrics                 - Prometheus metrics endpoint");
     println!("  GET  /api/schedule/today      - Get today's schedule");
     println!("  GET  /api/schedule/tomorrow   - Get tomorrow's schedule");
     println!("  GET  /api/schedule/:date      - Get schedule by date (YYYY-MM-DD)");

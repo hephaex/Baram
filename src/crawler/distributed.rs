@@ -14,6 +14,7 @@ use crate::coordinator::client::{ClientConfig, ClientError, CoordinatorClient, S
 use crate::crawler::fetcher::NaverFetcher;
 use crate::crawler::list::NewsListCrawler;
 use crate::crawler::pipeline::{CrawlerPipeline, PipelineConfig};
+use crate::metrics;
 use crate::models::NewsCategory;
 use crate::scheduler::rotation::CrawlerInstance;
 use crate::storage::dedup::{DedupConfig, DedupRecord, SharedDedupChecker};
@@ -309,6 +310,10 @@ impl DistributedRunner {
             state.set_category(slot.categories.first().cloned());
         }
 
+        // Update crawler state metrics
+        let instance_id = self.config.instance_id.id();
+        metrics::update_crawler_state(instance_id, true, Some(slot.hour));
+
         let mut articles_crawled = 0u64;
         let mut errors = 0u64;
 
@@ -349,6 +354,11 @@ impl DistributedRunner {
             state.set_category(None);
         }
 
+        // Record slot execution metrics
+        let instance_id = self.config.instance_id.id();
+        metrics::record_slot_execution(instance_id, slot.hour, errors > 0);
+        metrics::update_crawler_state(instance_id, false, None);
+
         Ok(SlotResult {
             hour: slot.hour,
             articles_crawled,
@@ -359,6 +369,11 @@ impl DistributedRunner {
 
     /// Crawl a single category
     async fn crawl_category(&self, category: &str) -> Result<u64, RunnerError> {
+        let instance_id = self.config.instance_id.id();
+
+        // Start metrics timer
+        let _timer = metrics::start_crawl_timer(instance_id, category);
+
         // Step 1: Parse category string to NewsCategory enum
         let news_category = NewsCategory::parse(category)
             .ok_or_else(|| RunnerError::CrawlError(format!("Invalid category: {category}")))?;
@@ -400,10 +415,15 @@ impl DistributedRunner {
         // Step 5: Filter new URLs using deduplication checker
         let new_urls = self.filter_new_urls(&all_urls).await?;
 
+        let existing_urls = all_urls.len() - new_urls.len();
+
+        // Record deduplication metrics
+        metrics::record_dedup_results(instance_id, new_urls.len(), existing_urls);
+
         tracing::info!(
             category = %category,
             new_urls = new_urls.len(),
-            skipped = all_urls.len() - new_urls.len(),
+            skipped = existing_urls,
             "Filtered URLs (dedup)"
         );
 
@@ -443,7 +463,19 @@ impl DistributedRunner {
             "Category crawl completed"
         );
 
-        // Step 8: Record successful crawls in deduplication database
+        // Step 8: Record metrics for pipeline results
+        metrics::record_pipeline_results(
+            instance_id,
+            category,
+            stats.success_count,
+            stats.failed_count,
+            stats.skipped_count,
+        );
+
+        // Record articles crawled for this category
+        metrics::record_articles_crawled(instance_id, category, stats.success_count);
+
+        // Step 9: Record successful crawls in deduplication database
         // Note: In a full implementation, we would get article IDs and content hashes
         // from the pipeline results. For now, we record the URLs as crawled.
         let crawled_count = stats.success_count;
@@ -628,6 +660,8 @@ impl DistributedRunner {
         dedup_checker: &Option<SharedDedupChecker>,
         slot: &SlotResponse,
     ) -> Result<SlotResult, RunnerError> {
+        let instance_id = config.instance_id.id();
+
         tracing::info!(
             "Starting crawl for hour {} with categories: {:?}",
             slot.hour,
@@ -640,6 +674,9 @@ impl DistributedRunner {
             s.set_crawling(true);
             s.set_category(slot.categories.first().cloned());
         }
+
+        // Update crawler state metrics
+        metrics::update_crawler_state(instance_id, true, Some(slot.hour));
 
         let mut articles_crawled = 0u64;
         let mut errors = 0u64;
@@ -680,6 +717,10 @@ impl DistributedRunner {
             s.set_category(None);
         }
 
+        // Record slot execution metrics
+        metrics::record_slot_execution(instance_id, slot.hour, errors > 0);
+        metrics::update_crawler_state(instance_id, false, None);
+
         Ok(SlotResult {
             hour: slot.hour,
             articles_crawled,
@@ -694,6 +735,11 @@ impl DistributedRunner {
         dedup_checker: &Option<SharedDedupChecker>,
         category: &str,
     ) -> Result<u64, RunnerError> {
+        let instance_id = config.instance_id.id();
+
+        // Start metrics timer
+        let _timer = metrics::start_crawl_timer(instance_id, category);
+
         // Step 1: Parse category string to NewsCategory enum
         let news_category = NewsCategory::parse(category)
             .ok_or_else(|| RunnerError::CrawlError(format!("Invalid category: {category}")))?;
@@ -749,10 +795,15 @@ impl DistributedRunner {
             all_urls.clone()
         };
 
+        let existing_urls = all_urls.len() - new_urls.len();
+
+        // Record deduplication metrics
+        metrics::record_dedup_results(instance_id, new_urls.len(), existing_urls);
+
         tracing::info!(
             category = %category,
             new_urls = new_urls.len(),
-            skipped = all_urls.len() - new_urls.len(),
+            skipped = existing_urls,
             "Filtered URLs (dedup)"
         );
 
@@ -791,6 +842,18 @@ impl DistributedRunner {
             skipped = stats.skipped_count,
             "Category crawl completed"
         );
+
+        // Record metrics for pipeline results
+        metrics::record_pipeline_results(
+            instance_id,
+            category,
+            stats.success_count,
+            stats.failed_count,
+            stats.skipped_count,
+        );
+
+        // Record articles crawled for this category
+        metrics::record_articles_crawled(instance_id, category, stats.success_count);
 
         Ok(stats.success_count)
     }

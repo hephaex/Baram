@@ -10,7 +10,9 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 
+use crate::metrics;
 use crate::scheduler::rotation::CrawlerInstance;
 use crate::scheduler::schedule::DailySchedule;
 
@@ -129,6 +131,8 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         // Health endpoints
         .route("/api/health", get(health_check))
+        // Metrics endpoint (Prometheus format)
+        .route("/metrics", get(metrics_handler))
         // Schedule endpoints
         .route("/api/schedule/today", get(get_today_schedule))
         .route("/api/schedule/tomorrow", get(get_tomorrow_schedule))
@@ -150,13 +154,35 @@ pub fn create_router(state: AppState) -> Router {
 
 /// Health check endpoint
 async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
+    let start = Instant::now();
     let uptime = state.start_time.elapsed().as_secs();
 
-    Json(ApiResponse::success(HealthResponse {
+    let response = Json(ApiResponse::success(HealthResponse {
         status: "healthy".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_secs: uptime,
-    }))
+    }));
+
+    let duration = start.elapsed().as_secs_f64();
+    metrics::record_api_request("/api/health", 200, duration);
+
+    response
+}
+
+/// Prometheus metrics endpoint
+async fn metrics_handler() -> impl IntoResponse {
+    match metrics::encode_metrics() {
+        Ok(body) => (
+            StatusCode::OK,
+            [("Content-Type", "text/plain; version=0.0.4")],
+            body,
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [("Content-Type", "text/plain; version=0.0.4")],
+            format!("Error encoding metrics: {e}"),
+        ),
+    }
 }
 
 // ============================================================================
@@ -265,14 +291,32 @@ async fn register_instance(
     State(state): State<AppState>,
     Json(request): Json<RegisterRequest>,
 ) -> axum::response::Response {
-    match state.registry.register(request).await {
-        Ok(response) => (StatusCode::OK, Json(ApiResponse::success(response))).into_response(),
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(e.to_string())),
-        )
-            .into_response(),
-    }
+    let start = Instant::now();
+
+    let response = match state.registry.register(request).await {
+        Ok(response) => {
+            // Update instance metrics
+            let stats = state.registry.stats().await;
+            metrics::update_coordinator_instance_metrics(stats.total_instances, stats.online);
+
+            let duration = start.elapsed().as_secs_f64();
+            metrics::record_api_request("/api/instances/register", 200, duration);
+
+            (StatusCode::OK, Json(ApiResponse::success(response))).into_response()
+        }
+        Err(e) => {
+            let duration = start.elapsed().as_secs_f64();
+            metrics::record_api_request("/api/instances/register", 400, duration);
+
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(e.to_string())),
+            )
+                .into_response()
+        }
+    };
+
+    response
 }
 
 /// Process heartbeat from instance
@@ -280,14 +324,40 @@ async fn heartbeat(
     State(state): State<AppState>,
     Json(request): Json<HeartbeatRequest>,
 ) -> axum::response::Response {
-    match state.registry.heartbeat(request).await {
-        Ok(response) => (StatusCode::OK, Json(ApiResponse::success(response))).into_response(),
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(e.to_string())),
-        )
-            .into_response(),
-    }
+    let start = Instant::now();
+    let instance_id = request.instance_id.clone();
+    let articles = request.articles_crawled;
+    let errors = request.error_count;
+
+    let response = match state.registry.heartbeat(request).await {
+        Ok(response) => {
+            // Record heartbeat metrics
+            metrics::record_heartbeat(&instance_id, articles, errors);
+
+            // Update instance metrics
+            let stats = state.registry.stats().await;
+            metrics::update_coordinator_instance_metrics(stats.total_instances, stats.online);
+
+            let duration = start.elapsed().as_secs_f64();
+            metrics::record_api_request("/api/instances/heartbeat", 200, duration);
+
+            (StatusCode::OK, Json(ApiResponse::success(response))).into_response()
+        }
+        Err(e) => {
+            metrics::COORDINATOR_HEARTBEAT_ERRORS.inc();
+
+            let duration = start.elapsed().as_secs_f64();
+            metrics::record_api_request("/api/instances/heartbeat", 400, duration);
+
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(e.to_string())),
+            )
+                .into_response()
+        }
+    };
+
+    response
 }
 
 /// Set maintenance mode for an instance

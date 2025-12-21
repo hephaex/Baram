@@ -34,6 +34,7 @@ pub mod config;
 pub mod coordinator;
 pub mod crawler;
 pub mod embedding;
+pub mod metrics;
 pub mod models;
 pub mod ontology;
 pub mod parser;
