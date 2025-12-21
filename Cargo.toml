@@ -89,7 +89,7 @@ tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # Metrics
-prometheus = "0.13"
+prometheus = "0.14"
 lazy_static = "1.5"
 
 [dev-dependencies]
