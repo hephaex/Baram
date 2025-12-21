@@ -1,0 +1,90 @@
+groups:
+  - name: ntimes-coordinator
+    interval: 15s
+    rules:
+      # Alert when no crawler instances are active
+      - alert: NoActiveCrawlers
+        expr: coordinator_active_instances == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: ntimes-coordinator
+        annotations:
+          summary: "No active crawler instances"
+          description: "No crawler instances are currently registered with the coordinator"
+
+      # Alert when coordinator API error rate is high
+      - alert: HighCoordinatorErrorRate
+        expr: |
+          rate(coordinator_api_errors_total[5m]) / rate(coordinator_api_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: ntimes-coordinator
+        annotations:
+          summary: "High error rate on coordinator API"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      # Alert when crawl throughput drops
+      - alert: LowCrawlThroughput
+        expr: |
+          rate(coordinator_total_articles_crawled[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: ntimes-coordinator
+        annotations:
+          summary: "Low crawl throughput detected"
+          description: "Crawl rate is {{ $value | humanize }} articles per second"
+
+  - name: ntimes-database
+    interval: 15s
+    rules:
+      # Alert when PostgreSQL is down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL instance is down"
+          description: "PostgreSQL exporter cannot reach the database"
+
+      # Alert when database connections are high
+      - alert: HighDatabaseConnections
+        expr: |
+          pg_stat_activity_count > 150
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "High number of database connections"
+          description: "Current connections: {{ $value }}"
+
+  - name: ntimes-redis
+    interval: 15s
+    rules:
+      # Alert when Redis is down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis instance is down"
+          description: "Redis exporter cannot reach the server"
+
+      # Alert when Redis memory usage is high
+      - alert: HighRedisMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"

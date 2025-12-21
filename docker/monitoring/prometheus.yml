@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'ntimes-monitor'
+    environment: 'docker'
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # nTimes Coordinator metrics
+  - job_name: 'ntimes-coordinator'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['coordinator:8080']
+        labels:
+          service: 'coordinator'
+          environment: 'docker'
+
+  # PostgreSQL metrics (requires postgres_exporter)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres_exporter:9187']
+        labels:
+          service: 'postgresql'
+          environment: 'docker'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}:5432'
+
+  # Redis metrics (requires redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
+        labels:
+          service: 'redis'
+          environment: 'docker'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
