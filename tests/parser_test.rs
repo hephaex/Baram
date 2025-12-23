@@ -607,3 +607,51 @@ fn test_different_content_different_hash() {
 
     assert_ne!(article1.content_hash, article2.content_hash);
 }
+
+#[test]
+fn test_parse_mobile_sports_article() {
+    use ntimes::parser::html::{detect_format, ArticleParser};
+    use ntimes::parser::selectors::ArticleFormat;
+
+    // Mobile sports article HTML structure (m.sports.naver.com)
+    let html = r#"
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <title>테스트 스포츠 기사</title>
+    </head>
+    <body>
+        <h2 class="ArticleHead_article_title__qh8GV">3년 간의 재개발 마친 '조선협객전 클래식' 사전예약 실시</h2>
+        <div class="DateInfo_info_item__3yQPs">
+            <em class="date">2025.12.23. 오후 6:31</em>
+        </div>
+        <article class="Article_comp_news_article__XIpve" id="comp_news_article">
+            <div class="_article_content">
+                스마트나우는 '조선협객전 클래식'의 정식 출시에 앞서 사전예약을 시작한다.
+                약 3년 동안 재개발을 통해 그래픽, 전투, 시스템, 운영 전반을 새롭게 재정립하며 
+                '지금 다시 즐길 수 있는 클래식'을 목표로 하고 있다.
+            </div>
+        </article>
+        <em class="JournalistCard_press_name__s3Eup">포모스</em>
+        <em class="JournalistCard_name__0ZSAO">최종봉 기자</em>
+    </body>
+    </html>
+    "#;
+
+    // Test format detection
+    let format = detect_format(html);
+    assert_eq!(format, ArticleFormat::Sports, "Should detect mobile sports format");
+
+    // Test parsing
+    let parser = ArticleParser::new();
+    let result = parser.parse_with_fallback(html, "https://n.news.naver.com/mnews/article/236/0000252917");
+    
+    assert!(result.is_ok(), "Should successfully parse mobile sports article");
+    
+    let article = result.unwrap();
+    assert!(article.title.contains("조선협객전"), "Title should contain game name");
+    assert_eq!(article.category, "sports", "Category should be sports");
+    assert!(article.content.contains("스마트나우"), "Content should contain publisher name");
+    assert_eq!(article.oid, "236", "OID should be extracted");
+    assert_eq!(article.aid, "0000252917", "AID should be extracted");
+}

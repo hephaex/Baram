@@ -87,30 +87,58 @@ impl Default for EntertainmentSelectors {
     }
 }
 
-/// Selectors for sports news format (sports.naver.com)
+/// Selectors for sports news format (sports.naver.com, m.sports.naver.com)
 pub struct SportsSelectors {
     pub title: Vec<Selector>,
     pub content: Vec<Selector>,
     pub date: Vec<Selector>,
+    pub publisher: Vec<Selector>,
+    pub author: Vec<Selector>,
 }
 
 impl SportsSelectors {
     pub fn new() -> Self {
         Self {
             title: vec![
+                // Desktop sports.naver.com
                 Selector::parse(".news_headline .title").unwrap(),
                 Selector::parse("h4.title").unwrap(),
                 Selector::parse(".NewsEndMain_article_title__j5ND9").unwrap(),
+                // Mobile m.sports.naver.com (esports/game)
+                Selector::parse("h2.ArticleHead_article_title__qh8GV").unwrap(),
+                Selector::parse(".ArticleHead_article_title__qh8GV").unwrap(),
+                Selector::parse("h2[class*='article_title']").unwrap(),
             ],
             content: vec![
+                // Desktop sports.naver.com
                 Selector::parse(".news_end").unwrap(),
                 Selector::parse("#newsEndContents").unwrap(),
                 Selector::parse("div.NewsEndMain_article_body__D5MUB").unwrap(),
+                // Mobile m.sports.naver.com (esports/game)
+                Selector::parse("article.Article_comp_news_article__XIpve").unwrap(),
+                Selector::parse("article[class*='_article_body']").unwrap(),
+                Selector::parse("div._article_content").unwrap(),
+                Selector::parse("article#comp_news_article").unwrap(),
             ],
             date: vec![
+                // Desktop sports.naver.com
                 Selector::parse(".info span").unwrap(),
                 Selector::parse(".news_date").unwrap(),
                 Selector::parse("em.date").unwrap(),
+                // Mobile m.sports.naver.com
+                Selector::parse(".DateInfo_info_item__3yQPs em.date").unwrap(),
+                Selector::parse(".DateInfo_article_head_date_info__CS6Gx em.date").unwrap(),
+                Selector::parse("div[class*='DateInfo'] em.date").unwrap(),
+            ],
+            publisher: vec![
+                Selector::parse(".JournalistCard_press_name__s3Eup").unwrap(),
+                Selector::parse("em[class*='press_name']").unwrap(),
+                Selector::parse(".press_name").unwrap(),
+            ],
+            author: vec![
+                Selector::parse(".JournalistCard_name__0ZSAO").unwrap(),
+                Selector::parse("em[class*='name']").unwrap(),
+                Selector::parse(".journalist_name").unwrap(),
             ],
         }
     }
@@ -258,12 +286,17 @@ mod tests {
         assert!(!selectors.content.is_empty());
         assert!(!selectors.title.is_empty());
         assert!(!selectors.date.is_empty());
+        assert!(!selectors.publisher.is_empty());
+        assert!(!selectors.author.is_empty());
     }
 
     #[test]
     fn test_sports_selectors_default() {
         let selectors = SportsSelectors::default();
-        assert_eq!(selectors.content.len(), 3);
+        // Desktop (3) + Mobile (4) = 7 content selectors
+        assert!(selectors.content.len() >= 6);
+        // Desktop (3) + Mobile (3) = 6 title selectors
+        assert!(selectors.title.len() >= 6);
     }
 
     #[test]

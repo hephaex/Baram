@@ -194,7 +194,7 @@ impl ArticleParser {
         })
     }
 
-    /// Parse sports news format
+    /// Parse sports news format (desktop and mobile)
     fn parse_sports(&self, document: &Html, url: &str) -> Result<ParsedArticle, ParseError> {
         let title = self
             .extract_first_match(document, &self.sports.title)
@@ -204,7 +204,13 @@ impl ArticleParser {
             .extract_content_text(document, &self.sports.content)
             .ok_or(ParseError::ContentNotFound)?;
 
+        if !has_content(&content) {
+            return Err(ParseError::ContentNotFound);
+        }
+
         let date = self.extract_first_match(document, &self.sports.date);
+        let publisher = self.extract_first_match(document, &self.sports.publisher);
+        let author = self.extract_first_match(document, &self.sports.author);
 
         Ok(ParsedArticle {
             title: sanitize_text(&title),
@@ -212,6 +218,8 @@ impl ArticleParser {
             url: url.to_string(),
             category: "sports".to_string(),
             published_at: date.and_then(|d| self.parse_date(&d)),
+            publisher,
+            author,
             crawled_at: Utc::now(),
             ..Default::default()
         })
@@ -400,8 +408,24 @@ pub fn detect_format(html: &str) -> ArticleFormat {
         }
     }
 
-    // Check for sports format
+    // Check for sports format (desktop and mobile)
     if let Ok(selector) = Selector::parse(".news_end, div.NewsEndMain_article_body__D5MUB") {
+        if doc.select(&selector).next().is_some() {
+            return ArticleFormat::Sports;
+        }
+    }
+
+    // Check for mobile sports/esports format (m.sports.naver.com, game.naver.com)
+    if let Ok(selector) =
+        Selector::parse("article.Article_comp_news_article__XIpve, article#comp_news_article")
+    {
+        if doc.select(&selector).next().is_some() {
+            return ArticleFormat::Sports;
+        }
+    }
+
+    // Check for sports format by class pattern
+    if let Ok(selector) = Selector::parse("h2[class*='ArticleHead_article_title']") {
         if doc.select(&selector).next().is_some() {
             return ArticleFormat::Sports;
         }
@@ -442,6 +466,18 @@ mod tests {
     #[test]
     fn test_detect_format_sports() {
         let html = r#"<html><body><div class="news_end">Content</div></body></html>"#;
+        assert_eq!(detect_format(html), ArticleFormat::Sports);
+    }
+
+    #[test]
+    fn test_detect_format_sports_mobile() {
+        let html = r#"<html><body><article class="Article_comp_news_article__XIpve">Content</article></body></html>"#;
+        assert_eq!(detect_format(html), ArticleFormat::Sports);
+    }
+
+    #[test]
+    fn test_detect_format_sports_mobile_title() {
+        let html = r#"<html><body><h2 class="ArticleHead_article_title__qh8GV">Title</h2></body></html>"#;
         assert_eq!(detect_format(html), ArticleFormat::Sports);
     }
 
