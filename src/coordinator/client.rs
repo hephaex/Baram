@@ -132,7 +132,16 @@ impl CoordinatorClient {
 
         let url = format!("{}/api/instances/register", self.config.coordinator_url);
 
-        self.post_with_retry(&url, &request).await
+        let response: ApiResponse<RegisterResponse> =
+            self.post_with_retry(&url, &request).await?;
+
+        response.data.ok_or_else(|| {
+            ClientError::InvalidResponse(
+                response
+                    .error
+                    .unwrap_or_else(|| "Missing register response data".to_string()),
+            )
+        })
     }
 
     /// Send heartbeat to coordinator
@@ -151,19 +160,44 @@ impl CoordinatorClient {
 
         let url = format!("{}/api/instances/heartbeat", self.config.coordinator_url);
 
-        self.post_with_retry(&url, &request).await
+        let response: ApiResponse<HeartbeatResponse> =
+            self.post_with_retry(&url, &request).await?;
+
+        response.data.ok_or_else(|| {
+            ClientError::InvalidResponse(
+                response
+                    .error
+                    .unwrap_or_else(|| "Missing heartbeat response data".to_string()),
+            )
+        })
     }
 
     /// Get today's schedule
     pub async fn get_today_schedule(&self) -> Result<ScheduleResponse, ClientError> {
         let url = format!("{}/api/schedule/today", self.config.coordinator_url);
-        self.get_with_retry(&url).await
+        let response: ApiResponse<ScheduleResponse> = self.get_with_retry(&url).await?;
+
+        response.data.ok_or_else(|| {
+            ClientError::InvalidResponse(
+                response
+                    .error
+                    .unwrap_or_else(|| "Missing schedule response data".to_string()),
+            )
+        })
     }
 
     /// Get schedule for a specific date
     pub async fn get_schedule(&self, date: &str) -> Result<ScheduleResponse, ClientError> {
         let url = format!("{}/api/schedule/{}", self.config.coordinator_url, date);
-        self.get_with_retry(&url).await
+        let response: ApiResponse<ScheduleResponse> = self.get_with_retry(&url).await?;
+
+        response.data.ok_or_else(|| {
+            ClientError::InvalidResponse(
+                response
+                    .error
+                    .unwrap_or_else(|| "Missing schedule response data".to_string()),
+            )
+        })
     }
 
     /// Get schedule with fallback to cache
