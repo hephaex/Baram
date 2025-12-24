@@ -52,30 +52,58 @@ impl Default for GeneralSelectors {
     }
 }
 
-/// Selectors for entertainment news format (entertain.naver.com)
+/// Selectors for entertainment news format (entertain.naver.com, m.entertain.naver.com)
 pub struct EntertainmentSelectors {
     pub title: Vec<Selector>,
     pub content: Vec<Selector>,
     pub date: Vec<Selector>,
+    pub publisher: Vec<Selector>,
+    pub author: Vec<Selector>,
 }
 
 impl EntertainmentSelectors {
     pub fn new() -> Self {
         Self {
             title: vec![
+                // Desktop entertain.naver.com
                 Selector::parse(".end_tit").unwrap(),
                 Selector::parse("h2.end_tit").unwrap(),
                 Selector::parse(".article_tit").unwrap(),
+                // Mobile m.entertain.naver.com
+                Selector::parse("h2.ArticleHead_article_title__qh8GV").unwrap(),
+                Selector::parse(".ArticleHead_article_title__qh8GV").unwrap(),
+                Selector::parse("h2[class*='article_title']").unwrap(),
             ],
             content: vec![
+                // Desktop entertain.naver.com
                 Selector::parse(".article_body").unwrap(),
                 Selector::parse("#articeBody").unwrap(),
                 Selector::parse("div.end_body_wrp").unwrap(),
+                // Mobile m.entertain.naver.com
+                Selector::parse("article.Article_comp_news_article__XIpve").unwrap(),
+                Selector::parse("article[class*='_article_body']").unwrap(),
+                Selector::parse("div._article_content").unwrap(),
+                Selector::parse("article#comp_news_article").unwrap(),
             ],
             date: vec![
+                // Desktop entertain.naver.com
                 Selector::parse(".article_info .author em").unwrap(),
                 Selector::parse(".info_date").unwrap(),
                 Selector::parse("span.author em").unwrap(),
+                // Mobile m.entertain.naver.com
+                Selector::parse(".DateInfo_info_item__3yQPs em.date").unwrap(),
+                Selector::parse(".DateInfo_article_head_date_info__CS6Gx em.date").unwrap(),
+                Selector::parse("div[class*='DateInfo'] em.date").unwrap(),
+            ],
+            publisher: vec![
+                Selector::parse(".JournalistCard_press_name__s3Eup").unwrap(),
+                Selector::parse("em[class*='press_name']").unwrap(),
+                Selector::parse(".press_name").unwrap(),
+            ],
+            author: vec![
+                Selector::parse(".JournalistCard_name__0ZSAO").unwrap(),
+                Selector::parse("em[class*='name']").unwrap(),
+                Selector::parse(".journalist_name").unwrap(),
             ],
         }
     }
@@ -277,7 +305,11 @@ mod tests {
     #[test]
     fn test_entertainment_selectors_default() {
         let selectors = EntertainmentSelectors::default();
-        assert_eq!(selectors.title.len(), 3);
+        // Desktop (3) + Mobile (3) = 6 title selectors
+        assert!(selectors.title.len() >= 6);
+        // Should have publisher and author selectors
+        assert!(!selectors.publisher.is_empty());
+        assert!(!selectors.author.is_empty());
     }
 
     #[test]

@@ -171,7 +171,7 @@ impl ArticleParser {
         })
     }
 
-    /// Parse entertainment news format
+    /// Parse entertainment news format (desktop and mobile)
     fn parse_entertainment(&self, document: &Html, url: &str) -> Result<ParsedArticle, ParseError> {
         let title = self
             .extract_first_match(document, &self.entertainment.title)
@@ -181,7 +181,13 @@ impl ArticleParser {
             .extract_content_text(document, &self.entertainment.content)
             .ok_or(ParseError::ContentNotFound)?;
 
+        if !has_content(&content) {
+            return Err(ParseError::ContentNotFound);
+        }
+
         let date = self.extract_first_match(document, &self.entertainment.date);
+        let publisher = self.extract_first_match(document, &self.entertainment.publisher);
+        let author = self.extract_first_match(document, &self.entertainment.author);
 
         Ok(ParsedArticle {
             title: sanitize_text(&title),
@@ -189,6 +195,8 @@ impl ArticleParser {
             url: url.to_string(),
             category: "entertainment".to_string(),
             published_at: date.and_then(|d| self.parse_date(&d)),
+            publisher,
+            author,
             crawled_at: Utc::now(),
             ..Default::default()
         })
