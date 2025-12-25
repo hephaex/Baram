@@ -27,3 +27,7 @@ target
 development_spec.md
 qa_guide.md
 sprint_plan.md
+
+# Docker environment
+docker/.env
+docker/build.log
