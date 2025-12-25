@@ -341,20 +341,71 @@ impl ArticleParser {
     }
 
     /// Check if article is deleted/unavailable
+    /// Only checks title and error containers to avoid false positives
+    /// when article content discusses deletion
     fn is_deleted_article(&self, html: &str) -> bool {
+        let doc = Html::parse_document(html);
+
+        // Indicators for deleted/unavailable articles
         let indicators = [
             "삭제된 기사",
             "없는 기사",
             "서비스 되지 않는",
             "페이지를 찾을 수 없습니다",
             "삭제되었거나",
-            "존재하지 않는",
+            "존재하지 않는 기사",
+            "기사가 삭제, 수정, 이동되었거나",
         ];
 
-        let html_lower = html.to_lowercase();
-        indicators
-            .iter()
-            .any(|&indicator| html_lower.contains(indicator))
+        // Check page title
+        if let Ok(title_selector) = Selector::parse("title") {
+            if let Some(title_el) = doc.select(&title_selector).next() {
+                let title_text = title_el.text().collect::<String>();
+                for indicator in &indicators {
+                    if title_text.contains(indicator) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check common error message containers
+        let error_selectors = [
+            ".error_content",
+            ".deleted_content",
+            ".article_error",
+            ".news_error",
+            "#ct > .error_msg",
+            ".err_wrap",
+        ];
+
+        for sel_str in &error_selectors {
+            if let Ok(selector) = Selector::parse(sel_str) {
+                for element in doc.select(&selector) {
+                    let text = element.text().collect::<String>();
+                    for indicator in &indicators {
+                        if text.contains(indicator) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if main content area is missing (another sign of deleted article)
+        let content_selectors = ["#dic_area", ".article_body", ".news_end", "article"];
+        let has_content = content_selectors.iter().any(|sel| {
+            Selector::parse(sel)
+                .map(|s| doc.select(&s).next().is_some())
+                .unwrap_or(false)
+        });
+
+        // If no content area found and page is very short, likely deleted
+        if !has_content && html.len() < 5000 {
+            return true;
+        }
+
+        false
     }
 
     /// Parse date string to `DateTime<Utc>`
@@ -499,11 +550,29 @@ mod tests {
     fn test_is_deleted_article() {
         let parser = ArticleParser::new();
 
-        let deleted_html = "<html><body>삭제된 기사입니다</body></html>";
+        // Deleted article with indicator in title
+        let deleted_html = "<html><head><title>삭제된 기사입니다</title></head><body></body></html>";
         assert!(parser.is_deleted_article(deleted_html));
 
-        let normal_html = "<html><body>정상 기사</body></html>";
+        // Deleted article with error container
+        let deleted_html2 = r#"<html><body><div class="error_content">존재하지 않는 기사입니다</div></body></html>"#;
+        assert!(parser.is_deleted_article(deleted_html2));
+
+        // Normal article with content area
+        let normal_html = r#"<html><body><div id="dic_area">정상 기사 내용</div></body></html>"#;
         assert!(!parser.is_deleted_article(normal_html));
+
+        // Article that discusses deletion but has content (false positive fix)
+        let article_about_deletion = r#"<html>
+            <head><title>SBS 기사 삭제 논란</title></head>
+            <body>
+                <div id="dic_area">
+                    현대차 요청으로 삭제된 기사가 논란이 되고 있다.
+                    삭제된 기사는 음주운전 관련 내용이었다.
+                </div>
+            </body>
+        </html>"#;
+        assert!(!parser.is_deleted_article(article_about_deletion));
     }
 
     #[test]
