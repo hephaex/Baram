@@ -252,7 +252,17 @@ impl ScheduleTrigger {
 
         // Create target datetime for today's rotation
         let target_today = today.and_time(rotation_time);
-        let target_dt = Local.from_local_datetime(&target_today).unwrap();
+        let target_dt = Local
+            .from_local_datetime(&target_today)
+            .single()
+            .ok_or_else(|| {
+                SchedulerError::trigger_config(
+                    "rotation_time",
+                    format!(
+                        "Ambiguous or invalid datetime for today's rotation: {target_today}. This may occur during DST transition."
+                    ),
+                )
+            })?;
 
         if now < target_dt {
             // Rotation is later today
@@ -261,21 +271,44 @@ impl ScheduleTrigger {
             // Rotation is tomorrow
             let tomorrow = today + Duration::days(1);
             let target_tomorrow = tomorrow.and_time(rotation_time);
-            let target_dt = Local.from_local_datetime(&target_tomorrow).unwrap();
+            let target_dt = Local
+                .from_local_datetime(&target_tomorrow)
+                .single()
+                .ok_or_else(|| {
+                    SchedulerError::trigger_config(
+                        "rotation_time",
+                        format!(
+                            "Ambiguous or invalid datetime for tomorrow's rotation: {target_tomorrow}. This may occur during DST transition."
+                        ),
+                    )
+                })?;
             Ok(target_dt.signed_duration_since(now))
         }
     }
 
     /// Calculate duration until next hour
+    ///
+    /// Returns the duration from now until the start of the next hour.
+    /// If time manipulation fails (which should be extremely rare), returns a
+    /// safe fallback of 60 seconds.
     pub fn duration_until_next_hour() -> Duration {
         let now = Local::now();
-        let next_hour = (now + Duration::hours(1))
+
+        // Safe time manipulation with fallback
+        let next_hour = match (now + Duration::hours(1))
             .with_minute(0)
-            .unwrap()
-            .with_second(0)
-            .unwrap()
-            .with_nanosecond(0)
-            .unwrap();
+            .and_then(|dt| dt.with_second(0))
+            .and_then(|dt| dt.with_nanosecond(0))
+        {
+            Some(dt) => dt,
+            None => {
+                // This should never happen, but if it does, return a safe fallback
+                tracing::warn!(
+                    "Failed to calculate next hour boundary from {now}. Using 60s fallback."
+                );
+                return Duration::seconds(60);
+            }
+        };
 
         next_hour.signed_duration_since(now)
     }

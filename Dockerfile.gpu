@@ -1,4 +1,4 @@
-# Dockerfile.gpu for nTimes with NVIDIA CUDA GPU support
+# Dockerfile.gpu for Baram with NVIDIA CUDA GPU support
 # Multi-stage build for optimized GPU-accelerated production image
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
@@ -57,7 +57,7 @@ COPY . .
 RUN cargo build --release --locked --features cuda
 
 # Strip debug symbols to reduce binary size
-RUN strip /build/target/release/ntimes
+RUN strip /build/target/release/baram
 
 # ============================================================================
 # Stage 2: Runtime - CUDA runtime image
@@ -76,8 +76,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and group for running the application
-RUN groupadd -r -g 1001 ntimes && \
-    useradd -r -u 1001 -g ntimes -s /bin/bash -m -d /app ntimes
+RUN groupadd -r -g 1001 baram && \
+    useradd -r -u 1001 -g baram -s /bin/bash -m -d /app baram
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/output/raw \
@@ -85,29 +85,29 @@ RUN mkdir -p /app/output/raw \
     /app/checkpoints \
     /app/logs \
     /app/models \
-    && chown -R ntimes:ntimes /app
+    && chown -R baram:baram /app
 
 # Set working directory
 WORKDIR /app
 
 # Copy the compiled binary from builder stage
-COPY --from=builder --chown=ntimes:ntimes /build/target/release/ntimes /usr/local/bin/ntimes
+COPY --from=builder --chown=baram:baram /build/target/release/baram /usr/local/bin/baram
 
 # Copy configuration files
-COPY --chown=ntimes:ntimes config.toml.example /app/config.toml
+COPY --chown=baram:baram config.toml.example /app/config.toml
 
 # Set environment variables
 ENV RUST_LOG=info \
     RUST_BACKTRACE=1 \
     OUTPUT_DIR=/app/output \
     CHECKPOINT_DIR=/app/checkpoints \
-    LOG_FILE=/app/logs/ntimes.log \
+    LOG_FILE=/app/logs/baram.log \
     HF_HOME=/app/models \
     NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Switch to non-root user
-USER ntimes
+USER baram
 
 # Expose health check port
 EXPOSE 8080
@@ -117,27 +117,27 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Default command
-ENTRYPOINT ["/usr/local/bin/ntimes"]
+ENTRYPOINT ["/usr/local/bin/baram"]
 CMD ["--help"]
 
 # Labels for image metadata
 LABEL maintainer="hephaex@gmail.com" \
       version="0.1.0-gpu" \
-      description="nTimes Naver News Crawler - GPU-accelerated with CUDA support" \
+      description="Baram Naver News Crawler - GPU-accelerated with CUDA support" \
       license="GPL-3.0" \
-      org.opencontainers.image.source="https://github.com/hephaex/nTimes"
+      org.opencontainers.image.source="https://github.com/hephaex/baram"
 
 # ============================================================================
 # Build instructions:
 # ============================================================================
 # Build the GPU image:
-#   docker build -f Dockerfile.gpu -t ntimes:gpu .
+#   docker build -f Dockerfile.gpu -t baram:gpu .
 #
 # Run with GPU support:
 #   docker run --gpus all --rm -it \
 #     --env-file docker/.env \
 #     -v $(pwd)/output:/app/output \
-#     ntimes:gpu crawl --category politics
+#     baram:gpu crawl --category politics
 #
 # Run with docker-compose (see docker/docker-compose.gpu.yml):
 #   docker-compose -f docker/docker-compose.yml -f docker/docker-compose.gpu.yml up -d

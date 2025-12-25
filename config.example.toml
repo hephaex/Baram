@@ -1,0 +1,46 @@
+# Example configuration file for Baram
+# Copy this to config.toml and adjust the values as needed
+
+[crawler]
+# Maximum number of concurrent HTTP requests
+max_concurrent_requests = 10
+
+# Rate limit in requests per second
+rate_limit = 2.0
+
+# Request timeout in seconds
+request_timeout_secs = 30
+
+# User agent string for HTTP requests
+user_agent = "baram/0.1.6"
+
+# Enable cookie persistence
+enable_cookies = true
+
+[database]
+# SQLite database path for metadata storage
+sqlite_path = "data/metadata.db"
+
+# PostgreSQL connection string
+postgres_url = "postgresql://localhost:5432/baram"
+
+# Database connection pool size
+pool_size = 10
+
+[opensearch]
+# OpenSearch endpoint URL
+url = "http://localhost:9200"
+
+# Index name for article storage
+index_name = "baram-articles"
+
+# Optional authentication (remove if not needed)
+# username = "admin"
+# password = "admin"
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Log format: text, json
+format = "text"

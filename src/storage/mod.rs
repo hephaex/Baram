@@ -161,16 +161,148 @@ impl Database {
         Ok(())
     }
 
+    /// Create PostgreSQL schema for articles
+    async fn create_postgres_schema(&self) -> Result<()> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        client
+            .execute(
+                r#"
+                CREATE TABLE IF NOT EXISTS articles (
+                    id UUID PRIMARY KEY,
+                    url TEXT NOT NULL UNIQUE,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    author TEXT,
+                    published_at TIMESTAMPTZ,
+                    category TEXT,
+                    content_hash TEXT NOT NULL,
+                    comments JSONB NOT NULL DEFAULT '[]',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_articles_url ON articles(url);
+                CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles(content_hash);
+                CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
+                CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category);
+                "#,
+                &[],
+            )
+            .await
+            .context("Failed to create PostgreSQL schema")?;
+
+        tracing::info!("PostgreSQL articles schema initialized");
+        Ok(())
+    }
+
     /// Store article in PostgreSQL
-    pub async fn store_article(&self, _article: &Article) -> Result<()> {
-        // TODO: Implement PostgreSQL article storage
+    pub async fn store_article(&self, article: &Article) -> Result<()> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        // Ensure schema exists
+        self.create_postgres_schema().await?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        // Serialize comments to JSON
+        let comments_json =
+            serde_json::to_value(&article.comments).context("Failed to serialize comments")?;
+
+        // Insert or update article
+        client
+            .execute(
+                r#"
+                INSERT INTO articles (
+                    id, url, title, body, author, published_at, category, content_hash, comments
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (url) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    body = EXCLUDED.body,
+                    author = EXCLUDED.author,
+                    published_at = EXCLUDED.published_at,
+                    category = EXCLUDED.category,
+                    content_hash = EXCLUDED.content_hash,
+                    comments = EXCLUDED.comments,
+                    updated_at = NOW()
+                "#,
+                &[
+                    &article.id,
+                    &article.url,
+                    &article.title,
+                    &article.body,
+                    &article.author,
+                    &article.published_at,
+                    &article.category,
+                    &article.content_hash,
+                    &comments_json,
+                ],
+            )
+            .await
+            .context("Failed to store article")?;
+
+        tracing::debug!(article_id = %article.id, url = %article.url, "Article stored");
         Ok(())
     }
 
     /// Retrieve article by ID
-    pub async fn get_article(&self, _id: &str) -> Result<Option<Article>> {
-        // TODO: Implement article retrieval
-        Ok(None)
+    pub async fn get_article(&self, id: &str) -> Result<Option<Article>> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        // Parse UUID
+        let article_id = uuid::Uuid::parse_str(id).context("Invalid UUID format")?;
+
+        // Query article
+        let row = client
+            .query_opt(
+                r#"
+                SELECT id, url, title, body, author, published_at, category, content_hash, comments
+                FROM articles
+                WHERE id = $1
+                "#,
+                &[&article_id],
+            )
+            .await
+            .context("Failed to query article")?;
+
+        match row {
+            Some(row) => {
+                let comments_json: serde_json::Value = row.get(8);
+                let comments: Vec<crate::parser::Comment> =
+                    serde_json::from_value(comments_json)
+                        .context("Failed to deserialize comments")?;
+
+                let article = Article {
+                    id: row.get(0),
+                    url: row.get(1),
+                    title: row.get(2),
+                    body: row.get(3),
+                    author: row.get(4),
+                    published_at: row.get(5),
+                    category: row.get(6),
+                    content_hash: row.get(7),
+                    comments,
+                };
+
+                tracing::debug!(article_id = %article.id, "Article retrieved");
+                Ok(Some(article))
+            }
+            None => Ok(None),
+        }
     }
 
     /// Check if URL has been crawled

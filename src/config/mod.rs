@@ -3,7 +3,7 @@
 //! This module handles loading and validating configuration from environment variables,
 //! files, and command-line arguments.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -85,14 +85,80 @@ pub struct LoggingConfig {
 impl Config {
     /// Load configuration from environment variables
     pub fn from_env() -> Result<Self> {
-        // TODO: Implement environment variable loading
-        Ok(Self::default())
+        let max_concurrent_requests = std::env::var("BARAM_MAX_CONCURRENT_REQUESTS")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(10);
+
+        let rate_limit = std::env::var("BARAM_RATE_LIMIT")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(2.0);
+
+        let request_timeout_secs = std::env::var("BARAM_REQUEST_TIMEOUT")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(30);
+
+        let user_agent = std::env::var("BARAM_USER_AGENT")
+            .unwrap_or_else(|_| format!("baram/{}", env!("CARGO_PKG_VERSION")));
+
+        let sqlite_path = std::env::var("BARAM_SQLITE_PATH")
+            .unwrap_or_else(|_| String::from("data/metadata.db"))
+            .into();
+
+        let postgres_url = std::env::var("POSTGRES_URL")
+            .or_else(|_| std::env::var("DATABASE_URL"))
+            .unwrap_or_else(|_| String::from("postgresql://localhost/baram"));
+
+        let opensearch_url = std::env::var("OPENSEARCH_URL")
+            .unwrap_or_else(|_| String::from("http://localhost:9200"));
+
+        let opensearch_index =
+            std::env::var("OPENSEARCH_INDEX").unwrap_or_else(|_| String::from("baram-articles"));
+
+        let opensearch_username = std::env::var("OPENSEARCH_USERNAME").ok();
+        let opensearch_password = std::env::var("OPENSEARCH_PASSWORD").ok();
+
+        let log_level = std::env::var("BARAM_LOG_LEVEL").unwrap_or_else(|_| String::from("info"));
+
+        let log_format = std::env::var("BARAM_LOG_FORMAT").unwrap_or_else(|_| String::from("text"));
+
+        Ok(Self {
+            crawler: CrawlerConfig {
+                max_concurrent_requests,
+                rate_limit,
+                request_timeout_secs,
+                user_agent,
+                enable_cookies: true,
+            },
+            database: DatabaseConfig {
+                sqlite_path,
+                postgres_url,
+                pool_size: 10,
+            },
+            opensearch: OpenSearchConfig {
+                url: opensearch_url,
+                index_name: opensearch_index,
+                username: opensearch_username,
+                password: opensearch_password,
+            },
+            logging: LoggingConfig {
+                level: log_level,
+                format: log_format,
+            },
+        })
     }
 
     /// Load configuration from a file
-    pub fn from_file(_path: &Path) -> Result<Self> {
-        // TODO: Implement file-based configuration loading
-        Ok(Self::default())
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let content = std::fs::read_to_string(path)
+            .with_context(|| format!("Failed to read config file: {}", path.display()))?;
+
+        let config: Self = toml::from_str(&content)
+            .with_context(|| format!("Failed to parse TOML config file: {}", path.display()))?;
+
+        Ok(config)
     }
 
     /// Validate configuration values

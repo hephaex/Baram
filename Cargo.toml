@@ -6,10 +6,26 @@ rust-version = "1.80"
 authors = ["hephaex <hephaex@gmail.com>"]
 description = "Korean News Aggregator with vector search and ontology extraction"
 license = "GPL-3.0"
+repository = "https://github.com/hephaex/baram"
+homepage = "https://github.com/hephaex/baram"
+documentation = "https://github.com/hephaex/baram"
+readme = "README.md"
+keywords = ["crawler", "news", "vector-search", "korean", "nlp"]
+categories = ["web-programming", "database", "text-processing", "command-line-utilities"]
+exclude = [
+    ".env",
+    ".env.*",
+    "build.log",
+    "target/",
+    ".git/",
+    ".github/",
+    "docker/",
+    "*.log",
+]
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.40", features = ["full"] }
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "time", "sync", "fs", "io-util", "signal", "net"] }
 
 # HTTP client
 reqwest = { version = "0.12", features = ["cookies", "gzip", "json"] }
@@ -23,6 +39,7 @@ governor = "0.7"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+toml = "0.8"
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }
@@ -101,15 +118,32 @@ wiremock = "0.6"
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = "fat"
 codegen-units = 1
 strip = true
+panic = "abort"
 
 [profile.dev]
 opt-level = 0
+debug = true
 
 [profile.test]
 opt-level = 1
+debug = true
+
+# Profile for development with better performance
+[profile.dev-opt]
+inherits = "dev"
+opt-level = 2
+
+# Profile for maximum binary size reduction
+[profile.min-size]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
 
 [features]
 default = []

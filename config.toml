@@ -1,9 +1,9 @@
-# nTimes Naver News Crawler Configuration
+# Baram - Naver News Crawler Configuration
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
 
 [app]
-name = "nTimes"
+name = "baram"
 version = "0.1.0"
 # Environment: development, staging, production
 environment = "development"
@@ -92,88 +92,85 @@ file_template = "{category}_{oid}_{aid}.md"
 # Checkpoint interval (number of articles)
 checkpoint_interval = 100
 
-# PostgreSQL Configuration (optional)
-# Uncomment to enable PostgreSQL storage
-# [postgres]
-# host = "localhost"
-# port = 5432
-# database = "naver_news"
-# username = "crawler"
-# # Use environment variable: export DB_PASSWORD="your_password"
-# password = "${DB_PASSWORD}"
-# max_connections = 20
-# min_idle_connections = 5
-# connection_timeout_secs = 10
-# ssl_mode = "prefer"  # disable, prefer, require
-# application_name = "nTimes-crawler"
+# PostgreSQL Configuration
+[postgres]
+host = "localhost"
+port = 5432
+database = "baram"
+username = "baram"
+# Use environment variable: export POSTGRES_PASSWORD="your_password"
+password = "${POSTGRES_PASSWORD}"
+max_connections = 20
+min_idle_connections = 5
+connection_timeout_secs = 10
+ssl_mode = "prefer"  # disable, prefer, require
+application_name = "baram-crawler"
 
-# OpenSearch Configuration (optional)
-# Uncomment to enable vector search
-# [opensearch]
-# hosts = [
-#     "https://localhost:9200",
-# ]
-# index_name = "naver_news"
-# # Optional authentication
-# # username = "admin"
-# # password = "${OPENSEARCH_PASSWORD}"
-# verify_ssl = false  # Set to true in production
-# timeout_secs = 30
+# OpenSearch Configuration
+[opensearch]
+hosts = [
+    "https://localhost:9200",
+]
+index_name = "baram_news"
+# Authentication (use environment variables)
+username = "admin"
+password = "${OPENSEARCH_PASSWORD}"
+verify_ssl = false  # Set to true in production with proper certs
+timeout_secs = 30
 
-# [opensearch.bulk]
-# # Maximum documents per bulk request
-# size = 500
-# # Maximum bytes per bulk request (5MB)
-# max_bytes = 5242880
-# # Flush interval in seconds
-# flush_interval_secs = 30
+[opensearch.bulk]
+# Maximum documents per bulk request
+size = 500
+# Maximum bytes per bulk request (5MB)
+max_bytes = 5242880
+# Flush interval in seconds
+flush_interval_secs = 30
 
-# [opensearch.index_settings]
-# number_of_shards = 3
-# number_of_replicas = 1
-# refresh_interval = "30s"
-# # Use Korean analyzer (nori)
-# use_nori_analyzer = true
+[opensearch.index_settings]
+number_of_shards = 3
+number_of_replicas = 1
+refresh_interval = "30s"
+# Use Korean analyzer (nori)
+use_nori_analyzer = true
 
-# Embedding Model Configuration (optional)
-# Uncomment to enable semantic search
-# [embedding]
-# # Model path (local or HuggingFace model ID)
-# model_path = "./models/klue-bert-base"
-# tokenizer_path = "./models/klue-bert-base/tokenizer.json"
-# # Vector dimension (BERT-base: 768)
-# vector_dim = 768
-# # Maximum sequence length
-# max_seq_length = 512
-# # Text chunking configuration
-# chunk_size = 500
-# chunk_overlap = 50
-# # Device: cpu, cuda, mps
-# device = "cpu"
-# # Batch size for embedding generation
-# batch_size = 32
+# Embedding Model Configuration
+[embedding]
+# Model path (local or HuggingFace model ID)
+model_id = "intfloat/multilingual-e5-large"
+# Vector dimension (multilingual-e5-large: 1024)
+vector_dim = 1024
+# Maximum sequence length
+max_seq_length = 512
+# Text chunking configuration
+chunk_size = 500
+chunk_overlap = 50
+# Device: cpu, cuda, mps
+device = "cpu"
+# Batch size for embedding generation
+batch_size = 32
+# Cache directory for models
+cache_dir = "./models"
 
-# Ontology Extraction Configuration (optional)
-# Uncomment to enable knowledge graph extraction
-# [ontology]
-# # LLM provider: openai, gemini, local
-# provider = "openai"
-# # API key (use environment variable)
-# # api_key = "${LLM_API_KEY}"
-# # Model name
-# model_name = "gpt-4-turbo-preview"
-# # Prompt template path
-# prompt_template_path = "./templates/ontology_extraction.hbs"
-# # Maximum tokens for completion
-# max_tokens = 2048
-# # Temperature for sampling (0.0 = deterministic)
-# temperature = 0.3
-# # Minimum confidence score for extracted triples
-# min_confidence = 0.7
-# # Enable hallucination detection
-# enable_hallucination_check = true
-# # Batch size for ontology extraction
-# batch_size = 10
+# Ontology Extraction Configuration
+[ontology]
+# LLM provider: openai, gemini, ollama
+provider = "openai"
+# API key (use environment variable)
+api_key = "${OPENAI_API_KEY}"
+# Model name
+model_name = "gpt-4-turbo-preview"
+# Prompt template path
+prompt_template_path = "./templates/ontology_extraction.hbs"
+# Maximum tokens for completion
+max_tokens = 2048
+# Temperature for sampling (0.0 = deterministic)
+temperature = 0.3
+# Minimum confidence score for extracted triples
+min_confidence = 0.7
+# Enable hallucination detection
+enable_hallucination_check = true
+# Batch size for ontology extraction
+batch_size = 10
 
 [logging]
 # Log level: trace, debug, info, warn, error
@@ -192,7 +189,7 @@ console = true
 enable_tracing = false
 
 # Environment-specific overrides
-# To use: export NTIMES_ENV=production
+# To use: export BARAM_ENV=production
 
 # Development settings (default)
 # - Verbose logging

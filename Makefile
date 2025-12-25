@@ -1,4 +1,4 @@
-# Makefile for nTimes Naver News Crawler
+# Makefile for Baram Naver News Crawler
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
 
@@ -19,7 +19,7 @@ COLOR_ERROR   = \033[31m
 # ============================================================================
 
 help: ## Display this help message
-	@echo "$(COLOR_INFO)nTimes Naver News Crawler - Available Commands$(COLOR_RESET)"
+	@echo "$(COLOR_INFO)Baram Naver News Crawler - Available Commands$(COLOR_RESET)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(COLOR_SUCCESS)%-20s$(COLOR_RESET) %s\n", $$1, $$2}'
@@ -30,7 +30,7 @@ help: ## Display this help message
 # ============================================================================
 
 setup: ## Initial setup - copy env files and create directories
-	@echo "$(COLOR_INFO)Setting up nTimes environment...$(COLOR_RESET)"
+	@echo "$(COLOR_INFO)Setting up Baram environment...$(COLOR_RESET)"
 	@if [ ! -f docker/.env ]; then \
 		cp docker/.env.example docker/.env; \
 		echo "$(COLOR_WARNING)Created docker/.env - Please edit and set passwords!$(COLOR_RESET)"; \
@@ -111,7 +111,7 @@ logs-redis: ## Tail Redis logs
 # ============================================================================
 
 db-shell: ## Open PostgreSQL shell
-	cd docker && docker-compose exec postgres psql -U ntimes -d ntimes
+	cd docker && docker-compose exec postgres psql -U baram -d baram
 
 db-reset: ## Reset database (WARNING: deletes all data)
 	@echo "$(COLOR_WARNING)WARNING: This will delete all data!$(COLOR_RESET)"
@@ -189,7 +189,7 @@ backup: ## Backup PostgreSQL and OpenSearch data
 	@echo "$(COLOR_INFO)Creating backup...$(COLOR_RESET)"
 	@mkdir -p backups
 	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
-	cd docker && docker-compose exec -T postgres pg_dump -U ntimes ntimes > ../backups/postgres_$$TIMESTAMP.sql; \
+	cd docker && docker-compose exec -T postgres pg_dump -U baram baram > ../backups/postgres_$$TIMESTAMP.sql; \
 	echo "$(COLOR_SUCCESS)PostgreSQL backup created: backups/postgres_$$TIMESTAMP.sql$(COLOR_RESET)"
 
 restore: ## Restore PostgreSQL from backup (Usage: make restore FILE=backups/postgres_20240115.sql)
@@ -206,7 +206,7 @@ restore: ## Restore PostgreSQL from backup (Usage: make restore FILE=backups/pos
 	@read -p "Continue? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		cd docker && docker-compose exec -T postgres psql -U ntimes ntimes < ../$(FILE); \
+		cd docker && docker-compose exec -T postgres psql -U baram baram < ../$(FILE); \
 		echo "$(COLOR_SUCCESS)Database restored from $(FILE)$(COLOR_RESET)"; \
 	else \
 		echo "$(COLOR_INFO)Cancelled$(COLOR_RESET)"; \
@@ -250,8 +250,8 @@ format-check: ## Check code formatting
 
 docker-build: ## Build Docker image
 	@echo "$(COLOR_INFO)Building Docker image...$(COLOR_RESET)"
-	docker build -t ntimes:latest .
-	@echo "$(COLOR_SUCCESS)Docker image built: ntimes:latest$(COLOR_RESET)"
+	docker build -t baram:latest .
+	@echo "$(COLOR_SUCCESS)Docker image built: baram:latest$(COLOR_RESET)"
 
 docker-run: ## Run crawler in Docker container
 	@echo "$(COLOR_INFO)Running crawler in Docker...$(COLOR_RESET)"
@@ -260,7 +260,7 @@ docker-run: ## Run crawler in Docker container
 		--env-file docker/.env \
 		-v $$(pwd)/output:/app/output \
 		-v $$(pwd)/checkpoints:/app/checkpoints \
-		ntimes:latest $(ARGS)
+		baram:latest $(ARGS)
 
 # ============================================================================
 # Cleanup

@@ -536,7 +536,8 @@ mod tests {
 
     #[test]
     fn test_detect_format_sports_mobile_title() {
-        let html = r#"<html><body><h2 class="ArticleHead_article_title__qh8GV">Title</h2></body></html>"#;
+        let html =
+            r#"<html><body><h2 class="ArticleHead_article_title__qh8GV">Title</h2></body></html>"#;
         assert_eq!(detect_format(html), ArticleFormat::Sports);
     }
 
@@ -551,7 +552,8 @@ mod tests {
         let parser = ArticleParser::new();
 
         // Deleted article with indicator in title
-        let deleted_html = "<html><head><title>삭제된 기사입니다</title></head><body></body></html>";
+        let deleted_html =
+            "<html><head><title>삭제된 기사입니다</title></head><body></body></html>";
         assert!(parser.is_deleted_article(deleted_html));
 
         // Deleted article with error container

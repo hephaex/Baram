@@ -85,18 +85,18 @@ jobs:
 
       - name: Strip binary (Linux)
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: strip target/${{ matrix.target }}/release/ntimes
+        run: strip target/${{ matrix.target }}/release/baram
 
       - name: Strip binary (macOS)
         if: contains(matrix.target, 'apple')
-        run: strip target/${{ matrix.target }}/release/ntimes
+        run: strip target/${{ matrix.target }}/release/baram
 
       - name: Create archive
         id: archive
         run: |
-          ARCHIVE_NAME="ntimes-${{ needs.create-release.outputs.version }}-${{ matrix.target }}"
+          ARCHIVE_NAME="baram-${{ needs.create-release.outputs.version }}-${{ matrix.target }}"
           cd target/${{ matrix.target }}/release
-          tar czf "${ARCHIVE_NAME}.tar.gz" ntimes
+          tar czf "${ARCHIVE_NAME}.tar.gz" baram
           echo "archive_name=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_OUTPUT
           echo "archive_path=target/${{ matrix.target }}/release/${ARCHIVE_NAME}.tar.gz" >> $GITHUB_OUTPUT
 

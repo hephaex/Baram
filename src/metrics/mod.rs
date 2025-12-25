@@ -21,25 +21,25 @@ lazy_static! {
         register_gauge!(
             "baram_coordinator_registered_instances",
             "Number of registered crawler instances"
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_registered_instances metric");
 
     pub static ref COORDINATOR_ONLINE_INSTANCES: Gauge =
         register_gauge!(
             "baram_coordinator_online_instances",
             "Number of currently online crawler instances"
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_online_instances metric");
 
     pub static ref COORDINATOR_TOTAL_HEARTBEATS: Counter =
         register_counter!(
             "baram_coordinator_total_heartbeats",
             "Total number of heartbeats received"
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_total_heartbeats metric");
 
     pub static ref COORDINATOR_HEARTBEAT_ERRORS: Counter =
         register_counter!(
             "baram_coordinator_heartbeat_errors_total",
             "Total number of heartbeat errors"
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_heartbeat_errors_total metric");
 
     // Article tracking from all instances
     pub static ref COORDINATOR_ARTICLES_CRAWLED: CounterVec =
@@ -47,14 +47,14 @@ lazy_static! {
             "baram_coordinator_articles_crawled_total",
             "Total articles crawled by instance",
             &["instance"]
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_articles_crawled_total metric");
 
     pub static ref COORDINATOR_ERRORS: CounterVec =
         register_counter_vec!(
             "baram_coordinator_errors_total",
             "Total errors reported by instance",
             &["instance"]
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_errors_total metric");
 
     // API request metrics
     pub static ref COORDINATOR_API_REQUESTS: CounterVec =
@@ -62,7 +62,7 @@ lazy_static! {
             "baram_coordinator_api_requests_total",
             "Total API requests by endpoint and status",
             &["endpoint", "status"]
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_api_requests_total metric");
 
     pub static ref COORDINATOR_API_DURATION: HistogramVec =
         register_histogram_vec!(
@@ -70,7 +70,7 @@ lazy_static! {
             "API request duration in seconds",
             &["endpoint"],
             vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
-        ).unwrap();
+        ).expect("Failed to register baram_coordinator_api_request_duration_seconds metric");
 }
 
 // ============================================================================
@@ -85,28 +85,28 @@ lazy_static! {
             "Time spent crawling a category in seconds",
             &["instance", "category"],
             vec![1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_crawl_duration_seconds metric");
 
     pub static ref CRAWLER_ARTICLES_PER_CATEGORY: CounterVec =
         register_counter_vec!(
             "baram_crawler_articles_per_category_total",
             "Total articles crawled per category",
             &["instance", "category"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_articles_per_category_total metric");
 
     pub static ref CRAWLER_DEDUP_HITS: CounterVec =
         register_counter_vec!(
             "baram_crawler_dedup_hits_total",
             "Total deduplication cache hits (URLs already crawled)",
             &["instance"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_dedup_hits_total metric");
 
     pub static ref CRAWLER_DEDUP_MISSES: CounterVec =
         register_counter_vec!(
             "baram_crawler_dedup_misses_total",
             "Total deduplication cache misses (new URLs)",
             &["instance"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_dedup_misses_total metric");
 
     // Pipeline metrics
     pub static ref CRAWLER_PIPELINE_SUCCESS: CounterVec =
@@ -114,21 +114,21 @@ lazy_static! {
             "baram_crawler_pipeline_success_total",
             "Total successful pipeline executions",
             &["instance", "category"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_pipeline_success_total metric");
 
     pub static ref CRAWLER_PIPELINE_FAILURE: CounterVec =
         register_counter_vec!(
             "baram_crawler_pipeline_failure_total",
             "Total failed pipeline executions",
             &["instance", "category"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_pipeline_failure_total metric");
 
     pub static ref CRAWLER_PIPELINE_SKIPPED: CounterVec =
         register_counter_vec!(
             "baram_crawler_pipeline_skipped_total",
             "Total skipped articles in pipeline",
             &["instance", "category"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_pipeline_skipped_total metric");
 
     // Slot execution metrics
     pub static ref CRAWLER_SLOT_EXECUTIONS: CounterVec =
@@ -136,14 +136,14 @@ lazy_static! {
             "baram_crawler_slot_executions_total",
             "Total slot executions",
             &["instance", "hour"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_slot_executions_total metric");
 
     pub static ref CRAWLER_SLOT_ERRORS: CounterVec =
         register_counter_vec!(
             "baram_crawler_slot_errors_total",
             "Total slot execution errors",
             &["instance", "hour"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_slot_errors_total metric");
 
     // Current state gauges
     pub static ref CRAWLER_CURRENT_HOUR: GaugeVec =
@@ -151,14 +151,14 @@ lazy_static! {
             "baram_crawler_current_hour",
             "Current hour being crawled (0-23)",
             &["instance"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_current_hour metric");
 
     pub static ref CRAWLER_IS_CRAWLING: GaugeVec =
         register_gauge_vec!(
             "baram_crawler_is_crawling",
             "Whether the crawler is currently crawling (1 = yes, 0 = no)",
             &["instance"]
-        ).unwrap();
+        ).expect("Failed to register baram_crawler_is_crawling metric");
 }
 
 // ============================================================================

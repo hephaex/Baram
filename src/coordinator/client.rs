@@ -132,8 +132,7 @@ impl CoordinatorClient {
 
         let url = format!("{}/api/instances/register", self.config.coordinator_url);
 
-        let response: ApiResponse<RegisterResponse> =
-            self.post_with_retry(&url, &request).await?;
+        let response: ApiResponse<RegisterResponse> = self.post_with_retry(&url, &request).await?;
 
         response.data.ok_or_else(|| {
             ClientError::InvalidResponse(
@@ -160,8 +159,7 @@ impl CoordinatorClient {
 
         let url = format!("{}/api/instances/heartbeat", self.config.coordinator_url);
 
-        let response: ApiResponse<HeartbeatResponse> =
-            self.post_with_retry(&url, &request).await?;
+        let response: ApiResponse<HeartbeatResponse> = self.post_with_retry(&url, &request).await?;
 
         response.data.ok_or_else(|| {
             ClientError::InvalidResponse(

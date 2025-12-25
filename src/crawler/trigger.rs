@@ -436,41 +436,48 @@ impl CrawlerTrigger {
     /// Execute categories in parallel
     async fn execute_categories_parallel(
         &self,
-        _runner: &DistributedRunner,
+        runner: &DistributedRunner,
         categories: &[String],
     ) -> Vec<Result<u64, CrawlerTriggerError>> {
+        use futures::stream::{self, StreamExt};
+
         // Use semaphore to limit parallelism
         let semaphore = Arc::new(tokio::sync::Semaphore::new(
             self.config.max_parallel_workers,
         ));
 
-        let futures: Vec<_> = categories
-            .iter()
+        // Create a stream of futures
+        let results = stream::iter(categories)
             .map(|category| {
                 let sem = semaphore.clone();
                 let cat = category.clone();
 
                 async move {
+                    // Acquire permit
                     let _permit = sem.acquire().await.map_err(|_| {
                         CrawlerTriggerError::ExecutionError("Semaphore closed".to_string())
                     })?;
 
-                    // TODO: Integrate with actual crawler
-                    // For now, return placeholder
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                    tracing::info!("Parallel crawl for category: {}", cat);
-                    Ok(0u64)
+                    tracing::info!("Starting parallel crawl for category: {}", cat);
+
+                    // Call the actual crawler implementation
+                    runner
+                        .crawl_category(&cat)
+                        .await
+                        .map_err(|e| CrawlerTriggerError::ExecutionError(e.to_string()))
                 }
             })
-            .collect();
+            .buffer_unordered(self.config.max_parallel_workers)
+            .collect::<Vec<_>>()
+            .await;
 
-        futures::future::join_all(futures).await
+        results
     }
 
     /// Execute a single category with retry
     async fn execute_category_with_retry(
         &self,
-        _runner: &DistributedRunner,
+        runner: &DistributedRunner,
         category: &str,
         hour: u8,
     ) -> Result<u64, CrawlerTriggerError> {
@@ -488,9 +495,8 @@ impl CrawlerTrigger {
                 tokio::time::sleep(Duration::from_secs(self.config.retry_delay_secs)).await;
             }
 
-            // TODO: Integrate with actual crawler
-            // For now, simulate crawling
-            match self.crawl_category(category).await {
+            // Call the actual distributed runner's crawl_category method
+            match self.crawl_category(runner, category).await {
                 Ok(count) => return Ok(count),
                 Err(e) => {
                     last_error = Some(e.to_string());
@@ -510,19 +516,19 @@ impl CrawlerTrigger {
         })
     }
 
-    /// Crawl a single category (placeholder)
-    async fn crawl_category(&self, category: &str) -> Result<u64, CrawlerTriggerError> {
-        // TODO: Implement actual category crawling
-        // This should:
-        // 1. Build list URLs for the category
-        // 2. Fetch article list
-        // 3. Check deduplication
-        // 4. Crawl new articles
-        // 5. Store results
+    /// Crawl a single category using the DistributedRunner
+    async fn crawl_category(
+        &self,
+        runner: &DistributedRunner,
+        category: &str,
+    ) -> Result<u64, CrawlerTriggerError> {
+        tracing::info!("Starting crawl for category: {}", category);
 
-        tracing::info!("Crawling category: {}", category);
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        Ok(0)
+        // Delegate to the DistributedRunner's fully-implemented crawl_category method
+        runner
+            .crawl_category(category)
+            .await
+            .map_err(|e| CrawlerTriggerError::ExecutionError(e.to_string()))
     }
 
     /// Start the hourly trigger loop

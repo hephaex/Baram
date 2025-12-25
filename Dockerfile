@@ -1,4 +1,4 @@
-# Dockerfile for nTimes Naver News Crawler
+# Dockerfile for Baram Naver News Crawler
 # Multi-stage build for optimized production image
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
@@ -40,7 +40,7 @@ COPY --chown=builder:builder . .
 RUN cargo build --release --locked
 
 # Strip debug symbols to reduce binary size
-RUN strip /build/target/release/ntimes
+RUN strip /build/target/release/baram
 
 # ============================================================================
 # Stage 2: Runtime - Minimal production image
@@ -56,8 +56,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and group for running the application
-RUN groupadd -r -g 1001 ntimes && \
-    useradd -r -u 1001 -g ntimes -s /bin/bash -m -d /app ntimes
+RUN groupadd -r -g 1001 baram && \
+    useradd -r -u 1001 -g baram -s /bin/bash -m -d /app baram
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/output/raw \
@@ -65,27 +65,27 @@ RUN mkdir -p /app/output/raw \
     /app/checkpoints \
     /app/logs \
     /app/models \
-    && chown -R ntimes:ntimes /app
+    && chown -R baram:baram /app
 
 # Set working directory
 WORKDIR /app
 
 # Copy the compiled binary from builder stage
-COPY --from=builder --chown=ntimes:ntimes /build/target/release/ntimes /usr/local/bin/ntimes
+COPY --from=builder --chown=baram:baram /build/target/release/baram /usr/local/bin/baram
 
 # Copy configuration files
-COPY --chown=ntimes:ntimes config.toml.example /app/config.toml
+COPY --chown=baram:baram config.toml.example /app/config.toml
 
 # Set environment variables
 ENV RUST_LOG=info \
     RUST_BACKTRACE=1 \
     OUTPUT_DIR=/app/output \
     CHECKPOINT_DIR=/app/checkpoints \
-    LOG_FILE=/app/logs/ntimes.log \
+    LOG_FILE=/app/logs/baram.log \
     HF_HOME=/app/models
 
 # Switch to non-root user
-USER ntimes
+USER baram
 
 # Expose health check port (if implemented)
 EXPOSE 8080
@@ -95,36 +95,36 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Default command (can be overridden)
-ENTRYPOINT ["/usr/local/bin/ntimes"]
+ENTRYPOINT ["/usr/local/bin/baram"]
 CMD ["--help"]
 
 # Labels for image metadata
 LABEL maintainer="hephaex@gmail.com" \
       version="0.1.0" \
-      description="nTimes Naver News Crawler - Rust-based high-performance crawler" \
+      description="Baram Naver News Crawler - Rust-based high-performance crawler" \
       license="GPL-3.0" \
-      org.opencontainers.image.source="https://github.com/hephaex/nTimes" \
-      org.opencontainers.image.documentation="https://github.com/hephaex/nTimes/blob/main/README.md"
+      org.opencontainers.image.source="https://github.com/hephaex/baram" \
+      org.opencontainers.image.documentation="https://github.com/hephaex/baram/blob/main/README.md"
 
 # ============================================================================
 # Build instructions:
 # ============================================================================
 # Build the image:
-#   docker build -t ntimes:latest .
+#   docker build -t baram:latest .
 #
 # Build with specific Rust version:
-#   docker build --build-arg RUST_VERSION=1.75 -t ntimes:latest .
+#   docker build --build-arg RUST_VERSION=1.75 -t baram:latest .
 #
 # Run the container:
 #   docker run --rm -it \
 #     --env-file docker/.env \
 #     -v $(pwd)/output:/app/output \
 #     -v $(pwd)/checkpoints:/app/checkpoints \
-#     ntimes:latest crawl --category politics --max-articles 100
+#     baram:latest crawl --category politics --max-articles 100
 #
 # Run with docker-compose:
 #   docker-compose up -d
-#   docker-compose exec crawler ntimes crawl --category politics
+#   docker-compose exec crawler baram crawl --category politics
 #
 # ============================================================================
 # Production recommendations:

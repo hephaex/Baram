@@ -640,18 +640,34 @@ fn test_parse_mobile_sports_article() {
 
     // Test format detection
     let format = detect_format(html);
-    assert_eq!(format, ArticleFormat::Sports, "Should detect mobile sports format");
+    assert_eq!(
+        format,
+        ArticleFormat::Sports,
+        "Should detect mobile sports format"
+    );
 
     // Test parsing
     let parser = ArticleParser::new();
-    let result = parser.parse_with_fallback(html, "https://n.news.naver.com/mnews/article/236/0000252917");
-    
-    assert!(result.is_ok(), "Should successfully parse mobile sports article");
-    
+    let result = parser.parse_with_fallback(
+        html,
+        "https://n.news.naver.com/mnews/article/236/0000252917",
+    );
+
+    assert!(
+        result.is_ok(),
+        "Should successfully parse mobile sports article"
+    );
+
     let article = result.unwrap();
-    assert!(article.title.contains("조선협객전"), "Title should contain game name");
+    assert!(
+        article.title.contains("조선협객전"),
+        "Title should contain game name"
+    );
     assert_eq!(article.category, "sports", "Category should be sports");
-    assert!(article.content.contains("스마트나우"), "Content should contain publisher name");
+    assert!(
+        article.content.contains("스마트나우"),
+        "Content should contain publisher name"
+    );
     assert_eq!(article.oid, "236", "OID should be extracted");
     assert_eq!(article.aid, "0000252917", "AID should be extracted");
 }

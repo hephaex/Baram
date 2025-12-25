@@ -1,4 +1,4 @@
-# nTimes Docker Build Context Exclusions
+# Baram Docker Build Context Exclusions
 # Exclude unnecessary files to speed up builds and reduce image size
 
 # ============================================================================

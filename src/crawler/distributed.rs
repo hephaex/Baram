@@ -327,8 +327,7 @@ impl DistributedRunner {
                 state.set_category(Some(category.clone()));
             }
 
-            // TODO: Integrate with actual crawler here
-            // For now, simulate crawling
+            // Execute full crawl pipeline: fetch list → dedup → parse → store
             match self.crawl_category(category).await {
                 Ok(count) => {
                     articles_crawled += count;
@@ -368,7 +367,7 @@ impl DistributedRunner {
     }
 
     /// Crawl a single category
-    async fn crawl_category(&self, category: &str) -> Result<u64, RunnerError> {
+    pub async fn crawl_category(&self, category: &str) -> Result<u64, RunnerError> {
         let instance_id = self.config.instance_id.id();
 
         // Start metrics timer
@@ -571,8 +570,13 @@ impl DistributedRunner {
         tokio::spawn(async move {
             // Wait until next hour boundary
             let now = chrono::Local::now();
-            let next_hour =
-                now.with_minute(0).unwrap().with_second(0).unwrap() + chrono::Duration::hours(1);
+            let next_hour = match now.with_minute(0).and_then(|dt| dt.with_second(0)) {
+                Some(dt) => dt + chrono::Duration::hours(1),
+                None => {
+                    tracing::warn!("Failed to calculate next hour boundary, using 60s fallback");
+                    now + chrono::Duration::seconds(60)
+                }
+            };
             let wait_duration = (next_hour - now)
                 .to_std()
                 .unwrap_or(Duration::from_secs(60));
@@ -859,13 +863,31 @@ impl DistributedRunner {
     }
 
     /// Clone coordinator client (creates new client with same config)
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the coordinator client cannot be created with the same
+    /// configuration that was previously validated during `DistributedRunner::new()`.
+    /// This should never happen in practice as the configuration is already validated.
     fn coordinator_clone(&self) -> CoordinatorClient {
         let client_config =
             ClientConfig::new(&self.config.coordinator_url, self.config.instance_id)
                 .with_timeout(self.config.timeout())
                 .with_retry_count(self.config.max_retries);
 
-        CoordinatorClient::new(client_config).expect("Failed to create coordinator client")
+        match CoordinatorClient::new(client_config) {
+            Ok(client) => client,
+            Err(e) => {
+                // This should never happen as the config was already validated in new()
+                tracing::error!(
+                    error = %e,
+                    coordinator_url = %self.config.coordinator_url,
+                    instance_id = %self.config.instance_id,
+                    "FATAL: Failed to clone coordinator client with validated config"
+                );
+                panic!("Failed to create coordinator client clone: {e}. This indicates a programming error or resource exhaustion.")
+            }
+        }
     }
 
     /// Trigger shutdown
@@ -987,10 +1009,18 @@ impl From<ClientError> for RunnerError {
 // ============================================================================
 
 /// Calculate time until next hour
+///
+/// Returns the duration from now until the start of the next hour.
+/// If time manipulation fails, returns a safe fallback of 60 seconds.
 pub fn time_until_next_hour() -> Duration {
     let now = chrono::Local::now();
-    let next_hour =
-        now.with_minute(0).unwrap().with_second(0).unwrap() + chrono::Duration::hours(1);
+    let next_hour = match now.with_minute(0).and_then(|dt| dt.with_second(0)) {
+        Some(dt) => dt + chrono::Duration::hours(1),
+        None => {
+            tracing::warn!("Failed to calculate next hour boundary, using 60s fallback");
+            return Duration::from_secs(60);
+        }
+    };
 
     (next_hour - now)
         .to_std()
@@ -998,15 +1028,22 @@ pub fn time_until_next_hour() -> Duration {
 }
 
 /// Calculate time until specific hour (e.g., 23:00 for rotation)
+///
+/// Returns the duration from now until the target hour today or tomorrow.
+/// If time manipulation fails, returns a safe fallback of 60 seconds.
 pub fn time_until_hour(target_hour: u32) -> Duration {
     let now = chrono::Local::now();
-    let today_target = now
+    let today_target = match now
         .with_hour(target_hour)
-        .unwrap()
-        .with_minute(0)
-        .unwrap()
-        .with_second(0)
-        .unwrap();
+        .and_then(|dt| dt.with_minute(0))
+        .and_then(|dt| dt.with_second(0))
+    {
+        Some(dt) => dt,
+        None => {
+            tracing::warn!("Failed to calculate target hour {target_hour}, using 60s fallback");
+            return Duration::from_secs(60);
+        }
+    };
 
     let target = if now >= today_target {
         // Target already passed today, use tomorrow

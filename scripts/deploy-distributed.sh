@@ -16,7 +16,7 @@
 #   clean       - Remove all containers and volumes
 #
 # Environment variables:
-#   COMPOSE_PROJECT_NAME - Project name (default: ntimes)
+#   COMPOSE_PROJECT_NAME - Project name (default: baram)
 #   ENV_FILE            - Environment file path (default: docker/.env)
 
 set -euo pipefail
@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DOCKER_DIR="$PROJECT_ROOT/docker"
 
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-ntimes}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-baram}"
 ENV_FILE="${ENV_FILE:-$DOCKER_DIR/.env}"
 
 # Colors for output
@@ -178,14 +178,14 @@ cmd_status() {
     fi
 
     # Check PostgreSQL
-    if docker exec ntimes-postgres pg_isready -U ntimes > /dev/null 2>&1; then
+    if docker exec baram-postgres pg_isready -U baram > /dev/null 2>&1; then
         echo -e "  PostgreSQL:  ${GREEN}healthy${NC}"
     else
         echo -e "  PostgreSQL:  ${RED}unhealthy${NC}"
     fi
 
     # Check Redis
-    if docker exec ntimes-redis redis-cli ping > /dev/null 2>&1; then
+    if docker exec baram-redis redis-cli ping > /dev/null 2>&1; then
         echo -e "  Redis:       ${GREEN}healthy${NC}"
     else
         echo -e "  Redis:       ${RED}unhealthy${NC}"
@@ -219,7 +219,7 @@ cmd_build() {
     log_info "Building Docker images..."
 
     cd "$PROJECT_ROOT"
-    docker build -t ntimes:latest .
+    docker build -t baram:latest .
 
     log_success "Image built successfully"
 }
@@ -324,7 +324,7 @@ cmd_clean() {
 # Show help
 show_help() {
     cat << EOF
-nTimes Distributed Crawler Deployment Script
+Baram Distributed Crawler Deployment Script
 
 Usage: $0 [command] [options]
 
@@ -341,7 +341,7 @@ Commands:
   help            Show this help message
 
 Environment Variables:
-  COMPOSE_PROJECT_NAME  Project name (default: ntimes)
+  COMPOSE_PROJECT_NAME  Project name (default: baram)
   ENV_FILE              Environment file path (default: docker/.env)
   COORDINATOR_PORT      Coordinator port (default: 8000)
 
@@ -351,7 +351,7 @@ Examples:
   $0 scale 2                  # Run only 2 crawler instances
   $0 health                   # Check system health
 
-For more information, see: https://github.com/hephaex/nTimes
+For more information, see: https://github.com/hephaex/Baram
 EOF
 }
 

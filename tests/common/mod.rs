@@ -1,7 +1,7 @@
 //! Common test utilities
 
-use chrono::Utc;
 use baram::models::ParsedArticle;
+use chrono::Utc;
 
 /// Create a test article with default values
 pub fn create_test_article() -> ParsedArticle {

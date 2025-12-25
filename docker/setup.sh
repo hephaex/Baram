@@ -1,5 +1,5 @@
 #!/bin/bash
-# nTimes Docker Environment Setup Script
+# Baram Docker Environment Setup Script
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
 
@@ -45,7 +45,7 @@ generate_password() {
 # Header
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║         nTimes Docker Environment Setup                   ║"
+echo "║         Baram Docker Environment Setup                   ║"
 echo "║         Naver News Crawler Infrastructure                 ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
@@ -251,8 +251,8 @@ echo "╚═══════════════════════�
 echo ""
 echo "PostgreSQL:"
 echo "  Host:     localhost:5432"
-echo "  Database: ntimes"
-echo "  Username: ntimes"
+echo "  Database: baram"
+echo "  Username: baram"
 echo "  Password: (see docker/.env)"
 echo ""
 echo "OpenSearch:"

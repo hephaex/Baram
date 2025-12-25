@@ -23,6 +23,16 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     networks:
       - baram-network
     command:
@@ -70,6 +80,11 @@ services:
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - DISABLE_INSTALL_DEMO_CONFIG=true
+      # WARNING: SECURITY DISABLED FOR DEVELOPMENT
+      # This setting disables OpenSearch security plugin for local development.
+      # NEVER use this in production environments.
+      # Enable security in production by setting DISABLE_SECURITY_PLUGIN=false
+      # and configuring proper authentication credentials.
       - DISABLE_SECURITY_PLUGIN=true
     ulimits:
       memlock:
@@ -90,6 +105,16 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     networks:
       - baram-network
 
@@ -118,16 +143,29 @@ services:
       - "notice"
       - "--databases"
       - "16"
+      # Security: Require authentication for Redis access
+      - "--requirepass"
+      - "${REDIS_PASSWORD:-changeme}"
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     networks:
       - baram-network
 
@@ -140,12 +178,22 @@ services:
       - development
     environment:
       - OPENSEARCH_HOSTS=http://opensearch:9200
+      # WARNING: SECURITY DISABLED FOR DEVELOPMENT
+      # This setting disables OpenSearch Dashboards security plugin for local development.
+      # NEVER use this in production environments.
+      # Enable security in production by setting DISABLE_SECURITY_DASHBOARDS_PLUGIN=false
+      # and configuring proper authentication credentials.
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
     ports:
       - "${OPENSEARCH_DASHBOARDS_PORT:-5601}:5601"
     depends_on:
       opensearch:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     networks:
       - baram-network
 
@@ -168,6 +216,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     networks:
       - baram-network
 

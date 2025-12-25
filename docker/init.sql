@@ -1,4 +1,4 @@
--- PostgreSQL initialization script for nTimes Naver News Crawler
+-- PostgreSQL initialization script for Baram Naver News Crawler
 -- Copyright (c) 2024 hephaex@gmail.com
 -- License: GPL v3
 
@@ -481,9 +481,9 @@ VALUES ('article', 'completed', 0, 0)
 ON CONFLICT DO NOTHING;
 
 -- Grant permissions (adjust as needed for your security requirements)
--- GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO ntimes;
--- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ntimes;
--- GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ntimes;
+-- GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO baram;
+-- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO baram;
+-- GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO baram;
 
 -- ============================================================================
 -- Performance Tuning Settings
