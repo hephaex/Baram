@@ -19,7 +19,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: ktime-coordinator
+    container_name: baram-coordinator
     restart: unless-stopped
     command:
       - "coordinator"
@@ -44,13 +44,13 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      ktime-network:
+      baram-network:
         ipv4_address: 172.28.1.10
     volumes:
       - coordinator_data:/app/data
     labels:
-      - "com.ktime.role=coordinator"
-      - "com.ktime.version=${VERSION:-0.1.0}"
+      - "com.baram.role=coordinator"
+      - "com.baram.version=${VERSION:-0.1.0}"
 
   # ============================================================================
   # Crawler Instance - Main (ID: 0)
@@ -59,7 +59,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: ktime-crawler-main
+    container_name: baram-crawler-main
     restart: unless-stopped
     command:
       - "distributed"
@@ -68,7 +68,7 @@ services:
       - "--coordinator"
       - "http://coordinator:8080"
       - "--database"
-      - "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      - "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       - "--rps"
       - "${REQUESTS_PER_SECOND:-2.0}"
       - "--output"
@@ -78,7 +78,7 @@ services:
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: main
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
       REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
@@ -98,7 +98,7 @@ services:
     healthcheck:
       disable: true
     networks:
-      ktime-network:
+      baram-network:
         ipv4_address: 172.28.2.1
     volumes:
       - crawler_main_output:/app/output
@@ -113,9 +113,9 @@ services:
           cpus: '0.25'
           memory: 256M
     labels:
-      - "com.ktime.role=crawler"
-      - "com.ktime.instance=main"
-      - "com.ktime.version=${VERSION:-0.1.0}"
+      - "com.baram.role=crawler"
+      - "com.baram.instance=main"
+      - "com.baram.version=${VERSION:-0.1.0}"
 
   # ============================================================================
   # Crawler Instance - Sub1 (ID: 1)
@@ -124,7 +124,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: ktime-crawler-sub1
+    container_name: baram-crawler-sub1
     restart: unless-stopped
     command:
       - "distributed"
@@ -133,7 +133,7 @@ services:
       - "--coordinator"
       - "http://coordinator:8080"
       - "--database"
-      - "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      - "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       - "--rps"
       - "${REQUESTS_PER_SECOND:-2.0}"
       - "--output"
@@ -143,7 +143,7 @@ services:
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: sub1
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
       REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
@@ -163,7 +163,7 @@ services:
     healthcheck:
       disable: true
     networks:
-      ktime-network:
+      baram-network:
         ipv4_address: 172.28.2.2
     volumes:
       - crawler_sub1_output:/app/output
@@ -178,9 +178,9 @@ services:
           cpus: '0.25'
           memory: 256M
     labels:
-      - "com.ktime.role=crawler"
-      - "com.ktime.instance=sub1"
-      - "com.ktime.version=${VERSION:-0.1.0}"
+      - "com.baram.role=crawler"
+      - "com.baram.instance=sub1"
+      - "com.baram.version=${VERSION:-0.1.0}"
 
   # ============================================================================
   # Crawler Instance - Sub2 (ID: 2)
@@ -189,7 +189,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: ktime-crawler-sub2
+    container_name: baram-crawler-sub2
     restart: unless-stopped
     command:
       - "distributed"
@@ -198,7 +198,7 @@ services:
       - "--coordinator"
       - "http://coordinator:8080"
       - "--database"
-      - "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      - "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       - "--rps"
       - "${REQUESTS_PER_SECOND:-2.0}"
       - "--output"
@@ -208,7 +208,7 @@ services:
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: sub2
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
       REQUESTS_PER_SECOND: ${REQUESTS_PER_SECOND:-2.0}
@@ -228,7 +228,7 @@ services:
     healthcheck:
       disable: true
     networks:
-      ktime-network:
+      baram-network:
         ipv4_address: 172.28.2.3
     volumes:
       - crawler_sub2_output:/app/output
@@ -243,9 +243,9 @@ services:
           cpus: '0.25'
           memory: 256M
     labels:
-      - "com.ktime.role=crawler"
-      - "com.ktime.instance=sub2"
-      - "com.ktime.version=${VERSION:-0.1.0}"
+      - "com.baram.role=crawler"
+      - "com.baram.instance=sub2"
+      - "com.baram.version=${VERSION:-0.1.0}"
 
 # ============================================================================
 # Additional Volumes

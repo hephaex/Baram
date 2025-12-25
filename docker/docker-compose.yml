@@ -4,11 +4,11 @@ services:
   # PostgreSQL 18 with pgvector - Primary data storage with vector search
   postgres:
     image: pgvector/pgvector:pg18
-    container_name: ktime-postgres
+    container_name: baram-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ktime}
-      POSTGRES_USER: ${POSTGRES_USER:-ktime}
+      POSTGRES_DB: ${POSTGRES_DB:-baram}
+      POSTGRES_USER: ${POSTGRES_USER:-baram}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -18,13 +18,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ktime} -d ${POSTGRES_DB:-ktime}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-baram} -d ${POSTGRES_DB:-baram}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     networks:
-      - ktime-network
+      - baram-network
     command:
       - "postgres"
       - "-c"
@@ -61,11 +61,11 @@ services:
   # OpenSearch 3.4+ - Vector database with Korean (Nori) analyzer
   opensearch:
     image: opensearchproject/opensearch:3.4.0
-    container_name: ktime-opensearch
+    container_name: baram-opensearch
     restart: unless-stopped
     environment:
-      - cluster.name=ktime-cluster
-      - node.name=ktime-node-1
+      - cluster.name=baram-cluster
+      - node.name=baram-node-1
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
@@ -91,12 +91,12 @@ services:
       retries: 5
       start_period: 60s
     networks:
-      - ktime-network
+      - baram-network
 
   # Redis 7 - Distributed crawling coordination and caching
   redis:
     image: redis:7-alpine
-    container_name: ktime-redis
+    container_name: baram-redis
     restart: unless-stopped
     command:
       - "redis-server"
@@ -129,12 +129,12 @@ services:
       retries: 5
       start_period: 5s
     networks:
-      - ktime-network
+      - baram-network
 
   # OpenSearch Dashboards (Optional - for development/debugging)
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:3.4.0
-    container_name: ktime-dashboards
+    container_name: baram-dashboards
     restart: unless-stopped
     profiles:
       - development
@@ -147,17 +147,17 @@ services:
       opensearch:
         condition: service_healthy
     networks:
-      - ktime-network
+      - baram-network
 
   # pgAdmin (Optional - for development/debugging)
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: ktime-pgadmin
+    container_name: baram-pgadmin
     restart: unless-stopped
     profiles:
       - development
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ktime.local}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@baram.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
@@ -169,7 +169,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - ktime-network
+      - baram-network
 
 volumes:
   postgres_data:
@@ -182,7 +182,7 @@ volumes:
     driver: local
 
 networks:
-  ktime-network:
+  baram-network:
     driver: bridge
     ipam:
       config:

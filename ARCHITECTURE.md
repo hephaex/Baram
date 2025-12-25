@@ -1,8 +1,8 @@
-# ktime Module Architecture
+# baram Module Architecture
 
 ## Overview
 
-This document describes the module architecture for the ktime Naver News Crawler, designed following Rust best practices and the Actor Model pattern.
+This document describes the module architecture for the baram Naver News Crawler, designed following Rust best practices and the Actor Model pattern.
 
 ## Module Structure
 
@@ -227,7 +227,7 @@ Methods:
 
 ```toml
 [app]
-name = "ktime"
+name = "baram"
 version = "0.1.0"
 environment = "development"
 
@@ -296,7 +296,7 @@ api_key = "${LLM_API_KEY:-default_key}"
 ### Loading Configuration:
 
 ```rust
-use ktime::config::AppConfig;
+use baram::config::AppConfig;
 
 let config = AppConfig::load("config.toml")?;
 config.validate()?;
@@ -305,7 +305,7 @@ config.validate()?;
 ### Error Handling:
 
 ```rust
-use ktime::utils::{CrawlerError, CrawlerResult};
+use baram::utils::{CrawlerError, CrawlerResult};
 
 fn fetch_article(url: &str) -> CrawlerResult<String> {
     // ... fetch logic
@@ -319,7 +319,7 @@ fn fetch_article(url: &str) -> CrawlerResult<String> {
 ### Working with Types:
 
 ```rust
-use ktime::crawler::{NewsCategory, ParsedArticle, CrawlState};
+use baram::crawler::{NewsCategory, ParsedArticle, CrawlState};
 
 let mut article = ParsedArticle::default();
 article.oid = "001".to_string();
@@ -355,9 +355,9 @@ cargo test
 
 ## References
 
-- Sprint Plan: `/home/mare/ktime/sprint_plan.md`
-- Development Spec: `/home/mare/ktime/development_spec.md`
-- Configuration: `/home/mare/ktime/config.toml`
+- Sprint Plan: `/home/mare/baram/sprint_plan.md`
+- Development Spec: `/home/mare/baram/development_spec.md`
+- Configuration: `/home/mare/baram/config.toml`
 
 ---
 

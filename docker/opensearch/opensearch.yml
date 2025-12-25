@@ -1,12 +1,12 @@
-# OpenSearch 3.x Configuration for ktime Naver News Crawler
+# OpenSearch 3.x Configuration for baram Naver News Crawler
 # Copyright (c) 2024 hephaex@gmail.com
 # License: GPL v3
 
 # ============================================================================
 # Cluster Configuration
 # ============================================================================
-cluster.name: ktime-cluster
-node.name: ktime-node-1
+cluster.name: baram-cluster
+node.name: baram-node-1
 
 # Node roles (use cluster_manager instead of deprecated master)
 node.roles:

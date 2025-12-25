@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "ktime Distributed Crawler - System Overview and Metrics",
+  "description": "baram Distributed Crawler - System Overview and Metrics",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -481,7 +481,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "ktime",
+    "baram",
     "crawler",
     "monitoring"
   ],
@@ -494,8 +494,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "ktime - Distributed Crawler Overview",
-  "uid": "ktime-overview",
+  "title": "baram - Distributed Crawler Overview",
+  "uid": "baram-overview",
   "version": 0,
   "weekStart": ""
 }

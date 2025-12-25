@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: 'ktime Dashboards'
+  - name: 'baram Dashboards'
     orgId: 1
-    folder: 'ktime'
+    folder: 'baram'
     type: file
     disableDeletion: false
     editable: true

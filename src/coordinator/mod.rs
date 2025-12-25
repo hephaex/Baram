@@ -37,7 +37,7 @@
 //! # Usage
 //!
 //! ```ignore
-//! use ktime::coordinator::{CoordinatorServer, CoordinatorConfig};
+//! use baram::coordinator::{CoordinatorServer, CoordinatorConfig};
 //!
 //! let config = CoordinatorConfig::default();
 //! let server = CoordinatorServer::new(config)?;

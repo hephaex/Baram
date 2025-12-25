@@ -1,11 +1,11 @@
 # Docker Files Summary
 
-This document provides an overview of all Docker-related files created for the ktime project.
+This document provides an overview of all Docker-related files created for the baram project.
 
 ## File Structure
 
 ```
-ktime/
+baram/
 ├── docker/
 │   ├── docker-compose.yml          # Main orchestration file
 │   ├── init.sql                    # PostgreSQL schema initialization
@@ -290,7 +290,7 @@ All data is stored in Docker volumes:
 make backup
 
 # Weekly full backups
-docker-compose exec postgres pg_dump -U ktime -F c ktime > backup_weekly.dump
+docker-compose exec postgres pg_dump -U baram -F c baram > backup_weekly.dump
 
 # OpenSearch snapshots
 curl -X PUT "localhost:9200/_snapshot/backup/weekly"

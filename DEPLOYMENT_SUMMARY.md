@@ -1,4 +1,4 @@
-# ktime Distributed Crawler Deployment Summary
+# baram Distributed Crawler Deployment Summary
 
 ## Deployment Date
 2025-12-19
@@ -11,8 +11,8 @@ SUCCESSFUL - All services deployed and running
 ### Core Infrastructure
 - **PostgreSQL 18** with pgvector
   - Port: 5432 (host) -> 5432 (container)
-  - Database: ktime
-  - User: ktime
+  - Database: baram
+  - User: baram
   - Status: Healthy
   - Used for: Article storage, deduplication tracking
 
@@ -29,19 +29,19 @@ SUCCESSFUL - All services deployed and running
 ### Distributed Crawler Services
 Three crawler instances running in distributed mode:
 
-1. **ktime-crawler-main**
+1. **baram-crawler-main**
    - Instance ID: main
    - Status: Running (health: starting)
    - Command: `distributed --instance main --database [postgresql://...] --rps 2.0 --output /app/output`
    - Responsibilities: Main crawling workload, coordinates with sub-instances
 
-2. **ktime-crawler-sub1**
+2. **baram-crawler-sub1**
    - Instance ID: sub1
    - Status: Running (health: starting)
    - Command: `distributed --instance sub1 --database [postgresql://...] --rps 2.0 --output /app/output`
    - Responsibilities: Secondary crawling workload
 
-3. **ktime-crawler-sub2**
+3. **baram-crawler-sub2**
    - Instance ID: sub2
    - Status: Running (health: starting)
    - Command: `distributed --instance sub2 --database [postgresql://...] --rps 2.0 --output /app/output`
@@ -51,8 +51,8 @@ Three crawler instances running in distributed mode:
 
 ### Environment Variables (.env file)
 - **PostgreSQL Configuration**
-  - POSTGRES_DB: ktime
-  - POSTGRES_USER: ktime
+  - POSTGRES_DB: baram
+  - POSTGRES_USER: baram
   - POSTGRES_PASSWORD: nT1m3s_Pr0d_2024!
   - POSTGRES_PORT: 5432
 
@@ -75,7 +75,7 @@ Three crawler instances running in distributed mode:
 - **docker-compose.distributed.yml**: Distributed crawler services
 
 ## Network Configuration
-- Network: ktime_ktime-network
+- Network: baram_baram-network
 - Subnet: 172.28.0.0/16
 - Type: Bridge network
 
@@ -89,18 +89,18 @@ Three crawler instances running in distributed mode:
 
 ## Storage Volumes
 All data persists in Docker named volumes:
-- ktime_postgres_data: PostgreSQL data
-- ktime_opensearch_data: OpenSearch indices
-- ktime_redis_data: Redis persistence
-- ktime_crawler_main_output: Articles crawled by main instance
-- ktime_crawler_main_checkpoints: Crawl checkpoints
-- ktime_crawler_main_logs: Execution logs
-- ktime_crawler_sub1_output: Articles crawled by sub1 instance
-- ktime_crawler_sub1_checkpoints: Sub1 checkpoints
-- ktime_crawler_sub1_logs: Sub1 logs
-- ktime_crawler_sub2_output: Articles crawled by sub2 instance
-- ktime_crawler_sub2_checkpoints: Sub2 checkpoints
-- ktime_crawler_sub2_logs: Sub2 logs
+- baram_postgres_data: PostgreSQL data
+- baram_opensearch_data: OpenSearch indices
+- baram_redis_data: Redis persistence
+- baram_crawler_main_output: Articles crawled by main instance
+- baram_crawler_main_checkpoints: Crawl checkpoints
+- baram_crawler_main_logs: Execution logs
+- baram_crawler_sub1_output: Articles crawled by sub1 instance
+- baram_crawler_sub1_checkpoints: Sub1 checkpoints
+- baram_crawler_sub1_logs: Sub1 logs
+- baram_crawler_sub2_output: Articles crawled by sub2 instance
+- baram_crawler_sub2_checkpoints: Sub2 checkpoints
+- baram_crawler_sub2_logs: Sub2 logs
 
 ## Distributed Crawler Architecture
 
@@ -129,40 +129,40 @@ To enable coordinator:
 
 ### View Service Status
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml ps
 ```
 
 ### View Logs
 ```bash
 # Main crawler
-docker logs ktime-crawler-main -f
+docker logs baram-crawler-main -f
 
 # Sub1 crawler
-docker logs ktime-crawler-sub1 -f
+docker logs baram-crawler-sub1 -f
 
 # Sub2 crawler
-docker logs ktime-crawler-sub2 -f
+docker logs baram-crawler-sub2 -f
 
 # PostgreSQL
-docker logs ktime-postgres -f
+docker logs baram-postgres -f
 
 # OpenSearch
-docker logs ktime-opensearch -f
+docker logs baram-opensearch -f
 
 # Redis
-docker logs ktime-redis -f
+docker logs baram-redis -f
 ```
 
 ### Stop All Services
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml down
 ```
 
 ### Restart Services
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml restart
 ```
 
@@ -179,13 +179,13 @@ All services report healthy status:
 
 2. **Test Crawling**: Run crawlers with `--once` flag to execute a single slot:
    ```bash
-   docker exec ktime-crawler-main ktime distributed --instance main --database postgresql://ktime:nT1m3s_Pr0d_2024!@localhost:5432/ktime --once
+   docker exec baram-crawler-main baram distributed --instance main --database postgresql://baram:nT1m3s_Pr0d_2024!@localhost:5432/baram --once
    ```
 
 3. **Monitor Output**: Check volumes for crawled articles:
    ```bash
-   docker volume inspect ktime_crawler_main_output
-   docker run -v ktime_crawler_main_output:/data --rm alpine ls /data
+   docker volume inspect baram_crawler_main_output
+   docker run -v baram_crawler_main_output:/data --rm alpine ls /data
    ```
 
 4. **Configure Scaling**: Adjust REQUESTS_PER_SECOND and heartbeat intervals based on performance requirements
@@ -213,14 +213,14 @@ All services report healthy status:
 ## File Locations
 
 **Configuration Files:**
-- `/home/mare/ktime/docker/.env` - Environment variables
-- `/home/mare/ktime/docker/docker-compose.yml` - Base infrastructure
-- `/home/mare/ktime/docker/docker-compose.distributed.yml` - Distributed crawler services
+- `/home/mare/baram/docker/.env` - Environment variables
+- `/home/mare/baram/docker/docker-compose.yml` - Base infrastructure
+- `/home/mare/baram/docker/docker-compose.distributed.yml` - Distributed crawler services
 
 **Source Code:**
-- `/home/mare/ktime/src/main.rs` - Main CLI entry point (distributed command)
-- `/home/mare/ktime/src/crawler/distributed.rs` - Distributed runner implementation
-- `/home/mare/ktime/src/crawler/instance.rs` - Instance configuration
+- `/home/mare/baram/src/main.rs` - Main CLI entry point (distributed command)
+- `/home/mare/baram/src/crawler/distributed.rs` - Distributed runner implementation
+- `/home/mare/baram/src/crawler/instance.rs` - Instance configuration
 
 **Output Directories:**
 - Volume mounted at `/app/output` in containers
@@ -237,13 +237,13 @@ Crawlers report "health: starting" because the health check endpoint (`http://lo
 ### Database Connection Issues
 Verify PostgreSQL is running:
 ```bash
-docker exec ktime-postgres pg_isready -h localhost
+docker exec baram-postgres pg_isready -h localhost
 ```
 
 ### OpenSearch Issues
 Check cluster health:
 ```bash
-docker exec ktime-opensearch curl -s http://localhost:9200/_cluster/health
+docker exec baram-opensearch curl -s http://localhost:9200/_cluster/health
 ```
 
 ---

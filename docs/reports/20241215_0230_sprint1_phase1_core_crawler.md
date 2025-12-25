@@ -111,16 +111,16 @@
 
 ```bash
 # 뉴스 크롤링
-ktime crawl -C politics -m 100 -o ./output/raw
+baram crawl -C politics -m 100 -o ./output/raw
 
 # 특정 URL 크롤링
-ktime crawl -u "https://n.news.naver.com/mnews/article/..."
+baram crawl -u "https://n.news.naver.com/mnews/article/..."
 
 # 크롤링 통계
-ktime stats -d ./output/crawl.db
+baram stats -d ./output/crawl.db
 
 # 크롤링 재개
-ktime resume -C ./output/crawl.db -o ./output/raw
+baram resume -C ./output/crawl.db -o ./output/raw
 ```
 
 ## 프로젝트 구조
@@ -160,4 +160,4 @@ src/
 - 에러 핸들링 강화 필요
 
 ---
-Copyright (c) 2024 hephaex@gmail.com | GPL v3 | https://github.com/hephaex/ktime
+Copyright (c) 2024 hephaex@gmail.com | GPL v3 | https://github.com/hephaex/baram

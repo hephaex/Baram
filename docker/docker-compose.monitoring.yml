@@ -1,5 +1,5 @@
 # docker-compose.monitoring.yml
-# Monitoring stack for ktime with Prometheus and Grafana
+# Monitoring stack for baram with Prometheus and Grafana
 #
 # Usage:
 #   docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
@@ -18,7 +18,7 @@ services:
   # ============================================================================
   prometheus:
     image: prom/prometheus:latest
-    container_name: ktime-prometheus
+    container_name: baram-prometheus
     restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -34,17 +34,17 @@ services:
       - ./monitoring/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     networks:
-      - ktime-network
+      - baram-network
     labels:
-      - "com.ktime.role=monitoring"
-      - "com.ktime.component=prometheus"
+      - "com.baram.role=monitoring"
+      - "com.baram.component=prometheus"
 
   # ============================================================================
   # Grafana - Visualization and dashboard platform
   # ============================================================================
   grafana:
     image: grafana/grafana:latest
-    container_name: ktime-grafana
+    container_name: baram-grafana
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
@@ -60,52 +60,52 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     networks:
-      - ktime-network
+      - baram-network
     depends_on:
       - prometheus
     labels:
-      - "com.ktime.role=monitoring"
-      - "com.ktime.component=grafana"
+      - "com.baram.role=monitoring"
+      - "com.baram.component=grafana"
 
   # ============================================================================
   # PostgreSQL Exporter - Metrics exporter for PostgreSQL
   # ============================================================================
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:latest
-    container_name: ktime-postgres-exporter
+    container_name: baram-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ktime}?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-baram}?sslmode=disable"
     ports:
       - "9187:9187"
     networks:
-      - ktime-network
+      - baram-network
     depends_on:
       postgres:
         condition: service_healthy
     labels:
-      - "com.ktime.role=monitoring"
-      - "com.ktime.component=postgres-exporter"
+      - "com.baram.role=monitoring"
+      - "com.baram.component=postgres-exporter"
 
   # ============================================================================
   # Redis Exporter - Metrics exporter for Redis
   # ============================================================================
   redis_exporter:
     image: oliver006/redis_exporter:latest
-    container_name: ktime-redis-exporter
+    container_name: baram-redis-exporter
     restart: unless-stopped
     command:
       - "-redis.addr=redis:6379"
     ports:
       - "9121:9121"
     networks:
-      - ktime-network
+      - baram-network
     depends_on:
       redis:
         condition: service_healthy
     labels:
-      - "com.ktime.role=monitoring"
-      - "com.ktime.component=redis-exporter"
+      - "com.baram.role=monitoring"
+      - "com.baram.component=redis-exporter"
 
 # ============================================================================
 # Monitoring Volumes

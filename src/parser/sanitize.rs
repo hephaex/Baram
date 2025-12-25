@@ -30,7 +30,7 @@ static BYLINE_REGEX: LazyLock<Regex> =
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::sanitize_text;
+/// use baram::parser::sanitize::sanitize_text;
 ///
 /// let dirty = "Hello\u{200B}World  \n\n\n\nTest";
 /// let clean = sanitize_text(dirty);
@@ -65,7 +65,7 @@ pub fn sanitize_text(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::remove_zero_width;
+/// use baram::parser::sanitize::remove_zero_width;
 ///
 /// let text = "가\u{200B}나\u{FEFF}다";
 /// let clean = remove_zero_width(text);
@@ -90,7 +90,7 @@ pub fn remove_zero_width(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::remove_control_chars;
+/// use baram::parser::sanitize::remove_control_chars;
 ///
 /// let text = "Hello\x00World\x07Test\nNewline";
 /// let clean = remove_control_chars(text);
@@ -118,7 +118,7 @@ pub fn remove_control_chars(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::decode_html_entities;
+/// use baram::parser::sanitize::decode_html_entities;
 ///
 /// let text = "&lt;div&gt;Hello &amp; World&lt;/div&gt;";
 /// let decoded = decode_html_entities(text);
@@ -145,7 +145,7 @@ pub fn decode_html_entities(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::normalize_whitespace;
+/// use baram::parser::sanitize::normalize_whitespace;
 ///
 /// let text = "Hello    World\t\tTest";
 /// let normalized = normalize_whitespace(text);
@@ -163,7 +163,7 @@ pub fn normalize_whitespace(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::trim_lines;
+/// use baram::parser::sanitize::trim_lines;
 ///
 /// let text = "  Line 1  \n  Line 2  ";
 /// let trimmed = trim_lines(text);
@@ -183,7 +183,7 @@ pub fn trim_lines(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::collapse_newlines;
+/// use baram::parser::sanitize::collapse_newlines;
 ///
 /// let text = "Para 1\n\n\n\n\nPara 2";
 /// let collapsed = collapse_newlines(text);
@@ -198,7 +198,7 @@ pub fn collapse_newlines(text: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::strip_html_tags;
+/// use baram::parser::sanitize::strip_html_tags;
 ///
 /// let html = "<p>Hello <strong>World</strong></p>";
 /// let plain = strip_html_tags(html);
@@ -215,7 +215,7 @@ pub fn strip_html_tags(html: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::has_content;
+/// use baram::parser::sanitize::has_content;
 ///
 /// assert!(has_content("Hello"));
 /// assert!(!has_content(""));
@@ -232,7 +232,7 @@ pub fn has_content(text: &str) -> bool {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::truncate;
+/// use baram::parser::sanitize::truncate;
 ///
 /// let text = "Hello World";
 /// assert_eq!(truncate(text, 5), "He...");
@@ -257,7 +257,7 @@ pub fn truncate(text: &str, max_len: usize) -> String {
 /// # Examples
 ///
 /// ```
-/// use ktime::parser::sanitize::remove_byline;
+/// use baram::parser::sanitize::remove_byline;
 ///
 /// let text = "기사 내용입니다.\n홍길동 기자";
 /// let clean = remove_byline(text);

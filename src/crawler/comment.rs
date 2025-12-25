@@ -30,7 +30,7 @@ static JSONP_REGEX: LazyLock<Regex> =
 ///
 /// # Example
 /// ```
-/// use ktime::crawler::comment::parse_jsonp;
+/// use baram::crawler::comment::parse_jsonp;
 ///
 /// let jsonp = r#"_callback({"success": true})"#;
 /// let json = parse_jsonp(jsonp).unwrap();
@@ -286,7 +286,7 @@ impl Comment {
 ///
 /// # Example
 /// ```
-/// use ktime::crawler::comment::{RawComment, convert_comment};
+/// use baram::crawler::comment::{RawComment, convert_comment};
 ///
 /// let raw = RawComment {
 ///     comment_no: 12345,
@@ -1035,7 +1035,7 @@ pub fn filter_comments(comments: Vec<Comment>, filter: &CommentFilter) -> Vec<Co
 ///
 /// # Example
 /// ```
-/// use ktime::crawler::comment::extract_article_ids;
+/// use baram::crawler::comment::extract_article_ids;
 ///
 /// let url = "https://n.news.naver.com/mnews/article/001/0014000001";
 /// let (oid, aid) = extract_article_ids(url).unwrap();

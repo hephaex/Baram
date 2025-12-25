@@ -1,5 +1,5 @@
 groups:
-  - name: ktime-coordinator
+  - name: baram-coordinator
     interval: 15s
     rules:
       # Alert when no crawler instances are active
@@ -8,7 +8,7 @@ groups:
         for: 2m
         labels:
           severity: critical
-          service: ktime-coordinator
+          service: baram-coordinator
         annotations:
           summary: "No active crawler instances"
           description: "No crawler instances are currently registered with the coordinator"
@@ -20,7 +20,7 @@ groups:
         for: 5m
         labels:
           severity: warning
-          service: ktime-coordinator
+          service: baram-coordinator
         annotations:
           summary: "High error rate on coordinator API"
           description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
@@ -32,12 +32,12 @@ groups:
         for: 10m
         labels:
           severity: warning
-          service: ktime-coordinator
+          service: baram-coordinator
         annotations:
           summary: "Low crawl throughput detected"
           description: "Crawl rate is {{ $value | humanize }} articles per second"
 
-  - name: ktime-database
+  - name: baram-database
     interval: 15s
     rules:
       # Alert when PostgreSQL is down
@@ -63,7 +63,7 @@ groups:
           summary: "High number of database connections"
           description: "Current connections: {{ $value }}"
 
-  - name: ktime-redis
+  - name: baram-redis
     interval: 15s
     rules:
       # Alert when Redis is down

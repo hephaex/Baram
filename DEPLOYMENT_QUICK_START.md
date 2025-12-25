@@ -1,4 +1,4 @@
-# ktime Distributed Crawler - Quick Start Guide
+# baram Distributed Crawler - Quick Start Guide
 
 ## Current Deployment Status: ACTIVE
 
@@ -13,22 +13,22 @@ All services are running and ready to use:
 ```
 Service              Status    Port(s)
 ─────────────────────────────────────────────────────────
-ktime-postgres      Healthy   0.0.0.0:5432
-ktime-redis         Healthy   0.0.0.0:6379
-ktime-opensearch    Healthy   0.0.0.0:9200
-ktime-crawler-main  Running   (internal: 8080)
-ktime-crawler-sub1  Running   (internal: 8080)
-ktime-crawler-sub2  Running   (internal: 8080)
+baram-postgres      Healthy   0.0.0.0:5432
+baram-redis         Healthy   0.0.0.0:6379
+baram-opensearch    Healthy   0.0.0.0:9200
+baram-crawler-main  Running   (internal: 8080)
+baram-crawler-sub1  Running   (internal: 8080)
+baram-crawler-sub2  Running   (internal: 8080)
 ```
 
 ## Key Files Modified
 
-1. `/home/mare/ktime/docker/.env`
+1. `/home/mare/baram/docker/.env`
    - Updated PostgreSQL port to 5432 (standard)
    - Added COMPOSE_PROJECT_NAME and VERSION
    - Added development tools configuration
 
-2. `/home/mare/ktime/docker/docker-compose.distributed.yml`
+2. `/home/mare/baram/docker/docker-compose.distributed.yml`
    - Disabled coordinator service (not yet implemented)
    - Updated crawler commands to use `distributed` subcommand
    - Removed coordinator dependencies from crawlers
@@ -38,30 +38,30 @@ ktime-crawler-sub2  Running   (internal: 8080)
 
 ### View Status
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml ps
 ```
 
 ### Follow Live Logs
 ```bash
 # Watch main crawler
-docker logs ktime-crawler-main -f
+docker logs baram-crawler-main -f
 
 # Watch all crawlers
-docker logs ktime-crawler-main -f &
-docker logs ktime-crawler-sub1 -f &
-docker logs ktime-crawler-sub2 -f &
+docker logs baram-crawler-main -f &
+docker logs baram-crawler-sub1 -f &
+docker logs baram-crawler-sub2 -f &
 ```
 
 ### Stop Everything
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml down
 ```
 
 ### Restart Services
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml restart
 ```
 
@@ -80,13 +80,13 @@ Each instance:
 
 ### Data Isolation
 ```
-ktime_crawler_main_output/    → Articles from main instance
-ktime_crawler_sub1_output/    → Articles from sub1 instance
-ktime_crawler_sub2_output/    → Articles from sub2 instance
+baram_crawler_main_output/    → Articles from main instance
+baram_crawler_sub1_output/    → Articles from sub1 instance
+baram_crawler_sub2_output/    → Articles from sub2 instance
 
-ktime_postgres_data/          → Shared deduplication database
-ktime_opensearch_data/        → Shared search index
-ktime_redis_data/             → Shared cache
+baram_postgres_data/          → Shared deduplication database
+baram_opensearch_data/        → Shared search index
+baram_redis_data/             → Shared cache
 ```
 
 ## Performance Characteristics
@@ -101,7 +101,7 @@ ktime_redis_data/             → Shared cache
 ### PostgreSQL
 ```bash
 # Connect directly
-docker exec -it ktime-postgres psql -U ktime -d ktime
+docker exec -it baram-postgres psql -U baram -d baram
 
 # View deduplication table
 # SELECT * FROM crawl_status;
@@ -110,7 +110,7 @@ docker exec -it ktime-postgres psql -U ktime -d ktime
 ### Redis
 ```bash
 # Access redis-cli
-docker exec -it ktime-redis redis-cli
+docker exec -it baram-redis redis-cli
 
 # Check memory usage
 # INFO memory
@@ -146,7 +146,7 @@ Need to either:
 
 ## Environment Variables
 
-Key configuration in `/home/mare/ktime/docker/.env`:
+Key configuration in `/home/mare/baram/docker/.env`:
 
 ```
 # Database
@@ -176,13 +176,13 @@ Expected - coordinator is not implemented. Crawlers continue to function normall
 
 ### PostgreSQL won't start
 ```bash
-docker logs ktime-postgres
+docker logs baram-postgres
 # Look for permission issues, check available disk space
 ```
 
 ### OpenSearch won't start
 ```bash
-docker logs ktime-opensearch
+docker logs baram-opensearch
 # Check memory settings, ensure Docker has enough resources
 ```
 
@@ -196,10 +196,10 @@ docker logs ktime-opensearch
 
 ## Important Paths
 
-- Configuration: `/home/mare/ktime/docker/docker-compose.distributed.yml`
-- Environment: `/home/mare/ktime/docker/.env`
-- Source Code: `/home/mare/ktime/src/crawler/distributed.rs`
-- Deployment Summary: `/home/mare/ktime/DEPLOYMENT_SUMMARY.md`
+- Configuration: `/home/mare/baram/docker/docker-compose.distributed.yml`
+- Environment: `/home/mare/baram/docker/.env`
+- Source Code: `/home/mare/baram/src/crawler/distributed.rs`
+- Deployment Summary: `/home/mare/baram/DEPLOYMENT_SUMMARY.md`
 
 ---
 

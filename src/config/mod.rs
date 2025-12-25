@@ -1,4 +1,4 @@
-//! Configuration management for ktime crawler
+//! Configuration management for baram crawler
 //!
 //! This module handles loading and validating configuration from environment variables,
 //! files, and command-line arguments.
@@ -126,17 +126,17 @@ impl Default for Config {
                 max_concurrent_requests: 10,
                 rate_limit: 2.0,
                 request_timeout_secs: 30,
-                user_agent: format!("ktime/{}", env!("CARGO_PKG_VERSION")),
+                user_agent: format!("baram/{}", env!("CARGO_PKG_VERSION")),
                 enable_cookies: true,
             },
             database: DatabaseConfig {
                 sqlite_path: PathBuf::from("data/metadata.db"),
-                postgres_url: String::from("postgresql://localhost/ktime"),
+                postgres_url: String::from("postgresql://localhost/baram"),
                 pool_size: 10,
             },
             opensearch: OpenSearchConfig {
                 url: String::from("http://localhost:9200"),
-                index_name: String::from("ktime-articles"),
+                index_name: String::from("baram-articles"),
                 username: None,
                 password: None,
             },

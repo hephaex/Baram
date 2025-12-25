@@ -660,7 +660,7 @@ impl EntityLinker {
             external_ids: HashMap::new(),
             confidence: entity.confidence,
             rdf_uri: Some(format!(
-                "https://ktime.example.org/entity/{}",
+                "https://baram.example.org/entity/{}",
                 url_encode(&normalized)
             )),
             in_knowledge_base: false,
@@ -1098,7 +1098,7 @@ impl LinkedTripleStore {
         output.push_str("@prefix schema: <https://schema.org/> .\n");
         output.push_str("@prefix wd: <http://www.wikidata.org/entity/> .\n");
         output.push_str("@prefix dbpedia: <http://dbpedia.org/resource/> .\n");
-        output.push_str("@prefix ktime: <https://ktime.example.org/ontology/> .\n");
+        output.push_str("@prefix baram: <https://baram.example.org/ontology/> .\n");
         output.push_str("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n");
 
         // Article metadata
@@ -1139,7 +1139,7 @@ impl LinkedTripleStore {
                 }
 
                 output.push_str(&format!(
-                    "    ktime:confidence \"{}\"^^xsd:float .\n\n",
+                    "    baram:confidence \"{}\"^^xsd:float .\n\n",
                     entity.confidence
                 ));
             }
@@ -1206,12 +1206,12 @@ impl LinkedTripleStore {
                 "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
                 "schema": "https://schema.org/",
                 "wd": "http://www.wikidata.org/entity/",
-                "ktime": "https://ktime.example.org/ontology/"
+                "baram": "https://baram.example.org/ontology/"
             },
             "@graph": graph,
-            "ktime:articleId": self.article_id,
-            "ktime:articleTitle": self.article_title,
-            "ktime:extractedAt": self.extracted_at
+            "baram:articleId": self.article_id,
+            "baram:articleTitle": self.article_title,
+            "baram:extractedAt": self.extracted_at
         });
 
         serde_json::to_string_pretty(&json_ld)
@@ -1227,7 +1227,7 @@ impl LinkedTripleStore {
         output.push_str("    xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n");
         output.push_str("    xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\"\n");
         output.push_str("    xmlns:schema=\"https://schema.org/\"\n");
-        output.push_str("    xmlns:ktime=\"https://ktime.example.org/ontology/\">\n\n");
+        output.push_str("    xmlns:baram=\"https://baram.example.org/ontology/\">\n\n");
 
         // Entities
         for entity in &self.entities {
@@ -1514,7 +1514,7 @@ mod tests {
             in_knowledge_base: true,
         };
 
-        let uri = entity.generate_rdf_uri("https://ktime.example.org/entity/");
+        let uri = entity.generate_rdf_uri("https://baram.example.org/entity/");
         assert!(uri.contains("wikidata.org"));
         assert!(uri.contains("Q20718"));
     }

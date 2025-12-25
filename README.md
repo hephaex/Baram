@@ -1,4 +1,4 @@
-# ktime - n 뉴스 크롤러
+# baram - n 뉴스 크롤러
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
@@ -7,7 +7,7 @@
 
 ## 개요
 
-ktime는 n 뉴스에서 기사와 댓글을 수집하여 벡터 데이터베이스에 저장하고, 온톨로지(지식 그래프)를 구축하는 시스템입니다.
+baram는 n 뉴스에서 기사와 댓글을 수집하여 벡터 데이터베이스에 저장하고, 온톨로지(지식 그래프)를 구축하는 시스템입니다.
 
 ### 주요 기능
 
@@ -32,8 +32,8 @@ ktime는 n 뉴스에서 기사와 댓글을 수집하여 벡터 데이터베이�
 
 ```bash
 # 저장소 클론
-git clone https://github.com/hephaex/ktime.git
-cd ktime
+git clone https://github.com/hephaex/baram.git
+cd baram
 
 # 의존성 설치 및 빌드
 cargo build --release
@@ -52,7 +52,7 @@ cargo run -- search "반도체 투자"
 ## 프로젝트 구조
 
 ```
-ktime/
+baram/
 ├── src/
 │   ├── crawler/       # HTTP Fetcher, 댓글 크롤러, 분산 크롤러
 │   ├── coordinator/   # 분산 크롤링 코디네이터 서버
@@ -99,10 +99,10 @@ cargo run -- resume --checkpoint ./checkpoints/crawl_state.json
 
 ```bash
 # 분산 크롤러 실행
-ktime distributed \
+baram distributed \
     --instance main \
     --coordinator http://localhost:8080 \
-    --database "postgresql://user:pass@localhost:5432/ktime" \
+    --database "postgresql://user:pass@localhost:5432/baram" \
     --rps 2.0 \
     --output ./output \
     --with-comments
@@ -127,7 +127,7 @@ ktime distributed \
 
 ```bash
 # 코디네이터 서버 시작
-ktime coordinator \
+baram coordinator \
     --port 8080 \
     --host 0.0.0.0 \
     --heartbeat-timeout 90 \
@@ -155,7 +155,7 @@ ktime coordinator \
 
 ```bash
 # 임베딩 서버 시작
-ktime embedding-server \
+baram embedding-server \
     --port 8090 \
     --host 0.0.0.0 \
     --model intfloat/multilingual-e5-large \
@@ -194,28 +194,28 @@ curl -X POST http://localhost:8090/embed/batch \
 
 | 메트릭 | 타입 | 설명 |
 |--------|------|------|
-| `ktime_coordinator_registered_instances` | Gauge | 등록된 인스턴스 수 |
-| `ktime_coordinator_online_instances` | Gauge | 온라인 인스턴스 수 |
-| `ktime_coordinator_total_heartbeats` | Counter | 총 하트비트 수 |
-| `ktime_coordinator_heartbeat_errors_total` | Counter | 하트비트 오류 수 |
-| `ktime_coordinator_articles_crawled_total` | Counter | 인스턴스별 크롤링 기사 수 |
-| `ktime_coordinator_errors_total` | Counter | 인스턴스별 오류 수 |
-| `ktime_coordinator_api_requests_total` | Counter | API 요청 수 (엔드포인트, 상태별) |
-| `ktime_coordinator_api_request_duration_seconds` | Histogram | API 요청 응답 시간 |
+| `baram_coordinator_registered_instances` | Gauge | 등록된 인스턴스 수 |
+| `baram_coordinator_online_instances` | Gauge | 온라인 인스턴스 수 |
+| `baram_coordinator_total_heartbeats` | Counter | 총 하트비트 수 |
+| `baram_coordinator_heartbeat_errors_total` | Counter | 하트비트 오류 수 |
+| `baram_coordinator_articles_crawled_total` | Counter | 인스턴스별 크롤링 기사 수 |
+| `baram_coordinator_errors_total` | Counter | 인스턴스별 오류 수 |
+| `baram_coordinator_api_requests_total` | Counter | API 요청 수 (엔드포인트, 상태별) |
+| `baram_coordinator_api_request_duration_seconds` | Histogram | API 요청 응답 시간 |
 
 ### 크롤러 메트릭
 
 | 메트릭 | 타입 | 설명 |
 |--------|------|------|
-| `ktime_crawler_crawl_duration_seconds` | Histogram | 카테고리별 크롤링 시간 |
-| `ktime_crawler_articles_per_category_total` | Counter | 카테고리별 크롤링 기사 수 |
-| `ktime_crawler_dedup_hits_total` | Counter | 중복 URL 수 |
-| `ktime_crawler_dedup_misses_total` | Counter | 새로운 URL 수 |
-| `ktime_crawler_pipeline_success_total` | Counter | 파이프라인 성공 수 |
-| `ktime_crawler_pipeline_failure_total` | Counter | 파이프라인 실패 수 |
-| `ktime_crawler_slot_executions_total` | Counter | 슬롯 실행 횟수 |
-| `ktime_crawler_is_crawling` | Gauge | 현재 크롤링 중 (1/0) |
-| `ktime_crawler_current_hour` | Gauge | 현재 크롤링 시간대 |
+| `baram_crawler_crawl_duration_seconds` | Histogram | 카테고리별 크롤링 시간 |
+| `baram_crawler_articles_per_category_total` | Counter | 카테고리별 크롤링 기사 수 |
+| `baram_crawler_dedup_hits_total` | Counter | 중복 URL 수 |
+| `baram_crawler_dedup_misses_total` | Counter | 새로운 URL 수 |
+| `baram_crawler_pipeline_success_total` | Counter | 파이프라인 성공 수 |
+| `baram_crawler_pipeline_failure_total` | Counter | 파이프라인 실패 수 |
+| `baram_crawler_slot_executions_total` | Counter | 슬롯 실행 횟수 |
+| `baram_crawler_is_crawling` | Gauge | 현재 크롤링 중 (1/0) |
+| `baram_crawler_current_hour` | Gauge | 현재 크롤링 시간대 |
 
 ## Docker 배포
 
@@ -250,10 +250,10 @@ docker-compose -f docker-compose.yml -f docker-compose.distributed.yml up -d
 
 | 서비스 | 컨테이너명 | 포트 | 설명 |
 |--------|------------|------|------|
-| coordinator | ktime-coordinator | 8080 | 스케줄 관리 서버 |
-| crawler-main | ktime-crawler-main | - | 메인 크롤러 (ID: main) |
-| crawler-sub1 | ktime-crawler-sub1 | - | 서브 크롤러 1 (ID: sub1) |
-| crawler-sub2 | ktime-crawler-sub2 | - | 서브 크롤러 2 (ID: sub2) |
+| coordinator | baram-coordinator | 8080 | 스케줄 관리 서버 |
+| crawler-main | baram-crawler-main | - | 메인 크롤러 (ID: main) |
+| crawler-sub1 | baram-crawler-sub1 | - | 서브 크롤러 1 (ID: sub1) |
+| crawler-sub2 | baram-crawler-sub2 | - | 서브 크롤러 2 (ID: sub2) |
 
 ### GPU 가속 배포
 
@@ -273,8 +273,8 @@ docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 | 서비스 | 컨테이너명 | 포트 | 설명 |
 |--------|------------|------|------|
-| crawler-gpu | ktime-crawler-gpu | - | GPU 가속 크롤러 |
-| embedding-service | ktime-embedding-gpu | 8090 | GPU 임베딩 서버 |
+| crawler-gpu | baram-crawler-gpu | - | GPU 가속 크롤러 |
+| embedding-service | baram-embedding-gpu | 8090 | GPU 임베딩 서버 |
 
 ### 환경 변수
 
@@ -282,8 +282,8 @@ docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 ```bash
 # PostgreSQL
-POSTGRES_DB=ktime
-POSTGRES_USER=ktime
+POSTGRES_DB=baram
+POSTGRES_USER=baram
 POSTGRES_PASSWORD=<your-password>
 POSTGRES_PORT=5432
 
@@ -323,7 +323,7 @@ max_retries = 3
 [postgresql]
 host = "localhost"
 port = 5432
-database = "ktime"
+database = "baram"
 
 [opensearch]
 hosts = ["http://localhost:9200"]
@@ -340,4 +340,4 @@ Copyright (c) 2025 hephaex@gmail.com
 
 ## 기여
 
-기여를 환영합니다! [이슈](https://github.com/hephaex/ktime/issues)를 통해 버그 리포트나 기능 제안을 해주세요.
+기여를 환영합니다! [이슈](https://github.com/hephaex/baram/issues)를 통해 버그 리포트나 기능 제안을 해주세요.

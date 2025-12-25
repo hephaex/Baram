@@ -1,5 +1,5 @@
 [package]
-name = "ktime"
+name = "baram"
 version = "0.1.6"
 edition = "2021"
 rust-version = "1.80"

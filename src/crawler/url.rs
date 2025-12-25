@@ -57,7 +57,7 @@ impl UrlExtractor {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::UrlExtractor;
+    /// use baram::crawler::url::UrlExtractor;
     ///
     /// let extractor = UrlExtractor::new();
     /// let html = r#"<a href="https://n.news.naver.com/mnews/article/001/0014123456">Article</a>"#;
@@ -106,7 +106,7 @@ impl UrlExtractor {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::UrlExtractor;
+    /// use baram::crawler::url::UrlExtractor;
     ///
     /// let extractor = UrlExtractor::new();
     /// let mobile = "https://m.news.naver.com/article/001/0014123456";
@@ -142,7 +142,7 @@ impl UrlExtractor {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::UrlExtractor;
+    /// use baram::crawler::url::UrlExtractor;
     ///
     /// let extractor = UrlExtractor::new();
     /// let url = "https://n.news.naver.com/mnews/article/001/0014123456";
@@ -184,7 +184,7 @@ impl UrlExtractor {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::UrlExtractor;
+    /// use baram::crawler::url::UrlExtractor;
     ///
     /// let extractor = UrlExtractor::new();
     /// assert!(extractor.is_valid_article_url(
@@ -221,7 +221,7 @@ impl UrlExtractor {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::UrlExtractor;
+    /// use baram::crawler::url::UrlExtractor;
     ///
     /// let extractor = UrlExtractor::new();
     /// let absolute = extractor.to_absolute(
@@ -283,7 +283,7 @@ pub mod validators {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::validators;
+    /// use baram::crawler::url::validators;
     ///
     /// assert!(validators::is_allowed_domain("https://n.news.naver.com/article/001/123"));
     /// assert!(!validators::is_allowed_domain("https://evil.com/fake"));
@@ -321,7 +321,7 @@ pub mod validators {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::validators;
+    /// use baram::crawler::url::validators;
     ///
     /// assert!(!validators::is_safe_url("http://127.0.0.1/admin"));
     /// assert!(!validators::is_safe_url("http://localhost/secret"));
@@ -414,7 +414,7 @@ pub mod validators {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::url::validators;
+    /// use baram::crawler::url::validators;
     ///
     /// assert!(validators::validate_url("https://n.news.naver.com/article/001/123").is_ok());
     /// assert!(validators::validate_url("http://localhost/admin").is_err());

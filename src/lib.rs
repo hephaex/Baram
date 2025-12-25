@@ -1,4 +1,4 @@
-//! ktime - Advanced Naver News Crawler
+//! baram - Advanced Naver News Crawler
 //!
 //! A comprehensive news crawling system with vector search and ontology extraction capabilities.
 //!
@@ -18,8 +18,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use ktime::crawler::Crawler;
-//! use ktime::config::Config;
+//! use baram::crawler::Crawler;
+//! use baram::config::Config;
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {

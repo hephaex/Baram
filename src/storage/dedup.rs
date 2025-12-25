@@ -45,7 +45,7 @@ pub struct DedupConfig {
 impl Default for DedupConfig {
     fn default() -> Self {
         Self {
-            database_url: "postgresql://localhost/ktime".to_string(),
+            database_url: "postgresql://localhost/baram".to_string(),
             pool_size: 10,
             connect_timeout: Duration::from_secs(10),
             statement_timeout: Duration::from_secs(30),
@@ -60,7 +60,7 @@ impl DedupConfig {
     pub fn from_env() -> Result<Self> {
         let database_url = std::env::var("DATABASE_URL")
             .or_else(|_| std::env::var("POSTGRES_URL"))
-            .unwrap_or_else(|_| "postgresql://localhost/ktime".to_string());
+            .unwrap_or_else(|_| "postgresql://localhost/baram".to_string());
 
         let pool_size = std::env::var("DB_POOL_SIZE")
             .ok()

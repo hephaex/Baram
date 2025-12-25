@@ -1,4 +1,4 @@
-// Core data structures for ktime crawler
+// Core data structures for baram crawler
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

@@ -26,7 +26,7 @@
 //! ## Basic Extraction
 //!
 //! ```ignore
-//! use ktime::ontology::{RelationExtractor, EntityLinker, TripleStore};
+//! use baram::ontology::{RelationExtractor, EntityLinker, TripleStore};
 //!
 //! // Extract entities and relations
 //! let extractor = RelationExtractor::new();
@@ -40,7 +40,7 @@
 //! ## Entity Linking with Wikidata
 //!
 //! ```ignore
-//! use ktime::ontology::{EntityLinker, LinkerConfig};
+//! use baram::ontology::{EntityLinker, LinkerConfig};
 //!
 //! let linker = EntityLinker::with_config(LinkerConfig::strict());
 //! let linked = linker.link("삼성전자");
@@ -54,7 +54,7 @@
 //! ## RDF Export Formats
 //!
 //! ```ignore
-//! use ktime::ontology::{EntityLinker, LinkedTripleStore};
+//! use baram::ontology::{EntityLinker, LinkedTripleStore};
 //!
 //! let linker = EntityLinker::new();
 //! let linked_store = linker.apply_to_triple_store(&store);
@@ -69,7 +69,7 @@
 //! ## Performance Profiling
 //!
 //! ```ignore
-//! use ktime::ontology::{ExtractionStats, BatchStats, PipelineProfiler};
+//! use baram::ontology::{ExtractionStats, BatchStats, PipelineProfiler};
 //!
 //! let mut stats = ExtractionStats::new("article_001");
 //! stats.record_entity(EntityType::Person);
@@ -84,7 +84,7 @@
 //! This module uses [`OntologyError`] for specific error variants:
 //!
 //! ```ignore
-//! use ktime::ontology::{OntologyError, OntologyResult};
+//! use baram::ontology::{OntologyError, OntologyResult};
 //!
 //! fn process_article(article: &Article) -> OntologyResult<TripleStore> {
 //!     // Returns OntologyError on failure with context
@@ -96,7 +96,7 @@
 //! All configuration structs support builder patterns with validation:
 //!
 //! ```ignore
-//! use ktime::ontology::{ExtractionConfig, LinkerConfig, StorageConfig};
+//! use baram::ontology::{ExtractionConfig, LinkerConfig, StorageConfig};
 //!
 //! let extraction_config = ExtractionConfig::builder()
 //!     .min_confidence(0.7)

@@ -19,14 +19,14 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.gpu
-    container_name: ktime-crawler-gpu
+    container_name: baram-crawler-gpu
     restart: unless-stopped
     command: ["crawl", "--help"]  # TODO: Add proper crawl arguments when coordinator is implemented
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
       INSTANCE_ID: gpu
       COORDINATOR_URL: "http://coordinator:8000"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       REDIS_URL: "redis://redis:6379"
       OPENSEARCH_URL: "http://opensearch:9200"
       HEARTBEAT_INTERVAL_SECS: ${HEARTBEAT_INTERVAL:-30}
@@ -51,7 +51,7 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      ktime-network:
+      baram-network:
         ipv4_address: 172.28.3.1
     volumes:
       - crawler_gpu_output:/app/output
@@ -69,10 +69,10 @@ services:
           cpus: '4.0'
           memory: 8G
     labels:
-      - "com.ktime.role=crawler"
-      - "com.ktime.instance=gpu"
-      - "com.ktime.gpu=true"
-      - "com.ktime.version=${VERSION:-0.1.0}"
+      - "com.baram.role=crawler"
+      - "com.baram.instance=gpu"
+      - "com.baram.gpu=true"
+      - "com.baram.version=${VERSION:-0.1.0}"
 
   # ============================================================================
   # GPU Embedding Service - Dedicated embedding generation
@@ -81,12 +81,12 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile.gpu
-    container_name: ktime-embedding-gpu
+    container_name: baram-embedding-gpu
     restart: unless-stopped
     command: ["embedding-server", "--port", "8090", "--use-gpu"]
     environment:
       RUST_LOG: ${EMBEDDING_LOG_LEVEL:-info}
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ktime}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-baram}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-baram}"
       OPENSEARCH_URL: "http://opensearch:9200"
       # GPU settings
       USE_GPU: "true"
@@ -112,7 +112,7 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      ktime-network:
+      baram-network:
         ipv4_address: 172.28.3.10
     volumes:
       - embedding_models:/app/models
@@ -127,9 +127,9 @@ services:
           cpus: '4.0'
           memory: 16G
     labels:
-      - "com.ktime.role=embedding"
-      - "com.ktime.gpu=true"
-      - "com.ktime.version=${VERSION:-0.1.0}"
+      - "com.baram.role=embedding"
+      - "com.baram.gpu=true"
+      - "com.baram.version=${VERSION:-0.1.0}"
 
 # ============================================================================
 # Additional Volumes for GPU services

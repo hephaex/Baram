@@ -1,4 +1,4 @@
-//! Error types for the ktime crawler
+//! Error types for the baram crawler
 //!
 //! This module defines custom error types used throughout the application.
 

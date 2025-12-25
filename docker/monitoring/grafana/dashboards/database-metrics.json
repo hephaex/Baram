@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "ktime Database Metrics - PostgreSQL Performance and Health",
+  "description": "baram Database Metrics - PostgreSQL Performance and Health",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -422,7 +422,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "ktime",
+    "baram",
     "database",
     "postgresql"
   ],
@@ -435,8 +435,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "ktime - Database Metrics",
-  "uid": "ktime-database",
+  "title": "baram - Database Metrics",
+  "uid": "baram-database",
   "version": 0,
   "weekStart": ""
 }

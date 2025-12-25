@@ -26,8 +26,8 @@ impl NewsListCrawler {
     /// # Examples
     ///
     /// ```no_run
-    /// use ktime::crawler::fetcher::NaverFetcher;
-    /// use ktime::crawler::list::NewsListCrawler;
+    /// use baram::crawler::fetcher::NaverFetcher;
+    /// use baram::crawler::list::NewsListCrawler;
     ///
     /// let fetcher = NaverFetcher::new(10).unwrap();
     /// let crawler = NewsListCrawler::new(fetcher);
@@ -59,9 +59,9 @@ impl NewsListCrawler {
     /// # Examples
     ///
     /// ```no_run
-    /// # use ktime::crawler::fetcher::NaverFetcher;
-    /// # use ktime::crawler::list::NewsListCrawler;
-    /// # use ktime::models::NewsCategory;
+    /// # use baram::crawler::fetcher::NaverFetcher;
+    /// # use baram::crawler::list::NewsListCrawler;
+    /// # use baram::models::NewsCategory;
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let fetcher = NaverFetcher::new(10)?;
@@ -308,8 +308,8 @@ impl ListUrlBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::list::ListUrlBuilder;
-    /// use ktime::models::NewsCategory;
+    /// use baram::crawler::list::ListUrlBuilder;
+    /// use baram::models::NewsCategory;
     ///
     /// let url = ListUrlBuilder::main_list(NewsCategory::Politics, "20241215", 1);
     /// assert!(url.contains("sid1=100"));
@@ -342,8 +342,8 @@ impl ListUrlBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::list::ListUrlBuilder;
-    /// use ktime::models::NewsCategory;
+    /// use baram::crawler::list::ListUrlBuilder;
+    /// use baram::models::NewsCategory;
     ///
     /// let url = ListUrlBuilder::ranking_list(NewsCategory::IT, 1);
     /// assert!(url.contains("sid1=105"));
@@ -373,8 +373,8 @@ impl ListUrlBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ktime::crawler::list::ListUrlBuilder;
-    /// use ktime::models::NewsCategory;
+    /// use baram::crawler::list::ListUrlBuilder;
+    /// use baram::models::NewsCategory;
     ///
     /// let url = ListUrlBuilder::section_latest(NewsCategory::Society);
     /// assert_eq!(url, "https://news.naver.com/section/102");

@@ -1,15 +1,15 @@
-# ktime Monitoring Setup - Complete Summary
+# baram Monitoring Setup - Complete Summary
 
-## Project: ktime Distributed Naver News Crawler
+## Project: baram Distributed Naver News Crawler
 
-Comprehensive monitoring has been successfully added to the ktime project using Prometheus and Grafana.
+Comprehensive monitoring has been successfully added to the baram project using Prometheus and Grafana.
 
 ---
 
 ## What Was Created
 
 ### 1. Core Docker Compose Configuration
-**File**: `/home/mare/ktime/docker/docker-compose.monitoring.yml`
+**File**: `/home/mare/baram/docker/docker-compose.monitoring.yml`
 
 Defines 4 services:
 - **Prometheus** (prom/prometheus:latest) - Port 9090
@@ -17,10 +17,10 @@ Defines 4 services:
 - **PostgreSQL Exporter** (prometheuscommunity/postgres-exporter) - Port 9187
 - **Redis Exporter** (oliver006/redis_exporter) - Port 9121
 
-All services connect to the existing `ktime-network` and use persistent volumes for data storage.
+All services connect to the existing `baram-network` and use persistent volumes for data storage.
 
 ### 2. Monitoring Configuration Directory
-**Location**: `/home/mare/ktime/docker/monitoring/`
+**Location**: `/home/mare/baram/docker/monitoring/`
 
 Complete monitoring stack configuration with:
 - Prometheus scrape configuration
@@ -29,10 +29,10 @@ Complete monitoring stack configuration with:
 - 3 pre-configured dashboards
 
 ### 3. Prometheus Configuration
-**File**: `/home/mare/ktime/docker/monitoring/prometheus.yml`
+**File**: `/home/mare/baram/docker/monitoring/prometheus.yml`
 
 Configured to scrape:
-- **ktime-coordinator**: Application metrics from coordinator service
+- **baram-coordinator**: Application metrics from coordinator service
 - **postgres**: PostgreSQL metrics via postgres_exporter
 - **redis**: Redis metrics via redis_exporter
 - **prometheus**: Self-monitoring
@@ -44,7 +44,7 @@ Settings:
 - Alert rules location: `/etc/prometheus/rules/*.yml`
 
 ### 4. Alert Rules
-**File**: `/home/mare/ktime/docker/monitoring/rules/ktime-alerts.yml`
+**File**: `/home/mare/baram/docker/monitoring/rules/baram-alerts.yml`
 
 8 Production-ready Alerts:
 
@@ -81,8 +81,8 @@ Settings:
 
 ### 5. Grafana Dashboards
 
-#### Dashboard 1: ktime Distributed Crawler Overview
-**File**: `/home/mare/ktime/docker/monitoring/grafana/dashboards/ktime-overview.json`
+#### Dashboard 1: baram Distributed Crawler Overview
+**File**: `/home/mare/baram/docker/monitoring/grafana/dashboards/baram-overview.json`
 
 Key panels:
 - Online crawler instances (pie chart)
@@ -99,7 +99,7 @@ Metrics tracked:
 - `coordinator_crawler_status`
 
 #### Dashboard 2: Database Metrics
-**File**: `/home/mare/ktime/docker/monitoring/grafana/dashboards/database-metrics.json`
+**File**: `/home/mare/baram/docker/monitoring/grafana/dashboards/database-metrics.json`
 
 Key panels:
 - Database health indicator
@@ -115,7 +115,7 @@ Metrics tracked:
 - `pg_database_size_bytes`
 
 #### Dashboard 3: Redis Metrics
-**File**: `/home/mare/ktime/docker/monitoring/grafana/dashboards/redis-metrics.json`
+**File**: `/home/mare/baram/docker/monitoring/grafana/dashboards/redis-metrics.json`
 
 Key panels:
 - Memory used (gauge)
@@ -133,25 +133,25 @@ Metrics tracked:
 
 ### 6. Grafana Provisioning
 
-**Data Source Config**: `/home/mare/ktime/docker/monitoring/grafana/provisioning/datasources/prometheus.yml`
+**Data Source Config**: `/home/mare/baram/docker/monitoring/grafana/provisioning/datasources/prometheus.yml`
 - Auto-configures Prometheus as default data source
 - Connection URL: `http://prometheus:9090`
 
-**Dashboard Provisioning**: `/home/mare/ktime/docker/monitoring/grafana/provisioning/dashboards/dashboards.yml`
+**Dashboard Provisioning**: `/home/mare/baram/docker/monitoring/grafana/provisioning/dashboards/dashboards.yml`
 - Auto-loads all dashboards from `/var/lib/grafana/dashboards`
 - No manual dashboard import needed
 
 ### 7. Documentation
 
 #### Quick Start Guide
-**File**: `/home/mare/ktime/docker/monitoring/QUICKSTART.md` (228 lines)
+**File**: `/home/mare/baram/docker/monitoring/QUICKSTART.md` (228 lines)
 - 5-minute setup instructions
 - Common tasks and commands
 - Basic troubleshooting
 - Direct dashboard links
 
 #### Complete Reference
-**File**: `/home/mare/ktime/docker/monitoring/MONITORING.md` (521 lines)
+**File**: `/home/mare/baram/docker/monitoring/MONITORING.md` (521 lines)
 - Architecture overview
 - Detailed configuration guide
 - Alert rule documentation
@@ -161,7 +161,7 @@ Metrics tracked:
 - Advanced troubleshooting
 
 #### Navigation Index
-**File**: `/home/mare/ktime/docker/monitoring/INDEX.md` (362 lines)
+**File**: `/home/mare/baram/docker/monitoring/INDEX.md` (362 lines)
 - File structure and locations
 - Quick reference guide
 - Performance metrics
@@ -169,7 +169,7 @@ Metrics tracked:
 - Maintenance procedures
 
 #### Updated Main README
-**File**: `/home/mare/ktime/docker/README.md` (updated)
+**File**: `/home/mare/baram/docker/README.md` (updated)
 - New "Monitoring Stack" section
 - Setup instructions
 - Credential configuration
@@ -182,7 +182,7 @@ Metrics tracked:
 ## Directory Structure
 
 ```
-/home/mare/ktime/
+/home/mare/baram/
 ├── docker/
 │   ├── docker-compose.monitoring.yml          (117 lines)
 │   ├── README.md                              (updated)
@@ -193,7 +193,7 @@ Metrics tracked:
 │       ├── MONITORING.md                      (521 lines)
 │       ├── prometheus.yml                     (Scrape config)
 │       ├── rules/
-│       │   └── ktime-alerts.yml             (8 alerts)
+│       │   └── baram-alerts.yml             (8 alerts)
 │       └── grafana/
 │           ├── provisioning/
 │           │   ├── datasources/
@@ -201,7 +201,7 @@ Metrics tracked:
 │           │   └── dashboards/
 │           │       └── dashboards.yml
 │           └── dashboards/
-│               ├── ktime-overview.json       (Crawler dashboard)
+│               ├── baram-overview.json       (Crawler dashboard)
 │               ├── database-metrics.json      (PostgreSQL dashboard)
 │               └── redis-metrics.json         (Redis dashboard)
 ```
@@ -213,7 +213,7 @@ Metrics tracked:
 ### Step 1: Start the Monitoring Stack
 
 ```bash
-cd /home/mare/ktime/docker
+cd /home/mare/baram/docker
 docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
@@ -288,7 +288,7 @@ All 4 targets should show `"health":"up"`
 - **Dashboards**: Auto-loaded from provisioning directory
 
 ### Network Integration
-- Network: `ktime-network` (existing Docker network)
+- Network: `baram-network` (existing Docker network)
 - All services communicate via Docker DNS
 - No additional network configuration needed
 
@@ -302,7 +302,7 @@ All 4 targets should show `"health":"up"`
 
 ## Environment Variables (Optional)
 
-Add to `/home/mare/ktime/docker/.env`:
+Add to `/home/mare/baram/docker/.env`:
 
 ```bash
 # Prometheus
@@ -351,7 +351,7 @@ redis_memory_used_bytes
 3. Dashboard appears in Grafana home
 
 ### Modify Alert Rules
-1. Edit `monitoring/rules/ktime-alerts.yml`
+1. Edit `monitoring/rules/baram-alerts.yml`
 2. Reload Prometheus: `curl -X POST http://localhost:9090/-/reload`
 3. View alerts at http://localhost:9090/alerts
 
@@ -408,7 +408,7 @@ docker-compose -f docker-compose.monitoring.yml down
    - Integrate with existing monitoring infrastructure
    - Set up automated dashboards for reports
 
-See `/home/mare/ktime/docker/monitoring/MONITORING.md` for detailed production setup guide.
+See `/home/mare/baram/docker/monitoring/MONITORING.md` for detailed production setup guide.
 
 ---
 
@@ -432,7 +432,7 @@ docker-compose exec prometheus du -sh /prometheus
 Reduce retention time in `docker-compose.monitoring.yml`
 
 ### More troubleshooting
-See `/home/mare/ktime/docker/monitoring/QUICKSTART.md` or `/home/mare/ktime/docker/monitoring/MONITORING.md`
+See `/home/mare/baram/docker/monitoring/QUICKSTART.md` or `/home/mare/baram/docker/monitoring/MONITORING.md`
 
 ---
 
@@ -479,13 +479,13 @@ For questions about monitoring setup:
 
 ## Summary
 
-A comprehensive monitoring solution has been successfully added to the ktime project with:
+A comprehensive monitoring solution has been successfully added to the baram project with:
 
 - **4 services**: Prometheus, Grafana, PostgreSQL Exporter, Redis Exporter
 - **3 dashboards**: Crawler overview, database metrics, Redis metrics
 - **8 alerts**: Production-ready alerting for critical issues
 - **3 documentation files**: Quick start, complete reference, navigation guide
-- **Full integration**: Seamless connection with existing ktime infrastructure
+- **Full integration**: Seamless connection with existing baram infrastructure
 
 The monitoring stack is ready to use immediately and can be customized and extended as needed.
 

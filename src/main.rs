@@ -14,22 +14,22 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use ktime::config::{Config, DatabaseConfig};
-use ktime::coordinator::{CoordinatorConfig, CoordinatorServer};
-use ktime::crawler::distributed::DistributedRunner;
-use ktime::crawler::fetcher::NaverFetcher;
-use ktime::crawler::instance::InstanceConfig;
-use ktime::crawler::list::NewsListCrawler;
-use ktime::crawler::Crawler;
-use ktime::embedding::{Embedder, EmbeddingConfig};
-use ktime::models::{CrawlState, NewsCategory};
-use ktime::parser::ArticleParser;
-use ktime::scheduler::rotation::CrawlerInstance;
-use ktime::storage::{ArticleStorage, CrawlStatus, Database};
+use baram::config::{Config, DatabaseConfig};
+use baram::coordinator::{CoordinatorConfig, CoordinatorServer};
+use baram::crawler::distributed::DistributedRunner;
+use baram::crawler::fetcher::NaverFetcher;
+use baram::crawler::instance::InstanceConfig;
+use baram::crawler::list::NewsListCrawler;
+use baram::crawler::Crawler;
+use baram::embedding::{Embedder, EmbeddingConfig};
+use baram::models::{CrawlState, NewsCategory};
+use baram::parser::ArticleParser;
+use baram::scheduler::rotation::CrawlerInstance;
+use baram::storage::{ArticleStorage, CrawlStatus, Database};
 
 #[derive(Parser)]
 #[command(
-    name = "ktime",
+    name = "baram",
     version,
     about = "Advanced Naver News crawler with vector search and ontology extraction",
     long_about = None
@@ -251,7 +251,7 @@ async fn main() -> Result<()> {
     // Initialize tracing/logging
     setup_tracing(&cli.log_format, cli.verbose)?;
 
-    tracing::info!("ktime Naver News Crawler starting");
+    tracing::info!("baram Naver News Crawler starting");
 
     // Load config
     let config = if cli.config.exists() {
@@ -426,15 +426,15 @@ async fn main() -> Result<()> {
         }
     }
 
-    tracing::info!("ktime completed successfully");
+    tracing::info!("baram completed successfully");
     Ok(())
 }
 
 fn setup_tracing(format: &str, verbose: bool) -> Result<()> {
     let env_filter = if verbose {
-        tracing_subscriber::EnvFilter::new("ktime=debug,info")
+        tracing_subscriber::EnvFilter::new("baram=debug,info")
     } else {
-        tracing_subscriber::EnvFilter::new("ktime=info,warn")
+        tracing_subscriber::EnvFilter::new("baram=info,warn")
     };
 
     match format {
@@ -742,8 +742,8 @@ fn stats(database: PathBuf) -> Result<()> {
 }
 
 async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
-    use ktime::config::OpenSearchConfig;
-    use ktime::embedding::VectorStore;
+    use baram::config::OpenSearchConfig;
+    use baram::embedding::VectorStore;
     use std::fs;
 
     println!("Indexing articles from: {input}");
@@ -754,7 +754,7 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         url: std::env::var("OPENSEARCH_URL")
             .unwrap_or_else(|_| "http://localhost:9200".to_string()),
         index_name: std::env::var("OPENSEARCH_INDEX")
-            .unwrap_or_else(|_| "ktime-articles".to_string()),
+            .unwrap_or_else(|_| "baram-articles".to_string()),
         username: std::env::var("OPENSEARCH_USER").ok(),
         password: std::env::var("OPENSEARCH_PASSWORD").ok(),
     };
@@ -786,7 +786,7 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         anyhow::bail!("Input path does not exist: {input}");
     }
 
-    let mut documents: Vec<ktime::embedding::IndexDocument> = Vec::new();
+    let mut documents: Vec<baram::embedding::IndexDocument> = Vec::new();
 
     if input_path.is_dir() {
         let entries: Vec<_> = fs::read_dir(&input_path)?
@@ -852,7 +852,7 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
     Ok(())
 }
 
-fn parse_markdown_to_document(path: &std::path::Path) -> Result<ktime::embedding::IndexDocument> {
+fn parse_markdown_to_document(path: &std::path::Path) -> Result<baram::embedding::IndexDocument> {
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read file: {}", path.display()))?;
 
@@ -925,7 +925,7 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ktime::embedding
     // Create dummy embedding (will be replaced with real embedding later)
     let embedding = vec![0.0f32; 384];
 
-    Ok(ktime::embedding::IndexDocument {
+    Ok(baram::embedding::IndexDocument {
         id: format!("{oid}_{aid}"),
         oid,
         aid,
@@ -945,8 +945,8 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ktime::embedding
 }
 
 async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
-    use ktime::config::OpenSearchConfig;
-    use ktime::embedding::{SearchConfig, VectorStore};
+    use baram::config::OpenSearchConfig;
+    use baram::embedding::{SearchConfig, VectorStore};
 
     println!("Searching for: \"{query}\"");
     println!("================================");
@@ -956,7 +956,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
         url: std::env::var("OPENSEARCH_URL")
             .unwrap_or_else(|_| "http://localhost:9200".to_string()),
         index_name: std::env::var("OPENSEARCH_INDEX")
-            .unwrap_or_else(|_| "ktime-articles".to_string()),
+            .unwrap_or_else(|_| "baram-articles".to_string()),
         username: std::env::var("OPENSEARCH_USER").ok(),
         password: std::env::var("OPENSEARCH_PASSWORD").ok(),
     };
@@ -966,7 +966,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
     // Check if index exists
     if !store.index_exists().await? {
         println!("Index '{}' does not exist.", opensearch_config.index_name);
-        println!("Run 'ktime index' first to create and populate the index.");
+        println!("Run 'baram index' first to create and populate the index.");
         return Ok(());
     }
 
@@ -1175,7 +1175,7 @@ async fn embedding_server(
 /// Root handler - welcome message
 async fn root_handler() -> Json<serde_json::Value> {
     Json(serde_json::json!({
-        "service": "ktime Embedding Server",
+        "service": "baram Embedding Server",
         "version": env!("CARGO_PKG_VERSION"),
         "endpoints": {
             "health": "GET /health",

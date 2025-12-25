@@ -2,9 +2,9 @@
 //!
 //! These tests validate URL extraction, normalization, and list crawling functionality.
 
-use ktime::crawler::list::ListUrlBuilder;
-use ktime::crawler::url::{validators, UrlExtractor};
-use ktime::models::NewsCategory;
+use baram::crawler::list::ListUrlBuilder;
+use baram::crawler::url::{validators, UrlExtractor};
+use baram::models::NewsCategory;
 
 /// Test URL extraction from real list page HTML fixture
 #[test]

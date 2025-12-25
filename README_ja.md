@@ -1,4 +1,4 @@
-# ktime - Nニュースクローラー
+# baram - Nニュースクローラー
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
@@ -7,7 +7,7 @@
 
 ## 概要
 
-ktimeは、Nニュースから記事とコメントを収集し、ベクターデータベースに保存して、オントロジー（知識グラフ）を構築するシステムです。
+baramは、Nニュースから記事とコメントを収集し、ベクターデータベースに保存して、オントロジー（知識グラフ）を構築するシステムです。
 
 ### 主な機能
 
@@ -28,8 +28,8 @@ ktimeは、Nニュースから記事とコメントを収集し、ベクター�
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/hephaex/ktime.git
-cd ktime
+git clone https://github.com/hephaex/baram.git
+cd baram
 
 # 依存関係のインストールとビルド
 cargo build --release
@@ -47,7 +47,7 @@ cargo run -- search "半導体投資"
 ## プロジェクト構造
 
 ```
-ktime/
+baram/
 ├── src/
 │   ├── crawler/       # HTTP Fetcher、コメントクローラー
 │   ├── parser/        # HTMLパーサー
@@ -94,7 +94,7 @@ max_retries = 3
 [postgresql]
 host = "localhost"
 port = 5432
-database = "ktime"
+database = "baram"
 
 [opensearch]
 hosts = ["http://localhost:9200"]
@@ -111,4 +111,4 @@ Copyright (c) 2025 hephaex@gmail.com
 
 ## コントリビューション
 
-コントリビューションを歓迎します！[Issue](https://github.com/hephaex/ktime/issues)でバグレポートや機能提案をお願いします。
+コントリビューションを歓迎します！[Issue](https://github.com/hephaex/baram/issues)でバグレポートや機能提案をお願いします。

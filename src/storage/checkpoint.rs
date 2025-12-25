@@ -13,7 +13,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use ktime::storage::checkpoint::{CheckpointManager, CrawlState};
+//! use baram::storage::checkpoint::{CheckpointManager, CrawlState};
 //! use std::path::Path;
 //!
 //! # async fn example() -> anyhow::Result<()> {

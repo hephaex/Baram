@@ -231,6 +231,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "baram"
+version = "0.1.6"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bytes",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "chrono",
+ "clap",
+ "criterion",
+ "deadpool-postgres",
+ "encoding_rs",
+ "futures",
+ "governor",
+ "handlebars",
+ "hf-hub",
+ "html-escape",
+ "lazy_static",
+ "opensearch",
+ "pgvector",
+ "prometheus",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "safetensors",
+ "scraper",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokenizers",
+ "tokio",
+ "tokio-postgres",
+ "tokio-test",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "wiremock",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2153,56 +2203,6 @@ checksum = "464a3709c7f55f1f721e5389aa6ea4e3bc6aba669353300af094b29ffbdde1d8"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "ktime"
-version = "0.1.6"
-dependencies = [
- "anyhow",
- "axum",
- "bytes",
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "chrono",
- "clap",
- "criterion",
- "deadpool-postgres",
- "encoding_rs",
- "futures",
- "governor",
- "handlebars",
- "hf-hub",
- "html-escape",
- "lazy_static",
- "opensearch",
- "pgvector",
- "prometheus",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "regex",
- "reqwest",
- "rusqlite",
- "safetensors",
- "scraper",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.17",
- "tokenizers",
- "tokio",
- "tokio-postgres",
- "tokio-test",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
- "wiremock",
 ]
 
 [[package]]

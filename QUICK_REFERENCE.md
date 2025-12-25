@@ -1,9 +1,9 @@
-# Quick Reference - ktime Module Architecture
+# Quick Reference - baram Module Architecture
 
 ## File Locations
 
 ```
-/home/mare/ktime/
+/home/mare/baram/
 ├── config.toml                    # Configuration file
 ├── src/
 │   ├── utils/
@@ -22,7 +22,7 @@
 ## Error Types Quick Reference
 
 ```rust
-use ktime::utils::*;
+use baram::utils::*;
 
 // Top-level error
 AppError
@@ -44,13 +44,13 @@ type AppResult<T> = Result<T, AppError>;
 ## Configuration Quick Reference
 
 ```rust
-use ktime::config::AppConfig;
+use baram::config::AppConfig;
 
 // Load configuration
 let config = AppConfig::load("config.toml")?;
 
 // Access settings
-config.app.name                              // "ktime"
+config.app.name                              // "baram"
 config.app.environment                       // "development"
 config.crawler.requests_per_second           // 5
 config.crawler.max_concurrent_workers        // 10
@@ -66,7 +66,7 @@ config.ontology                              // Option<OntologyConfig>
 ## Data Types Quick Reference
 
 ```rust
-use ktime::crawler::*;
+use baram::crawler::*;
 
 // News categories
 NewsCategory::Politics      // "100"
@@ -120,7 +120,7 @@ CrawlState {
 ### Error Handling
 
 ```rust
-use ktime::utils::{CrawlerError, CrawlerResult};
+use baram::utils::{CrawlerError, CrawlerResult};
 
 fn fetch_url(url: &str) -> CrawlerResult<String> {
     if url.is_empty() {
@@ -157,7 +157,7 @@ export LLM_API_KEY="sk-..."
 ### Working with Articles
 
 ```rust
-use ktime::crawler::{ParsedArticle, NewsCategory};
+use baram::crawler::{ParsedArticle, NewsCategory};
 
 let mut article = ParsedArticle {
     oid: "001".to_string(),
@@ -181,7 +181,7 @@ let path = article.date_path();  // "2024/12/14"
 ### Crawl State Management
 
 ```rust
-use ktime::crawler::{CrawlState, NewsCategory, CrawlStatus};
+use baram::crawler::{CrawlState, NewsCategory, CrawlStatus};
 
 // Initialize
 let mut state = CrawlState::new(
@@ -281,5 +281,5 @@ cargo test test_env_var_expansion
 ---
 
 **Quick Start**: See `ARCHITECTURE.md` for detailed documentation
-**Sprint Plan**: `/home/mare/ktime/sprint_plan.md`
-**Development Spec**: `/home/mare/ktime/development_spec.md`
+**Sprint Plan**: `/home/mare/baram/sprint_plan.md`
+**Development Spec**: `/home/mare/baram/development_spec.md`

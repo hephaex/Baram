@@ -61,7 +61,7 @@
 //! ## Basic Schedule Generation
 //!
 //! ```ignore
-//! use ktime::scheduler::{RotationScheduler, CrawlerInstance};
+//! use baram::scheduler::{RotationScheduler, CrawlerInstance};
 //! use chrono::Local;
 //!
 //! let scheduler = RotationScheduler::new();
@@ -85,7 +85,7 @@
 //! ## Schedule Distribution
 //!
 //! ```ignore
-//! use ktime::scheduler::{ScheduleDistributor, DistributionConfig};
+//! use baram::scheduler::{ScheduleDistributor, DistributionConfig};
 //!
 //! let distributor = ScheduleDistributor::new(DistributionConfig::default());
 //!
@@ -105,7 +105,7 @@
 //! ## Failover Handling
 //!
 //! ```ignore
-//! use ktime::scheduler::{FailoverManager, FailoverConfig};
+//! use baram::scheduler::{FailoverManager, FailoverConfig};
 //!
 //! let manager = FailoverManager::new(FailoverConfig::default());
 //!
@@ -122,7 +122,7 @@
 //! ## Category Assignment
 //!
 //! ```ignore
-//! use ktime::scheduler::{CategoryAssigner, CategoryPriority, AssignmentStrategy};
+//! use baram::scheduler::{CategoryAssigner, CategoryPriority, AssignmentStrategy};
 //!
 //! let mut assigner = CategoryAssigner::new()
 //!     .with_strategy(AssignmentStrategy::Weighted)
