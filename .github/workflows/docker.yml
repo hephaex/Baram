@@ -57,6 +57,21 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/image.tar
+
+      - name: Run Trivy vulnerability scanner (CPU)
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: '/tmp/image.tar'
+          format: 'sarif'
+          output: 'trivy-results-cpu.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results (CPU)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-cpu.sarif'
 
   build-gpu:
     runs-on: ubuntu-latest
@@ -102,3 +117,18 @@ jobs:
           labels: ${{ steps.meta-gpu.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/image-gpu.tar
+
+      - name: Run Trivy vulnerability scanner (GPU)
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: '/tmp/image-gpu.tar'
+          format: 'sarif'
+          output: 'trivy-results-gpu.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results (GPU)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-gpu.sarif'
