@@ -263,8 +263,8 @@ impl VectorStore {
                         "nori_posfilter": {
                             "type": "nori_part_of_speech",
                             "stoptags": [
-                                "E", "IC", "J", "MAG", "MM", "SP", "SSC", "SSO",
-                                "SC", "SE", "XPN", "XSA", "XSN", "XSV", "UNA", "NA", "VSV"
+                                "IC", "MAG", "MM", "SP", "SSC", "SSO",
+                                "SC", "SE", "XPN", "XSA", "XSN", "XSV"
                             ]
                         }
                     }
@@ -306,8 +306,8 @@ impl VectorStore {
                         "dimension": embedding_dim,
                         "method": {
                             "name": "hnsw",
-                            "space_type": "cosinesimil",
-                            "engine": "nmslib",
+                            "space_type": "innerproduct",
+                            "engine": "faiss",
                             "parameters": {
                                 "ef_construction": 128,
                                 "m": 16
