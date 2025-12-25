@@ -244,7 +244,7 @@ impl RotationScheduler {
     ///
     /// # Example
     /// ```
-    /// use ntimes::scheduler::RotationScheduler;
+    /// use ktime::scheduler::RotationScheduler;
     /// use chrono::NaiveDate;
     ///
     /// let scheduler = RotationScheduler::new();

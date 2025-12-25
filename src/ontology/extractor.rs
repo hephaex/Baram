@@ -834,14 +834,14 @@ impl RelationType {
             RelationType::Said => "schema:author",
             RelationType::ParticipatedIn => "schema:participant",
             RelationType::Announced => "schema:publicationDate",
-            RelationType::Criticized => "ntimes:criticized",
-            RelationType::Supported => "ntimes:supported",
-            RelationType::Opposed => "ntimes:opposed",
+            RelationType::Criticized => "ktime:criticized",
+            RelationType::Supported => "ktime:supported",
+            RelationType::Opposed => "ktime:opposed",
             RelationType::InvestedIn => "schema:investor",
             RelationType::Acquired => "schema:acquiredFrom",
-            RelationType::MergedWith => "ntimes:mergedWith",
+            RelationType::MergedWith => "ktime:mergedWith",
             RelationType::RelatedTo => "schema:relatedTo",
-            RelationType::Unknown => "ntimes:unknown",
+            RelationType::Unknown => "ktime:unknown",
         }
     }
 
@@ -1101,8 +1101,8 @@ pub struct Triple {
 impl Triple {
     /// Create a new triple from extracted relation
     pub fn from_relation(relation: &ExtractedRelation, article_id: &str) -> Self {
-        let subject_id = format!("ntimes:entity/{}/{}", article_id, slug(&relation.subject));
-        let object_id = format!("ntimes:entity/{}/{}", article_id, slug(&relation.object));
+        let subject_id = format!("ktime:entity/{}/{}", article_id, slug(&relation.subject));
+        let object_id = format!("ktime:entity/{}/{}", article_id, slug(&relation.object));
 
         Self {
             subject_id,
@@ -1172,14 +1172,14 @@ pub struct TripleStore {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TripleContext {
     pub schema: String,
-    pub ntimes: String,
+    pub ktime: String,
 }
 
 impl Default for TripleContext {
     fn default() -> Self {
         Self {
             schema: "https://schema.org/".to_string(),
-            ntimes: "https://ntimes.example.org/ontology/".to_string(),
+            ktime: "https://ktime.example.org/ontology/".to_string(),
         }
     }
 }
@@ -1247,7 +1247,7 @@ impl TripleStore {
 
         // Prefixes
         output.push_str("@prefix schema: <https://schema.org/> .\n");
-        output.push_str("@prefix ntimes: <https://ntimes.example.org/ontology/> .\n");
+        output.push_str("@prefix ktime: <https://ktime.example.org/ontology/> .\n");
         output.push_str("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n");
 
         // Article metadata
@@ -2092,7 +2092,7 @@ mod tests {
         };
 
         let triple = Triple::from_relation(&relation, "001_0001");
-        assert!(triple.subject_id.contains("ntimes:entity"));
+        assert!(triple.subject_id.contains("ktime:entity"));
         assert_eq!(triple.predicate, "schema:founder");
         assert_eq!(triple.predicate_label, "대표");
         assert!(triple.verified);
@@ -2163,7 +2163,7 @@ mod tests {
 
         assert!(json.contains("@context"));
         assert!(json.contains("schema"));
-        assert!(json.contains("ntimes"));
+        assert!(json.contains("ktime"));
     }
 
     #[test]
@@ -2187,7 +2187,7 @@ mod tests {
         let turtle = store.to_turtle();
 
         assert!(turtle.contains("@prefix schema:"));
-        assert!(turtle.contains("@prefix ntimes:"));
+        assert!(turtle.contains("@prefix ktime:"));
         assert!(turtle.contains("# Evidence:"));
     }
 

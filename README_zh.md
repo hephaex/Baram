@@ -1,4 +1,4 @@
-# nTimes - N新闻爬虫
+# ktime - N新闻爬虫
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
@@ -7,7 +7,7 @@
 
 ## 概述
 
-nTimes是一个从N新闻收集文章和评论，存储到向量数据库，并构建本体（知识图谱）的系统。
+ktime是一个从N新闻收集文章和评论，存储到向量数据库，并构建本体（知识图谱）的系统。
 
 ### 主要功能
 
@@ -28,8 +28,8 @@ nTimes是一个从N新闻收集文章和评论，存储到向量数据库，并�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/hephaex/nTimes.git
-cd nTimes
+git clone https://github.com/hephaex/ktime.git
+cd ktime
 
 # 安装依赖并构建
 cargo build --release
@@ -47,7 +47,7 @@ cargo run -- search "半导体投资"
 ## 项目结构
 
 ```
-nTimes/
+ktime/
 ├── src/
 │   ├── crawler/       # HTTP Fetcher、评论爬虫
 │   ├── parser/        # HTML解析器
@@ -94,7 +94,7 @@ max_retries = 3
 [postgresql]
 host = "localhost"
 port = 5432
-database = "ntimes"
+database = "ktime"
 
 [opensearch]
 hosts = ["http://localhost:9200"]
@@ -111,4 +111,4 @@ Copyright (c) 2025 hephaex@gmail.com
 
 ## 贡献
 
-欢迎贡献！请通过[Issue](https://github.com/hephaex/nTimes/issues)提交bug报告或功能建议。
+欢迎贡献！请通过[Issue](https://github.com/hephaex/ktime/issues)提交bug报告或功能建议。

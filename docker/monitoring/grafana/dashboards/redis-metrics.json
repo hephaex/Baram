@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "nTimes Redis Metrics - Cache and Queue Performance",
+  "description": "ktime Redis Metrics - Cache and Queue Performance",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -401,7 +401,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "ntimes",
+    "ktime",
     "redis",
     "cache"
   ],
@@ -414,8 +414,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "nTimes - Redis Metrics",
-  "uid": "ntimes-redis",
+  "title": "ktime - Redis Metrics",
+  "uid": "ktime-redis",
   "version": 0,
   "weekStart": ""
 }

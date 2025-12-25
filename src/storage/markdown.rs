@@ -80,7 +80,7 @@ impl<'a> MarkdownWriter<'a> {
     ///
     /// # Example
     /// ```no_run
-    /// use ntimes::storage::MarkdownWriter;
+    /// use ktime::storage::MarkdownWriter;
     /// use std::path::Path;
     ///
     /// let writer = MarkdownWriter::new(Path::new("./output/raw")).unwrap();
@@ -147,8 +147,8 @@ impl<'a> MarkdownWriter<'a> {
     ///
     /// # Example
     /// ```no_run
-    /// use ntimes::storage::MarkdownWriter;
-    /// use ntimes::models::ParsedArticle;
+    /// use ktime::storage::MarkdownWriter;
+    /// use ktime::models::ParsedArticle;
     /// use std::path::Path;
     ///
     /// let writer = MarkdownWriter::new(Path::new("./output")).unwrap();

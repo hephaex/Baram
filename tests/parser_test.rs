@@ -6,7 +6,7 @@
 //! - Sports news (sports.naver.com)
 //! - Card/Photo news
 
-use ntimes::parser::{detect_format, ArticleFormat, ArticleParser};
+use ktime::parser::{detect_format, ArticleFormat, ArticleParser};
 use std::fs;
 
 /// Test fixture paths
@@ -610,8 +610,8 @@ fn test_different_content_different_hash() {
 
 #[test]
 fn test_parse_mobile_sports_article() {
-    use ntimes::parser::html::{detect_format, ArticleParser};
-    use ntimes::parser::selectors::ArticleFormat;
+    use ktime::parser::html::{detect_format, ArticleParser};
+    use ktime::parser::selectors::ArticleFormat;
 
     // Mobile sports article HTML structure (m.sports.naver.com)
     let html = r#"

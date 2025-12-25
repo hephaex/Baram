@@ -2,7 +2,7 @@
 
 mod common;
 
-use ntimes::models::{CrawlState, CrawlStats, NewsCategory, ParsedArticle};
+use ktime::models::{CrawlState, CrawlStats, NewsCategory, ParsedArticle};
 
 #[test]
 fn test_article_id_generation() {

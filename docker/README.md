@@ -1,6 +1,6 @@
-# Docker Environment for nTimes
+# Docker Environment for ktime
 
-This directory contains Docker configurations for running the nTimes Naver News Crawler infrastructure.
+This directory contains Docker configurations for running the ktime Naver News Crawler infrastructure.
 
 ## Quick Start
 
@@ -46,7 +46,7 @@ docker-compose ps
 Test PostgreSQL connection:
 
 ```bash
-docker-compose exec postgres psql -U ntimes -d ntimes -c "SELECT version();"
+docker-compose exec postgres psql -U ktime -d ktime -c "SELECT version();"
 ```
 
 Test OpenSearch:
@@ -63,7 +63,7 @@ docker-compose exec redis redis-cli ping
 
 ## Monitoring Stack (Prometheus & Grafana)
 
-For comprehensive monitoring of the nTimes infrastructure:
+For comprehensive monitoring of the ktime infrastructure:
 
 ### Start Monitoring Services
 
@@ -90,7 +90,7 @@ This will start:
 - URL: http://localhost:3000
 - Default credentials: admin / admin (change in .env)
 - Pre-configured dashboards:
-  - nTimes Distributed Crawler Overview
+  - ktime Distributed Crawler Overview
   - Database Metrics
   - Redis Metrics
 
@@ -124,7 +124,7 @@ Add new dashboards in `/monitoring/grafana/dashboards/`:
 
 ### Alert Configuration
 
-Alerts are defined in `/monitoring/rules/ntimes-alerts.yml`:
+Alerts are defined in `/monitoring/rules/ktime-alerts.yml`:
 
 - **No Active Crawlers**: Critical when no instances are online
 - **High Error Rate**: Warning when API error rate > 5%
@@ -155,10 +155,10 @@ prometheus:
 docker-compose exec prometheus tar czf /prometheus/backup.tar.gz /prometheus/
 
 # Copy to host
-docker cp ntimes-prometheus:/prometheus/backup.tar.gz ./prometheus-backup.tar.gz
+docker cp ktime-prometheus:/prometheus/backup.tar.gz ./prometheus-backup.tar.gz
 
 # Restore (after replacing prometheus_data volume)
-docker cp ./prometheus-backup.tar.gz ntimes-prometheus:/prometheus/
+docker cp ./prometheus-backup.tar.gz ktime-prometheus:/prometheus/
 docker-compose exec prometheus tar xzf /prometheus/backup.tar.gz
 ```
 
@@ -239,7 +239,7 @@ docker-compose -f docker-compose.yml -f docker-compose.distributed.yml logs -f c
 docker-compose -f docker-compose.yml -f docker-compose.distributed.yml down
 
 # Stop only crawler instances (keep core services running)
-docker stop ntimes-crawler-main ntimes-crawler-sub1 ntimes-crawler-sub2
+docker stop ktime-crawler-main ktime-crawler-sub1 ktime-crawler-sub2
 ```
 
 ## Services Overview
@@ -247,13 +247,13 @@ docker stop ntimes-crawler-main ntimes-crawler-sub1 ntimes-crawler-sub2
 ### PostgreSQL 18
 
 - **Port**: 5432
-- **Database**: ntimes
+- **Database**: ktime
 - **Purpose**: Primary storage for articles, comments, and ontology triples
 - **Features**: Full-text search, UUID support, trigram matching
 
 **Access pgAdmin** (development profile):
 - URL: http://localhost:5050
-- Email: admin@ntimes.local (configurable in .env)
+- Email: admin@ktime.local (configurable in .env)
 - Password: admin (configurable in .env)
 
 ### OpenSearch 2.11+
@@ -358,17 +358,17 @@ Data is persisted in Docker volumes:
 
 ```bash
 # List volumes
-docker volume ls | grep ntimes
+docker volume ls | grep ktime
 
 # Backup PostgreSQL data
-docker-compose exec postgres pg_dump -U ntimes ntimes > backup.sql
+docker-compose exec postgres pg_dump -U ktime ktime > backup.sql
 
 # Backup OpenSearch data
 docker-compose exec opensearch tar czf /tmp/opensearch-backup.tar.gz /usr/share/opensearch/data
-docker cp ntimes-opensearch:/tmp/opensearch-backup.tar.gz ./opensearch-backup.tar.gz
+docker cp ktime-opensearch:/tmp/opensearch-backup.tar.gz ./opensearch-backup.tar.gz
 
 # Restore PostgreSQL data
-docker-compose exec -T postgres psql -U ntimes ntimes < backup.sql
+docker-compose exec -T postgres psql -U ktime ktime < backup.sql
 ```
 
 ## Maintenance
@@ -494,7 +494,7 @@ Wait for health checks to pass (especially OpenSearch takes 30-60s to start).
 
 Using psql:
 ```bash
-docker-compose exec postgres psql -U ntimes -d ntimes
+docker-compose exec postgres psql -U ktime -d ktime
 ```
 
 Using pgAdmin:
@@ -502,8 +502,8 @@ Using pgAdmin:
 2. Add server:
    - Host: postgres (Docker network name)
    - Port: 5432
-   - Database: ntimes
-   - Username: ntimes
+   - Database: ktime
+   - Username: ktime
    - Password: from .env file
 
 ### Query OpenSearch
@@ -530,8 +530,8 @@ Update your `config.toml`:
 [postgresql]
 host = "localhost"  # or "postgres" if running in Docker network
 port = 5432
-database = "ntimes"
-username = "ntimes"
+database = "ktime"
+username = "ktime"
 password = "your_password_from_env"
 
 [opensearch]
@@ -546,7 +546,7 @@ url = "redis://localhost:6379"
 Or use environment variables (recommended):
 
 ```bash
-export DATABASE_URL="postgresql://ntimes:password@localhost:5432/ntimes"
+export DATABASE_URL="postgresql://ktime:password@localhost:5432/ktime"
 export OPENSEARCH_URL="http://localhost:9200"
 export OPENSEARCH_PASSWORD="your_password"
 export REDIS_URL="redis://localhost:6379"

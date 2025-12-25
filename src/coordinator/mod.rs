@@ -37,7 +37,7 @@
 //! # Usage
 //!
 //! ```ignore
-//! use ntimes::coordinator::{CoordinatorServer, CoordinatorConfig};
+//! use ktime::coordinator::{CoordinatorServer, CoordinatorConfig};
 //!
 //! let config = CoordinatorConfig::default();
 //! let server = CoordinatorServer::new(config)?;

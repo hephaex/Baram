@@ -232,7 +232,7 @@ impl Default for InstanceConfig {
         Self {
             instance_id: CrawlerInstance::Main,
             coordinator_url: "http://localhost:8080".to_string(),
-            database_url: "postgres://localhost/ntimes".to_string(),
+            database_url: "postgres://localhost/ktime".to_string(),
             heartbeat_interval_secs: 30,
             schedule_poll_interval_secs: 60,
             requests_per_second: 1.0,

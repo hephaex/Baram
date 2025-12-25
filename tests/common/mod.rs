@@ -1,7 +1,7 @@
 //! Common test utilities
 
 use chrono::Utc;
-use ntimes::models::ParsedArticle;
+use ktime::models::ParsedArticle;
 
 /// Create a test article with default values
 pub fn create_test_article() -> ParsedArticle {

@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'ntimes-monitor'
+    monitor: 'ktime-monitor'
     environment: 'docker'
 
 scrape_configs:
@@ -11,8 +11,8 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # nTimes Coordinator metrics
-  - job_name: 'ntimes-coordinator'
+  # ktime Coordinator metrics
+  - job_name: 'ktime-coordinator'
     metrics_path: '/metrics'
     scrape_interval: 15s
     scrape_timeout: 10s

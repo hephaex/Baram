@@ -7,7 +7,7 @@
 //! - Manual overrides
 
 use chrono::NaiveDate;
-use ntimes::scheduler::{
+use ktime::scheduler::{
     CategoryAssigner, CategoryPriority, CrawlerInstance, DistributionConfig, FailoverConfig,
     FailoverManager, FailoverReason, NewsCategory, OverrideManager, OverrideRequest,
     RotationScheduler, ScheduleCache, ScheduleDistributor,
@@ -127,7 +127,7 @@ fn test_category_coverage_over_day() {
 #[test]
 fn test_category_priority_affects_distribution() {
     let mut assigner = CategoryAssigner::new()
-        .with_strategy(ntimes::scheduler::AssignmentStrategy::Weighted)
+        .with_strategy(ktime::scheduler::AssignmentStrategy::Weighted)
         .with_categories_per_slot(2);
 
     // Set high priority for Politics
@@ -248,7 +248,7 @@ async fn test_distribution_update() {
             date,
             vec![10, 11, 12],
             CrawlerInstance::Sub2,
-            ntimes::scheduler::UpdateReason::ManualOverride,
+            ktime::scheduler::UpdateReason::ManualOverride,
         )
         .await;
 
@@ -294,7 +294,7 @@ async fn test_failover_on_consecutive_failures() {
 
     // Check Main is now unhealthy
     let health = manager.get_health(CrawlerInstance::Main).await.unwrap();
-    assert_eq!(health.status, ntimes::scheduler::HealthStatus::Unhealthy);
+    assert_eq!(health.status, ktime::scheduler::HealthStatus::Unhealthy);
 
     // Check failover history
     let history = manager.get_history().await;
@@ -551,7 +551,7 @@ async fn test_complete_scheduling_workflow() {
     let main_health = failover.get_health(CrawlerInstance::Main).await.unwrap();
     assert_eq!(
         main_health.status,
-        ntimes::scheduler::HealthStatus::Unhealthy
+        ktime::scheduler::HealthStatus::Unhealthy
     );
 
     // 11. Verify stats reflect the failure

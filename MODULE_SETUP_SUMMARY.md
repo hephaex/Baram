@@ -1,12 +1,12 @@
-# nTimes Module Architecture Setup Summary
+# ktime Module Architecture Setup Summary
 
 ## Overview
 
-This document summarizes the module architecture created for the nTimes Naver News Crawler project. All files follow production-ready Rust best practices with comprehensive error handling, type safety, and extensive documentation.
+This document summarizes the module architecture created for the ktime Naver News Crawler project. All files follow production-ready Rust best practices with comprehensive error handling, type safety, and extensive documentation.
 
 ## Files Created
 
-### 1. /home/mare/nTimes/src/utils/error.rs (342 lines)
+### 1. /home/mare/ktime/src/utils/error.rs (342 lines)
 
 **Purpose**: Comprehensive error handling using `thiserror`
 
@@ -34,7 +34,7 @@ pub type AppResult<T> = Result<T, AppError>;
 - Comprehensive test coverage
 - Domain-specific error variants
 
-### 2. /home/mare/nTimes/src/config/settings.rs (809 lines)
+### 2. /home/mare/ktime/src/config/settings.rs (809 lines)
 
 **Purpose**: Configuration management with TOML and environment variable support
 
@@ -61,7 +61,7 @@ pub type AppResult<T> = Result<T, AppError>;
 
 **Example Usage**:
 ```rust
-use ntimes::config::AppConfig;
+use ktime::config::AppConfig;
 
 let config = AppConfig::load("config.toml")?;
 config.validate()?;
@@ -71,7 +71,7 @@ let rate_limit = config.crawler.requests_per_second;
 let db_host = config.postgres.as_ref().map(|pg| &pg.host);
 ```
 
-### 3. /home/mare/nTimes/src/crawler/types.rs (399 lines)
+### 3. /home/mare/ktime/src/crawler/types.rs (399 lines)
 
 **Purpose**: Core data types for news crawling
 
@@ -107,7 +107,7 @@ let db_host = config.postgres.as_ref().map(|pg| &pg.host);
 - Comprehensive Default implementations
 - Type-safe enums with Display traits
 
-### 4. /home/mare/nTimes/config.toml (208 lines)
+### 4. /home/mare/ktime/config.toml (208 lines)
 
 **Purpose**: Default configuration with extensive comments
 
@@ -131,7 +131,7 @@ let db_host = config.postgres.as_ref().map(|pg| &pg.host);
 - Optional sections for advanced features
 - Environment-specific override instructions
 
-### 5. /home/mare/nTimes/ARCHITECTURE.md (365 lines)
+### 5. /home/mare/ktime/ARCHITECTURE.md (365 lines)
 
 **Purpose**: Comprehensive architecture documentation
 
@@ -214,13 +214,13 @@ Based on the sprint plan (Day 1 tasks):
 
 ```bash
 # Create a test to load configuration
-cargo test --package ntimes --lib config::settings::tests
+cargo test --package ktime --lib config::settings::tests
 
 # Verify all error types compile
-cargo test --package ntimes --lib utils::error::tests
+cargo test --package ktime --lib utils::error::tests
 
 # Check type implementations
-cargo test --package ntimes --lib crawler::types::tests
+cargo test --package ktime --lib crawler::types::tests
 ```
 
 ## Environment Variables
@@ -238,7 +238,7 @@ export LLM_API_KEY="your_llm_api_key"
 ### Loading Configuration:
 
 ```rust
-use ntimes::config::AppConfig;
+use ktime::config::AppConfig;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AppConfig::load("config.toml")?;
@@ -253,7 +253,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Creating a Crawl State:
 
 ```rust
-use ntimes::crawler::{CrawlState, NewsCategory};
+use ktime::crawler::{CrawlState, NewsCategory};
 
 let mut state = CrawlState::new(
     "session_2024_12_14".to_string(),
@@ -270,7 +270,7 @@ println!("Rate: {:.2} articles/min", state.crawl_rate());
 ### Error Handling:
 
 ```rust
-use ntimes::utils::{CrawlerError, CrawlerResult};
+use ktime::utils::{CrawlerError, CrawlerResult};
 
 fn fetch_article(url: &str) -> CrawlerResult<String> {
     if url.is_empty() {
@@ -289,7 +289,7 @@ fn fetch_article(url: &str) -> CrawlerResult<String> {
 
 Copyright (c) 2024 hephaex@gmail.com
 License: GPL v3
-Repository: https://github.com/hephaex/nTimes
+Repository: https://github.com/hephaex/ktime
 
 ---
 

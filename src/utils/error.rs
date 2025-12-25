@@ -1,4 +1,4 @@
-//! Error types for the nTimes crawler
+//! Error types for the ktime crawler
 //!
 //! This module defines custom error types used throughout the application.
 

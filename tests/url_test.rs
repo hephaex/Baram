@@ -2,9 +2,9 @@
 //!
 //! These tests validate URL extraction, normalization, and list crawling functionality.
 
-use ntimes::crawler::list::ListUrlBuilder;
-use ntimes::crawler::url::{validators, UrlExtractor};
-use ntimes::models::NewsCategory;
+use ktime::crawler::list::ListUrlBuilder;
+use ktime::crawler::url::{validators, UrlExtractor};
+use ktime::models::NewsCategory;
 
 /// Test URL extraction from real list page HTML fixture
 #[test]

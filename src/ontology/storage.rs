@@ -531,7 +531,7 @@ impl TripleStorage {
         writeln!(file, "@prefix schema: <https://schema.org/> .")?;
         writeln!(
             file,
-            "@prefix ntimes: <https://ntimes.example.org/ontology/> ."
+            "@prefix ktime: <https://ktime.example.org/ontology/> ."
         )?;
         writeln!(file, "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")?;
         writeln!(file)?;

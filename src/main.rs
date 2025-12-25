@@ -14,22 +14,22 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use ntimes::config::{Config, DatabaseConfig};
-use ntimes::coordinator::{CoordinatorConfig, CoordinatorServer};
-use ntimes::crawler::distributed::DistributedRunner;
-use ntimes::crawler::fetcher::NaverFetcher;
-use ntimes::crawler::instance::InstanceConfig;
-use ntimes::crawler::list::NewsListCrawler;
-use ntimes::crawler::Crawler;
-use ntimes::embedding::{Embedder, EmbeddingConfig};
-use ntimes::models::{CrawlState, NewsCategory};
-use ntimes::parser::ArticleParser;
-use ntimes::scheduler::rotation::CrawlerInstance;
-use ntimes::storage::{ArticleStorage, CrawlStatus, Database};
+use ktime::config::{Config, DatabaseConfig};
+use ktime::coordinator::{CoordinatorConfig, CoordinatorServer};
+use ktime::crawler::distributed::DistributedRunner;
+use ktime::crawler::fetcher::NaverFetcher;
+use ktime::crawler::instance::InstanceConfig;
+use ktime::crawler::list::NewsListCrawler;
+use ktime::crawler::Crawler;
+use ktime::embedding::{Embedder, EmbeddingConfig};
+use ktime::models::{CrawlState, NewsCategory};
+use ktime::parser::ArticleParser;
+use ktime::scheduler::rotation::CrawlerInstance;
+use ktime::storage::{ArticleStorage, CrawlStatus, Database};
 
 #[derive(Parser)]
 #[command(
-    name = "ntimes",
+    name = "ktime",
     version,
     about = "Advanced Naver News crawler with vector search and ontology extraction",
     long_about = None
@@ -251,7 +251,7 @@ async fn main() -> Result<()> {
     // Initialize tracing/logging
     setup_tracing(&cli.log_format, cli.verbose)?;
 
-    tracing::info!("nTimes Naver News Crawler starting");
+    tracing::info!("ktime Naver News Crawler starting");
 
     // Load config
     let config = if cli.config.exists() {
@@ -426,15 +426,15 @@ async fn main() -> Result<()> {
         }
     }
 
-    tracing::info!("nTimes completed successfully");
+    tracing::info!("ktime completed successfully");
     Ok(())
 }
 
 fn setup_tracing(format: &str, verbose: bool) -> Result<()> {
     let env_filter = if verbose {
-        tracing_subscriber::EnvFilter::new("ntimes=debug,info")
+        tracing_subscriber::EnvFilter::new("ktime=debug,info")
     } else {
-        tracing_subscriber::EnvFilter::new("ntimes=info,warn")
+        tracing_subscriber::EnvFilter::new("ktime=info,warn")
     };
 
     match format {
@@ -742,8 +742,8 @@ fn stats(database: PathBuf) -> Result<()> {
 }
 
 async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
-    use ntimes::config::OpenSearchConfig;
-    use ntimes::embedding::VectorStore;
+    use ktime::config::OpenSearchConfig;
+    use ktime::embedding::VectorStore;
     use std::fs;
 
     println!("Indexing articles from: {input}");
@@ -754,7 +754,7 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         url: std::env::var("OPENSEARCH_URL")
             .unwrap_or_else(|_| "http://localhost:9200".to_string()),
         index_name: std::env::var("OPENSEARCH_INDEX")
-            .unwrap_or_else(|_| "ntimes-articles".to_string()),
+            .unwrap_or_else(|_| "ktime-articles".to_string()),
         username: std::env::var("OPENSEARCH_USER").ok(),
         password: std::env::var("OPENSEARCH_PASSWORD").ok(),
     };
@@ -786,7 +786,7 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         anyhow::bail!("Input path does not exist: {input}");
     }
 
-    let mut documents: Vec<ntimes::embedding::IndexDocument> = Vec::new();
+    let mut documents: Vec<ktime::embedding::IndexDocument> = Vec::new();
 
     if input_path.is_dir() {
         let entries: Vec<_> = fs::read_dir(&input_path)?
@@ -852,7 +852,7 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
     Ok(())
 }
 
-fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embedding::IndexDocument> {
+fn parse_markdown_to_document(path: &std::path::Path) -> Result<ktime::embedding::IndexDocument> {
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read file: {}", path.display()))?;
 
@@ -925,7 +925,7 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embeddin
     // Create dummy embedding (will be replaced with real embedding later)
     let embedding = vec![0.0f32; 384];
 
-    Ok(ntimes::embedding::IndexDocument {
+    Ok(ktime::embedding::IndexDocument {
         id: format!("{oid}_{aid}"),
         oid,
         aid,
@@ -945,8 +945,8 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<ntimes::embeddin
 }
 
 async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
-    use ntimes::config::OpenSearchConfig;
-    use ntimes::embedding::{SearchConfig, VectorStore};
+    use ktime::config::OpenSearchConfig;
+    use ktime::embedding::{SearchConfig, VectorStore};
 
     println!("Searching for: \"{query}\"");
     println!("================================");
@@ -956,7 +956,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
         url: std::env::var("OPENSEARCH_URL")
             .unwrap_or_else(|_| "http://localhost:9200".to_string()),
         index_name: std::env::var("OPENSEARCH_INDEX")
-            .unwrap_or_else(|_| "ntimes-articles".to_string()),
+            .unwrap_or_else(|_| "ktime-articles".to_string()),
         username: std::env::var("OPENSEARCH_USER").ok(),
         password: std::env::var("OPENSEARCH_PASSWORD").ok(),
     };
@@ -966,7 +966,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
     // Check if index exists
     if !store.index_exists().await? {
         println!("Index '{}' does not exist.", opensearch_config.index_name);
-        println!("Run 'ntimes index' first to create and populate the index.");
+        println!("Run 'ktime index' first to create and populate the index.");
         return Ok(());
     }
 
@@ -1175,7 +1175,7 @@ async fn embedding_server(
 /// Root handler - welcome message
 async fn root_handler() -> Json<serde_json::Value> {
     Json(serde_json::json!({
-        "service": "nTimes Embedding Server",
+        "service": "ktime Embedding Server",
         "version": env!("CARGO_PKG_VERSION"),
         "endpoints": {
             "health": "GET /health",

@@ -1,4 +1,4 @@
-// Core data structures for nTimes crawler
+// Core data structures for ktime crawler
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

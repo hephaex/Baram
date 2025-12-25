@@ -1,4 +1,4 @@
-//! Configuration management for nTimes crawler
+//! Configuration management for ktime crawler
 //!
 //! This module handles loading and validating configuration from environment variables,
 //! files, and command-line arguments.
@@ -126,17 +126,17 @@ impl Default for Config {
                 max_concurrent_requests: 10,
                 rate_limit: 2.0,
                 request_timeout_secs: 30,
-                user_agent: format!("nTimes/{}", env!("CARGO_PKG_VERSION")),
+                user_agent: format!("ktime/{}", env!("CARGO_PKG_VERSION")),
                 enable_cookies: true,
             },
             database: DatabaseConfig {
                 sqlite_path: PathBuf::from("data/metadata.db"),
-                postgres_url: String::from("postgresql://localhost/ntimes"),
+                postgres_url: String::from("postgresql://localhost/ktime"),
                 pool_size: 10,
             },
             opensearch: OpenSearchConfig {
                 url: String::from("http://localhost:9200"),
-                index_name: String::from("ntimes-articles"),
+                index_name: String::from("ktime-articles"),
                 username: None,
                 password: None,
             },

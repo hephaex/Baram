@@ -15,7 +15,7 @@ use reqwest::header::{
 /// # Examples
 ///
 /// ```
-/// use ntimes::crawler::headers::build_naver_headers;
+/// use ktime::crawler::headers::build_naver_headers;
 ///
 /// let headers = build_naver_headers(
 ///     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -82,7 +82,7 @@ pub fn build_naver_headers(user_agent: &str, referer: &str) -> HeaderMap {
 /// # Examples
 ///
 /// ```
-/// use ntimes::crawler::headers::section_referer;
+/// use ktime::crawler::headers::section_referer;
 ///
 /// let referer = section_referer(100);
 /// assert_eq!(referer, "https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=100");
@@ -102,7 +102,7 @@ pub fn section_referer(section_id: u32) -> String {
 /// # Examples
 ///
 /// ```
-/// use ntimes::crawler::headers::build_comment_headers;
+/// use ktime::crawler::headers::build_comment_headers;
 ///
 /// let headers = build_comment_headers("https://news.naver.com/article/123/456");
 /// ```

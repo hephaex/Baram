@@ -1,6 +1,6 @@
-# Docker Setup Guide for nTimes
+# Docker Setup Guide for ktime
 
-This guide will help you set up the complete Docker environment for the nTimes Naver News Crawler.
+This guide will help you set up the complete Docker environment for the ktime Naver News Crawler.
 
 ## Prerequisites
 
@@ -42,8 +42,8 @@ sysctl -w vm.max_map_count=262144
 
 ```bash
 # Clone repository
-git clone https://github.com/hephaex/nTimes.git
-cd nTimes
+git clone https://github.com/hephaex/ktime.git
+cd ktime
 
 # Run initial setup
 make setup
@@ -153,14 +153,14 @@ This starts:
 
 1. Open http://localhost:5050
 2. Login with:
-   - Email: `admin@ntimes.local` (or from your .env)
+   - Email: `admin@ktime.local` (or from your .env)
    - Password: `admin` (or from your .env)
 3. Add server:
-   - Name: nTimes
+   - Name: ktime
    - Host: `postgres` (Docker network name)
    - Port: `5432`
-   - Database: `ntimes`
-   - Username: `ntimes`
+   - Database: `ktime`
+   - Username: `ktime`
    - Password: from your `.env` file
 
 ### Accessing OpenSearch Dashboards
@@ -176,7 +176,7 @@ This starts:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Docker Network                           │
-│  (ntimes-network: 172.28.0.0/16)                            │
+│  (ktime-network: 172.28.0.0/16)                            │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐ │
@@ -391,8 +391,8 @@ Edit `config.toml`:
 [postgresql]
 host = "localhost"
 port = 5432
-database = "ntimes"
-username = "ntimes"
+database = "ktime"
+username = "ktime"
 password = "your_password_from_env"
 
 [opensearch]
@@ -409,7 +409,7 @@ url = "redis://localhost:6379"
 Create `.env` in project root:
 
 ```bash
-DATABASE_URL=postgresql://ntimes:password@localhost:5432/ntimes
+DATABASE_URL=postgresql://ktime:password@localhost:5432/ktime
 OPENSEARCH_URL=http://localhost:9200
 OPENSEARCH_PASSWORD=your_password
 REDIS_URL=redis://localhost:6379
@@ -565,7 +565,7 @@ Before deploying to production:
 docker-compose ps
 
 # PostgreSQL
-docker-compose exec postgres pg_isready -U ntimes
+docker-compose exec postgres pg_isready -U ktime
 
 # OpenSearch
 curl -u admin:PASSWORD http://localhost:9200/_cluster/health?pretty
@@ -579,7 +579,7 @@ docker-compose exec redis redis-cli PING
 PostgreSQL statistics:
 ```sql
 SELECT * FROM pg_stat_activity;
-SELECT * FROM pg_stat_database WHERE datname = 'ntimes';
+SELECT * FROM pg_stat_database WHERE datname = 'ktime';
 ```
 
 OpenSearch stats:
@@ -602,10 +602,10 @@ For production, use multiple nodes:
 ```yaml
 opensearch-node-1:
   environment:
-    - cluster.name=ntimes-cluster
-    - node.name=ntimes-node-1
+    - cluster.name=ktime-cluster
+    - node.name=ktime-node-1
     - discovery.seed_hosts=opensearch-node-2,opensearch-node-3
-    - cluster.initial_master_nodes=ntimes-node-1,ntimes-node-2,ntimes-node-3
+    - cluster.initial_master_nodes=ktime-node-1,ktime-node-2,ktime-node-3
 
 opensearch-node-2:
   # Similar configuration
@@ -655,7 +655,7 @@ redis-3:
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/hephaex/nTimes/issues
+- GitHub Issues: https://github.com/hephaex/ktime/issues
 - Documentation: See `docker/README.md`
 
 ## License

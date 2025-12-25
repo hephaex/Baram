@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: 'nTimes Dashboards'
+  - name: 'ktime Dashboards'
     orgId: 1
-    folder: 'nTimes'
+    folder: 'ktime'
     type: file
     disableDeletion: false
     editable: true

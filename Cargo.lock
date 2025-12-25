@@ -2156,6 +2156,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "ktime"
+version = "0.1.6"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bytes",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "chrono",
+ "clap",
+ "criterion",
+ "deadpool-postgres",
+ "encoding_rs",
+ "futures",
+ "governor",
+ "handlebars",
+ "hf-hub",
+ "html-escape",
+ "lazy_static",
+ "opensearch",
+ "pgvector",
+ "prometheus",
+ "proptest",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "safetensors",
+ "scraper",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokenizers",
+ "tokio",
+ "tokio-postgres",
+ "tokio-test",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "wiremock",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2453,56 +2503,6 @@ name = "nonzero_ext"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38bf9645c8b145698bb0b18a4637dcacbc421ea49bef2317e4fd8065a387cf21"
-
-[[package]]
-name = "ntimes"
-version = "0.1.5"
-dependencies = [
- "anyhow",
- "axum",
- "bytes",
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "chrono",
- "clap",
- "criterion",
- "deadpool-postgres",
- "encoding_rs",
- "futures",
- "governor",
- "handlebars",
- "hf-hub",
- "html-escape",
- "lazy_static",
- "opensearch",
- "pgvector",
- "prometheus",
- "proptest",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "regex",
- "reqwest",
- "rusqlite",
- "safetensors",
- "scraper",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.17",
- "tokenizers",
- "tokio",
- "tokio-postgres",
- "tokio-test",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
- "wiremock",
-]
 
 [[package]]
 name = "nu-ansi-term"

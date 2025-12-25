@@ -1,6 +1,6 @@
-# nTimes Monitoring Stack Documentation
+# ktime Monitoring Stack Documentation
 
-This document provides comprehensive information about the Prometheus and Grafana monitoring stack for the nTimes distributed crawler system.
+This document provides comprehensive information about the Prometheus and Grafana monitoring stack for the ktime distributed crawler system.
 
 ## Overview
 
@@ -17,7 +17,7 @@ The monitoring stack consists of:
 ### Start the Complete Stack
 
 ```bash
-cd /home/mare/nTimes/docker
+cd /home/mare/ktime/docker
 docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
@@ -51,7 +51,7 @@ Alert Rules
 
 ### Network Configuration
 
-All services run on the `ntimes-network` bridge network:
+All services run on the `ktime-network` bridge network:
 
 - Coordinator: `http://coordinator:8080/metrics`
 - PostgreSQL Exporter: `postgres_exporter:9187`
@@ -63,7 +63,7 @@ All services run on the `ntimes-network` bridge network:
 
 ### Prometheus Configuration
 
-**Location**: `/home/mare/nTimes/docker/monitoring/prometheus.yml`
+**Location**: `/home/mare/ktime/docker/monitoring/prometheus.yml`
 
 Key sections:
 
@@ -73,28 +73,28 @@ Key sections:
 
 ### Grafana Provisioning
 
-**Datasources**: `/home/mare/nTimes/docker/monitoring/grafana/provisioning/datasources/`
+**Datasources**: `/home/mare/ktime/docker/monitoring/grafana/provisioning/datasources/`
 - Automatically configures Prometheus as the data source
 - Connection: `http://prometheus:9090`
 
-**Dashboards**: `/home/mare/nTimes/docker/monitoring/grafana/provisioning/dashboards/`
+**Dashboards**: `/home/mare/ktime/docker/monitoring/grafana/provisioning/dashboards/`
 - Automatic dashboard loading from JSON files
-- Dashboard location: `/home/mare/nTimes/docker/monitoring/grafana/dashboards/`
+- Dashboard location: `/home/mare/ktime/docker/monitoring/grafana/dashboards/`
 
 ### Alert Rules
 
-**Location**: `/home/mare/nTimes/docker/monitoring/rules/ntimes-alerts.yml`
+**Location**: `/home/mare/ktime/docker/monitoring/rules/ktime-alerts.yml`
 
 Rules are organized by service:
-- `ntimes-coordinator`: Crawler-specific alerts
-- `ntimes-database`: PostgreSQL-specific alerts
-- `ntimes-redis`: Redis-specific alerts
+- `ktime-coordinator`: Crawler-specific alerts
+- `ktime-database`: PostgreSQL-specific alerts
+- `ktime-redis`: Redis-specific alerts
 
 ## Included Dashboards
 
-### 1. nTimes - Distributed Crawler Overview
+### 1. ktime - Distributed Crawler Overview
 
-**File**: `ntimes-overview.json`
+**File**: `ktime-overview.json`
 
 Displays:
 - Online crawler instances (pie chart)
@@ -110,7 +110,7 @@ Displays:
 - `coordinator_api_requests_total`
 - `coordinator_crawler_status`
 
-### 2. nTimes - Database Metrics
+### 2. ktime - Database Metrics
 
 **File**: `database-metrics.json`
 
@@ -128,7 +128,7 @@ Displays:
 - `pg_stat_user_tables_n_tup_ins/upd/del`
 - `pg_database_size_bytes`
 
-### 3. nTimes - Redis Metrics
+### 3. ktime - Redis Metrics
 
 **File**: `redis-metrics.json`
 
@@ -238,7 +238,7 @@ rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rat
 
 1. Create a new JSON file in `/monitoring/grafana/dashboards/`
    ```bash
-   touch /home/mare/nTimes/docker/monitoring/grafana/dashboards/my-dashboard.json
+   touch /home/mare/ktime/docker/monitoring/grafana/dashboards/my-dashboard.json
    ```
 
 2. Add dashboard JSON content (can export from Grafana UI)
@@ -247,7 +247,7 @@ rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rat
    ```yaml
    # /monitoring/grafana/provisioning/dashboards/dashboards.yml
    providers:
-     - name: 'nTimes Dashboards'
+     - name: 'ktime Dashboards'
        path: /var/lib/grafana/dashboards
    ```
 
@@ -335,14 +335,14 @@ rule_files:
 docker-compose exec prometheus tar czf /prometheus/backup.tar.gz -C / prometheus
 
 # Copy to host
-docker cp ntimes-prometheus:/prometheus/backup.tar.gz ./prometheus-backup-$(date +%Y%m%d).tar.gz
+docker cp ktime-prometheus:/prometheus/backup.tar.gz ./prometheus-backup-$(date +%Y%m%d).tar.gz
 ```
 
 ### Restore Prometheus Data
 
 ```bash
 # Copy backup to container
-docker cp ./prometheus-backup-20240101.tar.gz ntimes-prometheus:/prometheus/
+docker cp ./prometheus-backup-20240101.tar.gz ktime-prometheus:/prometheus/
 
 # Extract (with Prometheus stopped)
 docker-compose -f docker-compose.monitoring.yml stop prometheus
@@ -388,7 +388,7 @@ docker-compose exec prometheus curl http://coordinator:8080/metrics
 
 **Fix**:
 - Ensure coordinator is running: `docker-compose ps coordinator`
-- Check network: `docker network ls | grep ntimes`
+- Check network: `docker network ls | grep ktime`
 - Verify coordinator metrics endpoint is exposed
 
 ### Grafana Dashboards Not Loading
@@ -417,7 +417,7 @@ docker-compose logs grafana | grep -i provisioning
 **Check**:
 ```bash
 # Monitor Prometheus memory
-docker stats ntimes-prometheus
+docker stats ktime-prometheus
 
 # Check storage size
 docker-compose exec prometheus du -sh /prometheus/

@@ -1,5 +1,5 @@
 # docker-compose.monitoring.yml
-# Monitoring stack for nTimes with Prometheus and Grafana
+# Monitoring stack for ktime with Prometheus and Grafana
 #
 # Usage:
 #   docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
@@ -18,7 +18,7 @@ services:
   # ============================================================================
   prometheus:
     image: prom/prometheus:latest
-    container_name: ntimes-prometheus
+    container_name: ktime-prometheus
     restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -34,17 +34,17 @@ services:
       - ./monitoring/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     networks:
-      - ntimes-network
+      - ktime-network
     labels:
-      - "com.ntimes.role=monitoring"
-      - "com.ntimes.component=prometheus"
+      - "com.ktime.role=monitoring"
+      - "com.ktime.component=prometheus"
 
   # ============================================================================
   # Grafana - Visualization and dashboard platform
   # ============================================================================
   grafana:
     image: grafana/grafana:latest
-    container_name: ntimes-grafana
+    container_name: ktime-grafana
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
@@ -60,52 +60,52 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     networks:
-      - ntimes-network
+      - ktime-network
     depends_on:
       - prometheus
     labels:
-      - "com.ntimes.role=monitoring"
-      - "com.ntimes.component=grafana"
+      - "com.ktime.role=monitoring"
+      - "com.ktime.component=grafana"
 
   # ============================================================================
   # PostgreSQL Exporter - Metrics exporter for PostgreSQL
   # ============================================================================
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:latest
-    container_name: ntimes-postgres-exporter
+    container_name: ktime-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-ntimes}:${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ntimes}?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-ktime}:${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-ktime}?sslmode=disable"
     ports:
       - "9187:9187"
     networks:
-      - ntimes-network
+      - ktime-network
     depends_on:
       postgres:
         condition: service_healthy
     labels:
-      - "com.ntimes.role=monitoring"
-      - "com.ntimes.component=postgres-exporter"
+      - "com.ktime.role=monitoring"
+      - "com.ktime.component=postgres-exporter"
 
   # ============================================================================
   # Redis Exporter - Metrics exporter for Redis
   # ============================================================================
   redis_exporter:
     image: oliver006/redis_exporter:latest
-    container_name: ntimes-redis-exporter
+    container_name: ktime-redis-exporter
     restart: unless-stopped
     command:
       - "-redis.addr=redis:6379"
     ports:
       - "9121:9121"
     networks:
-      - ntimes-network
+      - ktime-network
     depends_on:
       redis:
         condition: service_healthy
     labels:
-      - "com.ntimes.role=monitoring"
-      - "com.ntimes.component=redis-exporter"
+      - "com.ktime.role=monitoring"
+      - "com.ktime.component=redis-exporter"
 
 # ============================================================================
 # Monitoring Volumes

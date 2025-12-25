@@ -1,17 +1,17 @@
-# nTimes Monitoring - Quick Start Guide
+# ktime Monitoring - Quick Start Guide
 
 Get your monitoring stack up and running in 5 minutes.
 
 ## Prerequisites
 
-- nTimes core services running (PostgreSQL, Redis, OpenSearch)
+- ktime core services running (PostgreSQL, Redis, OpenSearch)
 - Coordinator service running (for distributed deployment)
 - Docker and Docker Compose installed
 
 ## Step 1: Start Monitoring Stack
 
 ```bash
-cd /home/mare/nTimes/docker
+cd /home/mare/ktime/docker
 docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
@@ -31,7 +31,7 @@ All services should show `Up` status.
 
 Expected targets:
 - prometheus
-- ntimes-coordinator
+- ktime-coordinator
 - postgres
 - redis
 
@@ -45,16 +45,16 @@ Expected targets:
 
 Pre-configured dashboards are available:
 
-### nTimes Overview
-- Click "Home" > "nTimes - Distributed Crawler Overview"
+### ktime Overview
+- Click "Home" > "ktime - Distributed Crawler Overview"
 - Shows real-time crawler status, articles crawled, and API performance
 
 ### Database Metrics
-- Click "Home" > "nTimes - Database Metrics"
+- Click "Home" > "ktime - Database Metrics"
 - Shows PostgreSQL connections, query rates, and table activity
 
 ### Redis Metrics
-- Click "Home" > "nTimes - Redis Metrics"
+- Click "Home" > "ktime - Redis Metrics"
 - Shows cache performance, memory usage, and hit ratios
 
 ## Step 5: Test Metrics Collection
@@ -148,7 +148,7 @@ prometheus:
 
 - **Advanced configuration**: See `/monitoring/MONITORING.md`
 - **Custom dashboards**: Export from Grafana, save to `dashboards/`
-- **Alert setup**: Configure in `rules/ntimes-alerts.yml`
+- **Alert setup**: Configure in `rules/ktime-alerts.yml`
 - **Integration**: Add Slack, PagerDuty, or email alerts
 
 ## Important Metrics
@@ -190,7 +190,7 @@ docker/monitoring/
 ├── MONITORING.md                  # Full documentation
 ├── QUICKSTART.md                  # This file
 ├── rules/
-│   └── ntimes-alerts.yml         # Alert rules
+│   └── ktime-alerts.yml         # Alert rules
 └── grafana/
     ├── provisioning/
     │   ├── datasources/
@@ -198,7 +198,7 @@ docker/monitoring/
     │   └── dashboards/
     │       └── dashboards.yml     # Dashboard provisioning
     └── dashboards/
-        ├── ntimes-overview.json   # Main dashboard
+        ├── ktime-overview.json   # Main dashboard
         ├── database-metrics.json  # Database dashboard
         └── redis-metrics.json     # Redis dashboard
 ```
@@ -208,9 +208,9 @@ docker/monitoring/
 Direct links (after login):
 
 - Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000/d/ntimes-overview
-- Database Dashboard: http://localhost:3000/d/ntimes-database
-- Redis Dashboard: http://localhost:3000/d/ntimes-redis
+- Grafana: http://localhost:3000/d/ktime-overview
+- Database Dashboard: http://localhost:3000/d/ktime-database
+- Redis Dashboard: http://localhost:3000/d/ktime-redis
 
 ## Performance Expectations
 

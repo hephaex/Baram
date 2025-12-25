@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "nTimes Database Metrics - PostgreSQL Performance and Health",
+  "description": "ktime Database Metrics - PostgreSQL Performance and Health",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -422,7 +422,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "ntimes",
+    "ktime",
     "database",
     "postgresql"
   ],
@@ -435,8 +435,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "nTimes - Database Metrics",
-  "uid": "ntimes-database",
+  "title": "ktime - Database Metrics",
+  "uid": "ktime-database",
   "version": 0,
   "weekStart": ""
 }

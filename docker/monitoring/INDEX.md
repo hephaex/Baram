@@ -1,10 +1,10 @@
-# nTimes Monitoring - Complete Setup Index
+# ktime Monitoring - Complete Setup Index
 
-This document indexes all monitoring-related files and provides a roadmap for using the nTimes monitoring stack.
+This document indexes all monitoring-related files and provides a roadmap for using the ktime monitoring stack.
 
 ## Overview
 
-The nTimes monitoring stack provides comprehensive observability for the distributed crawler system using:
+The ktime monitoring stack provides comprehensive observability for the distributed crawler system using:
 - **Prometheus**: Metrics collection and time-series storage
 - **Grafana**: Visualization and dashboards
 - **Exporters**: PostgreSQL and Redis metrics
@@ -47,7 +47,7 @@ prometheus.yml
 ### Alert Configuration
 
 ```
-rules/ntimes-alerts.yml
+rules/ktime-alerts.yml
 ├─ Coordinator alerts (3):
 │  ├─ NoActiveCrawlers (CRITICAL)
 │  ├─ HighCoordinatorErrorRate (WARNING)
@@ -73,10 +73,10 @@ grafana/provisioning/dashboards/dashboards.yml
 
 ## Dashboard Files
 
-### 1. ntimes-overview.json
+### 1. ktime-overview.json
 **Main monitoring dashboard for crawlers**
 
-Location: `grafana/dashboards/ntimes-overview.json`
+Location: `grafana/dashboards/ktime-overview.json`
 
 Displays:
 - Online crawler instances (pie chart)
@@ -121,7 +121,7 @@ Useful for: Monitoring Redis performance and cache efficiency
 ### docker-compose.monitoring.yml
 **Main monitoring stack definition**
 
-Location: `/home/mare/nTimes/docker/docker-compose.monitoring.yml`
+Location: `/home/mare/ktime/docker/docker-compose.monitoring.yml`
 
 Services defined:
 1. **prometheus**: Metrics collection (port 9090)
@@ -133,14 +133,14 @@ Volumes:
 - prometheus_data: Time-series metrics storage
 - grafana_data: Dashboards and settings
 
-Network: ntimes-network
+Network: ktime-network
 
 ## Quick Start Guide
 
 ### 1. Start the Stack
 
 ```bash
-cd /home/mare/nTimes/docker
+cd /home/mare/ktime/docker
 docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
@@ -216,7 +216,7 @@ Visit http://localhost:9090/graph and enter:
 
 ### Modify Alert Rules
 
-1. Edit `rules/ntimes-alerts.yml`
+1. Edit `rules/ktime-alerts.yml`
 2. Reload Prometheus: `curl -X POST http://localhost:9090/-/reload`
 3. View alerts: http://localhost:9090/alerts
 
@@ -241,7 +241,7 @@ docker-compose ps coordinator
 docker-compose exec prometheus curl http://coordinator:8080/metrics
 
 # Verify network
-docker network inspect ntimes-network
+docker network inspect ktime-network
 ```
 
 ### Issue: High memory/disk usage
@@ -283,7 +283,7 @@ See `MONITORING.md` for:
 ## File Locations Reference
 
 ```
-/home/mare/nTimes/docker/
+/home/mare/ktime/docker/
 ├── docker-compose.monitoring.yml          ← Main compose file
 ├── README.md                              ← Updated with monitoring section
 └── monitoring/
@@ -292,7 +292,7 @@ See `MONITORING.md` for:
     ├── MONITORING.md                      ← Complete reference
     ├── prometheus.yml                     ← Prometheus config
     ├── rules/
-    │   └── ntimes-alerts.yml             ← Alert rules
+    │   └── ktime-alerts.yml             ← Alert rules
     └── grafana/
         ├── provisioning/
         │   ├── datasources/
@@ -300,7 +300,7 @@ See `MONITORING.md` for:
         │   └── dashboards/
         │       └── dashboards.yml         ← Dashboard provisioning
         └── dashboards/
-            ├── ntimes-overview.json       ← Crawler dashboard
+            ├── ktime-overview.json       ← Crawler dashboard
             ├── database-metrics.json      ← Database dashboard
             └── redis-metrics.json         ← Redis dashboard
 ```
@@ -311,7 +311,7 @@ See `MONITORING.md` for:
 2. Access Grafana at http://localhost:3000
 3. Change admin password
 4. Explore the 3 pre-configured dashboards
-5. Review alert configuration in `rules/ntimes-alerts.yml`
+5. Review alert configuration in `rules/ktime-alerts.yml`
 6. Customize dashboards and alerts as needed
 7. For production: See `MONITORING.md` for hardening and integration
 
@@ -326,13 +326,13 @@ See `MONITORING.md` for:
 ## Integration Examples
 
 The monitoring stack is configured to work with:
-- nTimes Coordinator service (metrics endpoint)
+- ktime Coordinator service (metrics endpoint)
 - PostgreSQL 18 (via postgres_exporter)
 - Redis 7 (via redis_exporter)
 - Prometheus time-series database
 - Grafana for visualization
 
-All components are on the `ntimes-network` Docker network.
+All components are on the `ktime-network` Docker network.
 
 ## Maintenance
 
@@ -349,7 +349,7 @@ See `MONITORING.md` for backup/restore procedures.
 This setup is designed to be customizable:
 - Add dashboards by dropping JSON files in `grafana/dashboards/`
 - Add metrics to scrape in `prometheus.yml`
-- Add alerts by editing `rules/ntimes-alerts.yml`
+- Add alerts by editing `rules/ktime-alerts.yml`
 - Adjust retention in `docker-compose.monitoring.yml`
 
 All changes are hot-reloadable without service restart (except Prometheus restart for config changes).

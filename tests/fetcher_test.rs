@@ -2,7 +2,7 @@
 //!
 //! These tests validate the HTTP fetcher's behavior with mock servers.
 
-use ntimes::crawler::fetcher::NaverFetcher;
+use ktime::crawler::fetcher::NaverFetcher;
 use std::time::Duration;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};

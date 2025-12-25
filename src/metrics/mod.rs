@@ -1,4 +1,4 @@
-//! Prometheus metrics for nTimes coordinator and crawler
+//! Prometheus metrics for ktime coordinator and crawler
 //!
 //! This module provides metrics tracking for:
 //! - Coordinator: instance registration, heartbeats, errors
@@ -19,39 +19,39 @@ lazy_static! {
     // Instance metrics
     pub static ref COORDINATOR_REGISTERED_INSTANCES: Gauge =
         register_gauge!(
-            "ntimes_coordinator_registered_instances",
+            "ktime_coordinator_registered_instances",
             "Number of registered crawler instances"
         ).unwrap();
 
     pub static ref COORDINATOR_ONLINE_INSTANCES: Gauge =
         register_gauge!(
-            "ntimes_coordinator_online_instances",
+            "ktime_coordinator_online_instances",
             "Number of currently online crawler instances"
         ).unwrap();
 
     pub static ref COORDINATOR_TOTAL_HEARTBEATS: Counter =
         register_counter!(
-            "ntimes_coordinator_total_heartbeats",
+            "ktime_coordinator_total_heartbeats",
             "Total number of heartbeats received"
         ).unwrap();
 
     pub static ref COORDINATOR_HEARTBEAT_ERRORS: Counter =
         register_counter!(
-            "ntimes_coordinator_heartbeat_errors_total",
+            "ktime_coordinator_heartbeat_errors_total",
             "Total number of heartbeat errors"
         ).unwrap();
 
     // Article tracking from all instances
     pub static ref COORDINATOR_ARTICLES_CRAWLED: CounterVec =
         register_counter_vec!(
-            "ntimes_coordinator_articles_crawled_total",
+            "ktime_coordinator_articles_crawled_total",
             "Total articles crawled by instance",
             &["instance"]
         ).unwrap();
 
     pub static ref COORDINATOR_ERRORS: CounterVec =
         register_counter_vec!(
-            "ntimes_coordinator_errors_total",
+            "ktime_coordinator_errors_total",
             "Total errors reported by instance",
             &["instance"]
         ).unwrap();
@@ -59,14 +59,14 @@ lazy_static! {
     // API request metrics
     pub static ref COORDINATOR_API_REQUESTS: CounterVec =
         register_counter_vec!(
-            "ntimes_coordinator_api_requests_total",
+            "ktime_coordinator_api_requests_total",
             "Total API requests by endpoint and status",
             &["endpoint", "status"]
         ).unwrap();
 
     pub static ref COORDINATOR_API_DURATION: HistogramVec =
         register_histogram_vec!(
-            "ntimes_coordinator_api_request_duration_seconds",
+            "ktime_coordinator_api_request_duration_seconds",
             "API request duration in seconds",
             &["endpoint"],
             vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
@@ -81,7 +81,7 @@ lazy_static! {
     // Crawl execution metrics
     pub static ref CRAWLER_CRAWL_DURATION: HistogramVec =
         register_histogram_vec!(
-            "ntimes_crawler_crawl_duration_seconds",
+            "ktime_crawler_crawl_duration_seconds",
             "Time spent crawling a category in seconds",
             &["instance", "category"],
             vec![1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0]
@@ -89,21 +89,21 @@ lazy_static! {
 
     pub static ref CRAWLER_ARTICLES_PER_CATEGORY: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_articles_per_category_total",
+            "ktime_crawler_articles_per_category_total",
             "Total articles crawled per category",
             &["instance", "category"]
         ).unwrap();
 
     pub static ref CRAWLER_DEDUP_HITS: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_dedup_hits_total",
+            "ktime_crawler_dedup_hits_total",
             "Total deduplication cache hits (URLs already crawled)",
             &["instance"]
         ).unwrap();
 
     pub static ref CRAWLER_DEDUP_MISSES: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_dedup_misses_total",
+            "ktime_crawler_dedup_misses_total",
             "Total deduplication cache misses (new URLs)",
             &["instance"]
         ).unwrap();
@@ -111,21 +111,21 @@ lazy_static! {
     // Pipeline metrics
     pub static ref CRAWLER_PIPELINE_SUCCESS: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_pipeline_success_total",
+            "ktime_crawler_pipeline_success_total",
             "Total successful pipeline executions",
             &["instance", "category"]
         ).unwrap();
 
     pub static ref CRAWLER_PIPELINE_FAILURE: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_pipeline_failure_total",
+            "ktime_crawler_pipeline_failure_total",
             "Total failed pipeline executions",
             &["instance", "category"]
         ).unwrap();
 
     pub static ref CRAWLER_PIPELINE_SKIPPED: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_pipeline_skipped_total",
+            "ktime_crawler_pipeline_skipped_total",
             "Total skipped articles in pipeline",
             &["instance", "category"]
         ).unwrap();
@@ -133,14 +133,14 @@ lazy_static! {
     // Slot execution metrics
     pub static ref CRAWLER_SLOT_EXECUTIONS: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_slot_executions_total",
+            "ktime_crawler_slot_executions_total",
             "Total slot executions",
             &["instance", "hour"]
         ).unwrap();
 
     pub static ref CRAWLER_SLOT_ERRORS: CounterVec =
         register_counter_vec!(
-            "ntimes_crawler_slot_errors_total",
+            "ktime_crawler_slot_errors_total",
             "Total slot execution errors",
             &["instance", "hour"]
         ).unwrap();
@@ -148,14 +148,14 @@ lazy_static! {
     // Current state gauges
     pub static ref CRAWLER_CURRENT_HOUR: GaugeVec =
         register_gauge_vec!(
-            "ntimes_crawler_current_hour",
+            "ktime_crawler_current_hour",
             "Current hour being crawled (0-23)",
             &["instance"]
         ).unwrap();
 
     pub static ref CRAWLER_IS_CRAWLING: GaugeVec =
         register_gauge_vec!(
-            "ntimes_crawler_is_crawling",
+            "ktime_crawler_is_crawling",
             "Whether the crawler is currently crawling (1 = yes, 0 = no)",
             &["instance"]
         ).unwrap();
@@ -301,7 +301,7 @@ mod tests {
         let result = encode_metrics();
         assert!(result.is_ok());
         let text = result.unwrap();
-        assert!(text.contains("ntimes_"));
+        assert!(text.contains("ktime_"));
     }
 
     #[test]

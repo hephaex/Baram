@@ -21,7 +21,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use ntimes::crawler::pipeline::{CrawlerPipeline, PipelineConfig};
+//! use ktime::crawler::pipeline::{CrawlerPipeline, PipelineConfig};
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! let config = PipelineConfig::default();

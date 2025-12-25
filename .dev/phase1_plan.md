@@ -1,19 +1,19 @@
 # Phase 1: Core Crawler Implementation Plan
 
-> **Project**: nTimes - Rust Naver News Crawler
+> **Project**: ktime - Rust Naver News Crawler
 > **Phase**: 1 - Core Crawler Implementation
 > **Duration**: 5 days + 1 buffer day
 > **Goal**: Build reliable HTML parsing and file storage pipeline
 >
 > **Copyright**: Copyright (c) 2024 hephaex@gmail.com
 > **License**: GPL v3
-> **Repository**: https://github.com/hephaex/nTimes
+> **Repository**: https://github.com/hephaex/ktime
 
 ---
 
 ## Overview
 
-Phase 1 establishes the foundation of the nTimes crawler system. By the end of this phase, the system will be able to:
+Phase 1 establishes the foundation of the ktime crawler system. By the end of this phase, the system will be able to:
 
 1. Fetch news articles from Naver News with anti-bot protection
 2. Parse article content with fallback strategies for different formats
@@ -108,13 +108,13 @@ Initialize Rust project structure and implement foundational modules.
 
 ```toml
 [package]
-name = "ntimes"
+name = "ktime"
 version = "0.1.0"
 edition = "2021"
 authors = ["hephaex <hephaex@gmail.com>"]
 description = "High-performance Naver News Crawler with Vector DB and Ontology"
 license = "GPL-3.0"
-repository = "https://github.com/hephaex/nTimes"
+repository = "https://github.com/hephaex/ktime"
 
 [dependencies]
 # Async runtime
@@ -1425,7 +1425,7 @@ impl CheckpointManager {
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "ntimes")]
+#[command(name = "ktime")]
 #[command(about = "Naver News Crawler with Vector DB")]
 #[command(version)]
 struct Cli {
@@ -1707,7 +1707,7 @@ Address any issues from Days 1-5, code review, and prepare for Phase 2.
 ## File Structure Summary
 
 ```
-nTimes/
+ktime/
 ├── .dev/
 │   └── phase1_plan.md           # This file
 ├── src/
@@ -1848,4 +1848,4 @@ Verification Steps:
 > **Document Version**: 1.0
 > **Created**: Phase 1 Planning
 > **Last Updated**: 2024-01-15
-> **Author**: nTimes Development Team
+> **Author**: ktime Development Team

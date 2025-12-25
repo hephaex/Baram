@@ -1,4 +1,4 @@
-//! nTimes - Advanced Naver News Crawler
+//! ktime - Advanced Naver News Crawler
 //!
 //! A comprehensive news crawling system with vector search and ontology extraction capabilities.
 //!
@@ -18,8 +18,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use ntimes::crawler::Crawler;
-//! use ntimes::config::Config;
+//! use ktime::crawler::Crawler;
+//! use ktime::config::Config;
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
