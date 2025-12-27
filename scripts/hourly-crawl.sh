@@ -4,6 +4,10 @@
 
 set -euo pipefail
 
+# Set environment for cron
+export HOME="${HOME:-/home/mare}"
+export PATH="$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LOG_DIR="$PROJECT_DIR/logs"
