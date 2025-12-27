@@ -22,7 +22,8 @@ use baram::crawler::instance::InstanceConfig;
 use baram::crawler::list::NewsListCrawler;
 use baram::crawler::Crawler;
 use baram::embedding::{Embedder, EmbeddingConfig};
-use baram::models::{CrawlState, NewsCategory};
+use baram::models::{CrawlState, NewsCategory, ParsedArticle};
+use baram::ontology::{RelationExtractor, TripleStore};
 use baram::parser::ArticleParser;
 use baram::scheduler::rotation::CrawlerInstance;
 use baram::storage::{ArticleStorage, CrawlStatus, Database};
@@ -1137,13 +1138,205 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
 }
 
 async fn ontology(input: String, format: String, output: Option<String>) -> Result<()> {
-    println!("Ontology functionality not yet implemented");
-    println!("  Input: {input}");
-    println!("  Format: {format}");
-    if let Some(output) = output {
-        println!("  Output: {output}");
+    use chrono::Utc;
+
+    let input_path = PathBuf::from(&input);
+    if !input_path.exists() {
+        anyhow::bail!("Input path does not exist: {input}");
     }
+
+    // Collect markdown files
+    let mut articles: Vec<ParsedArticle> = Vec::new();
+
+    if input_path.is_dir() {
+        let entries: Vec<_> = std::fs::read_dir(&input_path)?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
+            .collect();
+
+        println!("Found {} markdown files", entries.len());
+
+        for entry in entries {
+            let path = entry.path();
+            match parse_markdown_to_article(&path) {
+                Ok(article) => articles.push(article),
+                Err(e) => {
+                    tracing::warn!(path = %path.display(), error = %e, "Failed to parse markdown");
+                }
+            }
+        }
+    } else {
+        articles.push(parse_markdown_to_article(&input_path)?);
+    }
+
+    if articles.is_empty() {
+        println!("No articles to process.");
+        return Ok(());
+    }
+
+    println!("Processing {} articles for ontology extraction...", articles.len());
+
+    // Extract ontology from each article
+    let extractor = RelationExtractor::new();
+    let mut all_stores: Vec<TripleStore> = Vec::new();
+    let mut total_entities = 0;
+    let mut total_relations = 0;
+
+    for (idx, article) in articles.iter().enumerate() {
+        print!("\r  Processing {}/{} articles...", idx + 1, articles.len());
+        std::io::Write::flush(&mut std::io::stdout())?;
+
+        let result = extractor.extract_from_article(article);
+        total_entities += result.entities.len();
+        total_relations += result.relations.len();
+
+        let store = TripleStore::from_extraction(&result, &article.title);
+        all_stores.push(store);
+    }
+    println!();
+
+    println!("Extraction complete:");
+    println!("  Total entities: {total_entities}");
+    println!("  Total relations: {total_relations}");
+
+    // Combine all stores and export
+    let combined_output = match format.to_lowercase().as_str() {
+        "json" | "json-ld" => {
+            let combined: Vec<_> = all_stores.iter().map(|s| {
+                serde_json::json!({
+                    "article_id": s.article_id,
+                    "article_title": s.article_title,
+                    "extracted_at": s.extracted_at,
+                    "triples": s.triples,
+                    "stats": s.stats,
+                })
+            }).collect();
+            serde_json::to_string_pretty(&combined)?
+        }
+        "turtle" | "ttl" => {
+            let mut output = String::new();
+            output.push_str("@prefix schema: <https://schema.org/> .\n");
+            output.push_str("@prefix baram: <https://baram.example.org/ontology/> .\n");
+            output.push_str("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n");
+
+            for store in &all_stores {
+                output.push_str(&format!("# Article: {}\n", store.article_title));
+                output.push_str(&store.to_turtle());
+                output.push('\n');
+            }
+            output
+        }
+        "rdf" | "rdf-xml" => {
+            let mut output = String::new();
+            output.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
+            output.push('\n');
+            output.push_str(r#"<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#""#);
+            output.push_str(r#" xmlns:schema="https://schema.org/""#);
+            output.push_str(r#" xmlns:baram="https://baram.example.org/ontology/">"#);
+            output.push('\n');
+
+            for store in &all_stores {
+                for triple in &store.triples {
+                    output.push_str(&format!(
+                        "  <rdf:Description rdf:about=\"{}\">\n",
+                        triple.subject_id
+                    ));
+                    output.push_str(&format!(
+                        "    <{}>{}</{}>\n",
+                        triple.predicate, triple.object, triple.predicate
+                    ));
+                    output.push_str("  </rdf:Description>\n");
+                }
+            }
+            output.push_str("</rdf:RDF>\n");
+            output
+        }
+        _ => anyhow::bail!("Unsupported format: {format}. Use json, turtle, or rdf."),
+    };
+
+    // Write output
+    if let Some(output_path) = output {
+        std::fs::write(&output_path, &combined_output)?;
+        println!("Output written to: {output_path}");
+    } else {
+        println!("\n{combined_output}");
+    }
+
     Ok(())
+}
+
+/// Parse markdown file to ParsedArticle for ontology extraction
+fn parse_markdown_to_article(path: &std::path::Path) -> Result<ParsedArticle> {
+    use chrono::Utc;
+
+    let content = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read file: {}", path.display()))?;
+
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Extract title
+    let title = lines
+        .iter()
+        .find(|l| l.starts_with("# "))
+        .map(|l| l.trim_start_matches("# ").to_string())
+        .unwrap_or_else(|| "Untitled".to_string());
+
+    // Extract metadata from frontmatter
+    let mut oid = String::new();
+    let mut aid = String::new();
+    let mut category = String::new();
+    let mut publisher = None;
+    let mut author = None;
+    let mut url = String::new();
+    let mut published_at = None;
+
+    let mut frontmatter_delim_count = 0;
+    let mut in_metadata = false;
+    let mut body_lines = Vec::new();
+
+    for line in &lines {
+        if line.starts_with("---") {
+            if frontmatter_delim_count < 2 {
+                frontmatter_delim_count += 1;
+                in_metadata = frontmatter_delim_count == 1;
+                continue;
+            }
+        }
+
+        if in_metadata {
+            if let Some((key, value)) = line.split_once(':') {
+                let key = key.trim();
+                let value = value.trim().trim_matches('"');
+                match key {
+                    "oid" => oid = value.to_string(),
+                    "aid" => aid = value.to_string(),
+                    "category" => category = value.to_string(),
+                    "publisher" => publisher = Some(value.to_string()),
+                    "author" => author = Some(value.to_string()),
+                    "url" => url = value.to_string(),
+                    _ => {}
+                }
+            }
+        } else if frontmatter_delim_count >= 2 && !line.starts_with('#') {
+            body_lines.push(*line);
+        }
+    }
+
+    let article_content = body_lines.join("\n");
+
+    Ok(ParsedArticle {
+        oid,
+        aid,
+        title,
+        content: article_content,
+        url,
+        category,
+        publisher,
+        author,
+        published_at,
+        crawled_at: Utc::now(),
+        content_hash: None,
+    })
 }
 
 // ============================================================================
