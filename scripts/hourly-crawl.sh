@@ -89,7 +89,7 @@ log "Phase 3: Extracting ontology..."
 ONTOLOGY_OUTPUT="$ONTOLOGY_DIR/ontology-$(date +%Y%m%d-%H%M).json"
 
 if cargo run --release -- ontology \
-    --input "$DB_PATH" \
+    --input "$OUTPUT_DIR" \
     --format json \
     --output "$ONTOLOGY_OUTPUT" \
     2>&1 | tee -a "$LOG_FILE"; then
