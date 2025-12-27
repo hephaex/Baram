@@ -886,13 +886,19 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<baram::embedding
     let mut url = String::new();
     let mut published_at = None;
 
+    let mut frontmatter_delim_count = 0;
     let mut in_metadata = false;
     let mut body_lines = Vec::new();
 
     for line in &lines {
+        // Handle YAML frontmatter delimiters (only first two --- are special)
         if line.starts_with("---") {
-            in_metadata = !in_metadata;
-            continue;
+            if frontmatter_delim_count < 2 {
+                frontmatter_delim_count += 1;
+                in_metadata = frontmatter_delim_count == 1;
+                continue;
+            }
+            // After frontmatter, --- is just a content separator
         }
 
         if in_metadata {
@@ -910,7 +916,7 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<baram::embedding
                     _ => {}
                 }
             }
-        } else if !line.starts_with('#') && !line.is_empty() {
+        } else if !line.is_empty() {
             body_lines.push(*line);
         }
     }
