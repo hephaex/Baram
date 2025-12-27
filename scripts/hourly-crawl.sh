@@ -73,7 +73,7 @@ log "Phase 1 complete: $CRAWL_SUCCESS success, $CRAWL_FAIL failed"
 log "Phase 2: Indexing with embeddings..."
 
 if cargo run --release -- index \
-    --input "$DB_PATH" \
+    --input "$OUTPUT_DIR" \
     --batch-size "$BATCH_SIZE" \
     2>&1 | tee -a "$LOG_FILE"; then
     log "  ✓ Indexing completed"

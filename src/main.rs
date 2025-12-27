@@ -836,6 +836,17 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         let result = store.bulk_index(batch).await?;
         total_success += result.success;
         total_failed += result.failed;
+
+        // Print errors if any
+        if !result.errors.is_empty() {
+            eprintln!("\nErrors in batch {}:", batch_num + 1);
+            for (i, err) in result.errors.iter().take(3).enumerate() {
+                eprintln!("  {}: {}", i + 1, err);
+            }
+            if result.errors.len() > 3 {
+                eprintln!("  ... and {} more errors", result.errors.len() - 3);
+            }
+        }
     }
 
     println!("\n\nIndexing Complete");
@@ -925,6 +936,22 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<baram::embedding
     // Create dummy embedding (will be replaced with real embedding later)
     let embedding = vec![0.0f32; 384];
 
+    // Convert published_at to ISO 8601 format
+    let published_at_iso = published_at.and_then(|dt| {
+        let dt = dt.trim();
+        // Skip empty or invalid dates
+        if dt.is_empty() || !dt.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+            return None;
+        }
+        // Try to parse "YYYY-MM-DD HH:MM" format and convert to ISO 8601
+        if dt.contains('T') {
+            Some(dt.to_string()) // Already in ISO format
+        } else {
+            // Replace space with T and add seconds + timezone
+            Some(dt.replace(' ', "T") + ":00Z")
+        }
+    });
+
     Ok(baram::embedding::IndexDocument {
         id: format!("{oid}_{aid}"),
         oid,
@@ -935,7 +962,7 @@ fn parse_markdown_to_document(path: &std::path::Path) -> Result<baram::embedding
         publisher,
         author,
         url,
-        published_at,
+        published_at: published_at_iso,
         crawled_at: chrono::Utc::now().to_rfc3339(),
         comment_count: None,
         embedding,
