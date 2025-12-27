@@ -58,10 +58,10 @@ for category in "${CATEGORIES[@]}"; do
         --skip-existing \
         2>&1 | tee -a "$LOG_FILE"; then
         log "  ✓ $category completed"
-        ((CRAWL_SUCCESS++))
+        CRAWL_SUCCESS=$((CRAWL_SUCCESS + 1))
     else
         log "  ✗ $category failed"
-        ((CRAWL_FAIL++))
+        CRAWL_FAIL=$((CRAWL_FAIL + 1))
     fi
 done
 
