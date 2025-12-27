@@ -1138,8 +1138,6 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
 }
 
 async fn ontology(input: String, format: String, output: Option<String>) -> Result<()> {
-    use chrono::Utc;
-
     let input_path = PathBuf::from(&input);
     if !input_path.exists() {
         anyhow::bail!("Input path does not exist: {input}");
@@ -1288,7 +1286,7 @@ fn parse_markdown_to_article(path: &std::path::Path) -> Result<ParsedArticle> {
     let mut publisher = None;
     let mut author = None;
     let mut url = String::new();
-    let mut published_at = None;
+    let published_at = None;
 
     let mut frontmatter_delim_count = 0;
     let mut in_metadata = false;
