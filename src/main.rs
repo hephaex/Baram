@@ -821,9 +821,21 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         batch_size
     );
 
+    // Check for embedding server
+    let embedding_server_url = std::env::var("EMBEDDING_SERVER_URL")
+        .unwrap_or_else(|_| "http://localhost:8090".to_string());
+
+    let use_embeddings = check_embedding_server(&embedding_server_url).await;
+    if use_embeddings {
+        println!("Embedding server available at {embedding_server_url}");
+    } else {
+        println!("Warning: Embedding server not available, using dummy embeddings");
+    }
+
     // Index in batches
     let mut total_success = 0;
     let mut total_failed = 0;
+    let client = reqwest::Client::new();
 
     for (batch_num, batch) in documents.chunks(batch_size).enumerate() {
         print!(
@@ -833,7 +845,29 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
         );
         std::io::Write::flush(&mut std::io::stdout())?;
 
-        let result = store.bulk_index(batch).await?;
+        // Generate embeddings if server is available
+        let batch_with_embeddings: Vec<baram::embedding::IndexDocument> = if use_embeddings {
+            let mut updated_batch = Vec::with_capacity(batch.len());
+            for doc in batch {
+                let text = format!("{} {}", doc.title, doc.content);
+                match generate_embedding(&client, &embedding_server_url, &text).await {
+                    Ok(embedding) => {
+                        let mut new_doc = doc.clone();
+                        new_doc.embedding = embedding;
+                        updated_batch.push(new_doc);
+                    }
+                    Err(e) => {
+                        tracing::warn!(doc_id = %doc.id, error = %e, "Failed to generate embedding");
+                        updated_batch.push(doc.clone());
+                    }
+                }
+            }
+            updated_batch
+        } else {
+            batch.to_vec()
+        };
+
+        let result = store.bulk_index(&batch_with_embeddings).await?;
         total_success += result.success;
         total_failed += result.failed;
 
@@ -861,6 +895,49 @@ async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
     println!("Total documents in index: {count}");
 
     Ok(())
+}
+
+/// Check if embedding server is available
+async fn check_embedding_server(url: &str) -> bool {
+    let client = reqwest::Client::new();
+    match client.get(format!("{url}/health")).send().await {
+        Ok(resp) => resp.status().is_success(),
+        Err(_) => false,
+    }
+}
+
+/// Generate embedding for text using embedding server
+async fn generate_embedding(
+    client: &reqwest::Client,
+    server_url: &str,
+    text: &str,
+) -> Result<Vec<f32>> {
+    #[derive(Serialize)]
+    struct EmbedRequest<'a> {
+        text: &'a str,
+    }
+
+    #[derive(Deserialize)]
+    struct EmbedResponse {
+        embedding: Vec<f32>,
+    }
+
+    // Truncate text to avoid token limit issues
+    let truncated_text: String = text.chars().take(2000).collect();
+
+    let response = client
+        .post(format!("{server_url}/embed"))
+        .json(&EmbedRequest { text: &truncated_text })
+        .send()
+        .await
+        .context("Failed to send embedding request")?;
+
+    let embed_response: EmbedResponse = response
+        .json()
+        .await
+        .context("Failed to parse embedding response")?;
+
+    Ok(embed_response.embedding)
 }
 
 fn parse_markdown_to_document(path: &std::path::Path) -> Result<baram::embedding::IndexDocument> {
