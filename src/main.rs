@@ -23,7 +23,8 @@ use baram::crawler::list::NewsListCrawler;
 use baram::crawler::Crawler;
 use baram::embedding::{Embedder, EmbeddingConfig};
 use baram::models::{CrawlState, NewsCategory, ParsedArticle};
-use baram::ontology::{RelationExtractor, TripleStore};
+use baram::llm::LlmClient;
+use baram::ontology::{RelationExtractor, RelationType, TripleStore};
 use baram::parser::ArticleParser;
 use baram::scheduler::rotation::CrawlerInstance;
 use baram::storage::{ArticleStorage, CrawlStatus, Database};
@@ -123,6 +124,10 @@ enum Commands {
         /// Output file path
         #[arg(short, long)]
         output: Option<String>,
+
+        /// Use LLM for Said relation extraction (requires Ollama)
+        #[arg(long, default_value = "false")]
+        llm: bool,
     },
 
     /// Resume crawling from checkpoint
@@ -323,14 +328,16 @@ async fn main() -> Result<()> {
             input,
             format,
             output,
+            llm,
         } => {
             tracing::info!(
                 input = %input,
                 format = %format,
                 output = ?output,
+                llm = llm,
                 "Starting ontology command"
             );
-            ontology(input, format, output).await?;
+            ontology(input, format, output, llm).await?;
         }
 
         Commands::Resume {
@@ -1137,7 +1144,7 @@ async fn search(query: String, k: usize, threshold: Option<f32>) -> Result<()> {
     Ok(())
 }
 
-async fn ontology(input: String, format: String, output: Option<String>) -> Result<()> {
+async fn ontology(input: String, format: String, output: Option<String>, use_llm: bool) -> Result<()> {
     let input_path = PathBuf::from(&input);
     if !input_path.exists() {
         anyhow::bail!("Input path does not exist: {input}");
@@ -1174,17 +1181,68 @@ async fn ontology(input: String, format: String, output: Option<String>) -> Resu
 
     println!("Processing {} articles for ontology extraction...", articles.len());
 
+    // Initialize LLM client if requested
+    let llm_client = if use_llm {
+        match LlmClient::new() {
+            Ok(client) => {
+                if client.is_available().await {
+                    println!("LLM extraction enabled (Ollama)");
+                    Some(client)
+                } else {
+                    println!("Warning: Ollama not available, falling back to regex-only extraction");
+                    None
+                }
+            }
+            Err(e) => {
+                println!("Warning: Failed to initialize LLM client: {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Extract ontology from each article
     let extractor = RelationExtractor::new();
     let mut all_stores: Vec<TripleStore> = Vec::new();
     let mut total_entities = 0;
     let mut total_relations = 0;
+    let mut total_said_relations = 0;
 
     for (idx, article) in articles.iter().enumerate() {
         print!("\r  Processing {}/{} articles...", idx + 1, articles.len());
         std::io::Write::flush(&mut std::io::stdout())?;
 
-        let result = extractor.extract_from_article(article);
+        // Regex-based extraction
+        let mut result = extractor.extract_from_article(article);
+
+        // LLM-based Said extraction
+        if let Some(ref client) = llm_client {
+            let full_text = format!("{}\n{}", article.title, article.content);
+            match client.extract_said_relations(&full_text).await {
+                Ok(said_relations) => {
+                    for said in said_relations {
+                        // Convert to ExtractedRelation and add
+                        let relation = baram::ontology::ExtractedRelation {
+                            subject: said.speaker,
+                            subject_type: baram::ontology::EntityType::Person,
+                            predicate: RelationType::Said,
+                            object: said.content,
+                            object_type: baram::ontology::EntityType::Other,
+                            confidence: said.confidence,
+                            evidence: said.evidence,
+                            verified: true,
+                        };
+                        result.relations.push(relation);
+                        total_said_relations += 1;
+                    }
+                }
+                Err(e) => {
+                    tracing::debug!(error = %e, "LLM extraction failed for article");
+                }
+            }
+        }
+
         total_entities += result.entities.len();
         total_relations += result.relations.len();
 
@@ -1196,6 +1254,9 @@ async fn ontology(input: String, format: String, output: Option<String>) -> Resu
     println!("Extraction complete:");
     println!("  Total entities: {total_entities}");
     println!("  Total relations: {total_relations}");
+    if total_said_relations > 0 {
+        println!("  Said relations (LLM): {total_said_relations}");
+    }
 
     // Combine all stores and export
     let combined_output = match format.to_lowercase().as_str() {
