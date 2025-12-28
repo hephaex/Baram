@@ -30,6 +30,9 @@ MAX_ARTICLES=50
 # Batch size for indexing
 BATCH_SIZE=50
 
+# Enable LLM-based Said relation extraction (requires Ollama)
+USE_LLM=true
+
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
@@ -88,11 +91,14 @@ log "Phase 3: Extracting ontology..."
 
 ONTOLOGY_OUTPUT="$ONTOLOGY_DIR/ontology-$(date +%Y%m%d-%H%M).json"
 
-if cargo run --release -- ontology \
-    --input "$OUTPUT_DIR" \
-    --format json \
-    --output "$ONTOLOGY_OUTPUT" \
-    2>&1 | tee -a "$LOG_FILE"; then
+# Build ontology command with optional LLM flag
+ONTOLOGY_CMD="cargo run --release -- ontology --input $OUTPUT_DIR --format json --output $ONTOLOGY_OUTPUT"
+if [ "$USE_LLM" = true ]; then
+    ONTOLOGY_CMD="$ONTOLOGY_CMD --llm"
+    log "  LLM extraction enabled (Ollama)"
+fi
+
+if $ONTOLOGY_CMD 2>&1 | tee -a "$LOG_FILE"; then
     log "  ✓ Ontology extracted: $ONTOLOGY_OUTPUT"
 else
     log "  ✗ Ontology extraction failed"
