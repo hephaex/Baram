@@ -25,6 +25,12 @@ pub struct LlmConfig {
 
     /// Temperature for generation (0.0 - 1.0)
     pub temperature: f32,
+
+    /// Maximum retry attempts for failed requests
+    pub max_retries: u32,
+
+    /// Initial retry delay in milliseconds (doubles with each retry)
+    pub retry_delay_ms: u64,
 }
 
 impl Default for LlmConfig {
@@ -35,6 +41,8 @@ impl Default for LlmConfig {
             timeout_secs: 60,
             max_tokens: 2048,
             temperature: 0.1,
+            max_retries: 3,
+            retry_delay_ms: 1000,
         }
     }
 }
@@ -58,6 +66,14 @@ impl LlmConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0.1),
+            max_retries: std::env::var("OLLAMA_MAX_RETRIES")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(3),
+            retry_delay_ms: std::env::var("OLLAMA_RETRY_DELAY_MS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1000),
         }
     }
 }
@@ -364,7 +380,7 @@ impl LlmClient {
         )
     }
 
-    /// Generate text using Ollama
+    /// Generate text using Ollama with retry logic
     async fn generate(&self, prompt: &str) -> Result<String> {
         let url = format!("{}/api/generate", self.config.endpoint);
 
@@ -378,26 +394,59 @@ impl LlmClient {
             },
         };
 
-        let response = self
-            .client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .context("Failed to send request to Ollama")?;
+        let mut last_error: Option<anyhow::Error> = None;
+        let mut delay_ms = self.config.retry_delay_ms;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            anyhow::bail!("Ollama request failed: {} - {}", status, body);
+        for attempt in 0..=self.config.max_retries {
+            if attempt > 0 {
+                tracing::warn!(
+                    attempt = attempt,
+                    max_retries = self.config.max_retries,
+                    delay_ms = delay_ms,
+                    "Retrying Ollama request after failure"
+                );
+                tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                delay_ms = (delay_ms * 2).min(30000); // Exponential backoff, max 30s
+            }
+
+            match self.client.post(&url).json(&request).send().await {
+                Ok(response) => {
+                    if !response.status().is_success() {
+                        let status = response.status();
+                        let body = response.text().await.unwrap_or_default();
+                        last_error = Some(anyhow::anyhow!(
+                            "Ollama request failed: {} - {}",
+                            status,
+                            body
+                        ));
+                        continue;
+                    }
+
+                    match response.json::<OllamaResponse>().await {
+                        Ok(ollama_response) => {
+                            if attempt > 0 {
+                                tracing::info!(
+                                    attempt = attempt,
+                                    "Ollama request succeeded after retry"
+                                );
+                            }
+                            return Ok(ollama_response.response);
+                        }
+                        Err(e) => {
+                            last_error =
+                                Some(anyhow::anyhow!("Failed to parse Ollama response: {}", e));
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    last_error = Some(anyhow::anyhow!("Failed to send request to Ollama: {}", e));
+                    continue;
+                }
+            }
         }
 
-        let ollama_response: OllamaResponse = response
-            .json()
-            .await
-            .context("Failed to parse Ollama response")?;
-
-        Ok(ollama_response.response)
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Ollama request failed after all retries")))
     }
 
     /// Parse Said extraction response from LLM
