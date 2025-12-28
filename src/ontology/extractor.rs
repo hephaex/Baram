@@ -1359,11 +1359,15 @@ impl RelationExtractor {
     fn build_person_patterns() -> Vec<Regex> {
         vec![
             // Korean names with title: 홍길동 대표, 김철수 장관
-            Regex::new(r"([가-힣]{2,4})\s*(대표|장관|의원|대통령|총리|사장|회장|원장|교수|박사|기자|작가|배우|감독)").unwrap(),
+            Regex::new(r"([가-힣]{2,4})\s*(대표|장관|의원|대통령|총리|사장|회장|원장|교수|박사|기자|작가|배우|감독|위원장|총재|검사|판사|변호사|국장|실장|수석|비서관)").unwrap(),
             // Names with quotes: '홍길동' or "홍길동"
             Regex::new(r#"['"]([가-힣]{2,4})['"]"#).unwrap(),
             // Names followed by 씨, 님
             Regex::new(r"([가-힣]{2,4})\s*(씨|님)").unwrap(),
+            // Names with particles followed by speaking verbs: 홍길동은 말했다
+            Regex::new(r"([가-힣]{2,4})[은는이가]\s*(?:말했다|밝혔다|전했다|설명했다|강조했다|주장했다|언급했다|덧붙였다|지적했다|발표했다)").unwrap(),
+            // Names with title and particles: 홍길동 장관이
+            Regex::new(r"([가-힣]{2,4})\s+(?:대표|장관|의원|대통령|총리|사장|회장|원장)[이가은는]").unwrap(),
         ]
     }
 
@@ -1376,7 +1380,9 @@ impl RelationExtractor {
             // Government: 기획재정부, 외교부
             Regex::new(r"([가-힣]+)(부|처|청|원|위원회|공사|공단)").unwrap(),
             // Political parties
-            Regex::new(r"(국민의힘|더불어민주당|정의당|국민의당|무소속)").unwrap(),
+            Regex::new(r"(국민의힘|더불어민주당|민주당|정의당|국민의당|조국혁신당|개혁신당|진보당|새로운미래|무소속)").unwrap(),
+            // Political/government entities (targets of criticism/support)
+            Regex::new(r"(정부|청와대|대통령실|국회|여당|야당|행정부|사법부|입법부|헌법재판소|대법원|검찰|경찰)").unwrap(),
         ]
     }
 
@@ -1393,51 +1399,103 @@ impl RelationExtractor {
     }
 
     /// Build relation trigger patterns
+    /// v4: 균형 잡힌 접근법 - 일반 패턴 사용, 엔티티 검증은 extract_relations에서 처리
     fn build_relation_patterns() -> HashMap<RelationType, Vec<Regex>> {
         let mut patterns = HashMap::new();
 
-        patterns.insert(RelationType::Said, vec![
-            Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*(말했다|밝혔다|전했다|설명했다|언급했다|주장했다|강조했다)").unwrap(),
+        // Said 관계는 정확도 문제로 비활성화
+        // NER 없이 regex만으로 인물 이름을 정확히 추출하기 어려움
+        // TODO: LLM 기반 추출 또는 Korean NER 라이브러리 도입 필요
+
+        // WorksFor - 소속 관계: 인물 → 기관
+        patterns.insert(RelationType::WorksFor, vec![
+            // "홍길동 삼성전자 사장" / "홍길동 OO그룹 회장"
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:전자|그룹|물산|건설|은행|증권|보험|생명|화학|중공업|에너지|제약|바이오))\s*(?:회장|사장|대표|부회장|부사장|전무|상무|이사|대표이사)").unwrap(),
         ]);
 
-        patterns.insert(
-            RelationType::WorksFor,
-            vec![Regex::new(r"([가-힣]+)\s+([가-힣A-Za-z]+)\s*(소속|근무)").unwrap()],
-        );
+        // MemberOf - 정당 소속: 인물 → 정당
+        patterns.insert(RelationType::MemberOf, vec![
+            // "홍길동 국민의힘 의원" / "홍길동 더불어민주당 대표"
+            Regex::new(r"([가-힣]{2,4})\s+(국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").unwrap(),
+        ]);
 
-        patterns.insert(
-            RelationType::Leads,
-            vec![Regex::new(r"([가-힣]+)\s+(대표|회장|사장|원장|총장)").unwrap()],
-        );
+        // Leads - 리더십 관계: 인물 → 직함/기관
+        // 국가명(미국, 한국 등)은 제외
+        patterns.insert(RelationType::Leads, vec![
+            // "윤석열 대통령" / "한덕수 국무총리" - 3자 이름만 허용 (2자는 국가명일 수 있음)
+            Regex::new(r"([가-힣]{3})\s+(대통령|국무총리|대법원장|헌법재판소장|국회의장|감사원장)[은는이가을를의]").unwrap(),
+            // "홍길동 외교부 장관"
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣]+부)\s*장관").unwrap(),
+            // "홍길동 OO그룹 회장"
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:그룹|재단|협회|연구원|공사|공단))\s*(회장|총재|이사장|원장|사장)").unwrap(),
+            // 북한 지도자 - 명시적 이름 지정
+            Regex::new(r"(김정은|김여정|김정일)\s+(국무위원장|노동당\s*총비서|당\s*중앙군사위원장)").unwrap(),
+            // 트럼프, 바이든 등 외국 정상
+            Regex::new(r"(트럼프|바이든|시진핑|푸틴|기시다|마크롱|숄츠)\s+(대통령|총리|주석|총서기)").unwrap(),
+        ]);
 
-        patterns.insert(
-            RelationType::Announced,
-            vec![Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*(발표했다|공개했다|선언했다)").unwrap()],
-        );
+        // LocatedIn - 위치 관계
+        patterns.insert(RelationType::LocatedIn, vec![
+            // "서울 강남구" / "서울시 서초구"
+            Regex::new(r"(서울|부산|인천|대구|대전|광주|울산|세종)(?:시|특별시|광역시)?\s+([가-힣]{1,3}구)").unwrap(),
+            // "경기 수원시"
+            Regex::new(r"(경기|강원|충북|충남|전북|전남|경북|경남)(?:도)?\s+([가-힣]{2,4}시)").unwrap(),
+        ]);
 
+        // Founded - 설립 관계
+        patterns.insert(RelationType::Founded, vec![
+            Regex::new(r"([가-힣]{2,4})[이가은는]\s+([가-힣A-Za-z]+)[을를]\s*(?:설립|창립|창업|창설)").unwrap(),
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+)\s*(?:창업자|설립자|창업주)").unwrap(),
+        ]);
+
+        // ParticipatedIn - 참여 관계
+        patterns.insert(RelationType::ParticipatedIn, vec![
+            Regex::new(r"([가-힣]{2,4})\s+(?:대통령|총리|장관|수석)?[이가은는]?\s+([가-힣A-Za-z]+(?:정상회담|회담|회의|포럼|총회|간담회|행사))에\s*(?:참석|참여|참가)").unwrap(),
+            Regex::new(r"(한국|미국|중국|일본|러시아|북한|영국|프랑스|독일)[이가은는]\s+([가-힣A-Za-z0-9]+(?:회담|협상|협의|회의))에\s*(?:참여|참가|참석)").unwrap(),
+        ]);
+
+        // Announced - 발표 관계
+        patterns.insert(RelationType::Announced, vec![
+            Regex::new(r"(정부|청와대|대통령실|국회|[가-힣]+부|[가-힣]+위원회|한국은행)[이가은는]\s+([가-힣]+(?:안|대책|방안|계획|정책))[을를]\s*(?:발표|공개|공표|발의)").unwrap(),
+        ]);
+
+        // Criticized - 비판 관계
         patterns.insert(RelationType::Criticized, vec![
-            Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(비판했다|비난했다|질타했다)").unwrap(),
+            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당|조국혁신당|진보당)[이가은는]\s+([가-힣]+)[을를에]\s*(?:비판|비난|질타|규탄|공격|맹비난)").unwrap(),
+            Regex::new(r"([가-힣]{2,4})\s+(?:의원|대표|위원장)?[이가은는]\s+([가-힣]+)[을를에]\s*(?:비판|비난|질타|규탄|공격)").unwrap(),
         ]);
 
+        // Supported - 지지/협력 관계
         patterns.insert(RelationType::Supported, vec![
-            Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(지지했다|찬성했다|옹호했다)").unwrap(),
+            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당)[이가은는]\s+([가-힣A-Za-z]+)[을를에]\s*(?:지지|찬성|옹호|환영|동의)").unwrap(),
+            Regex::new(r"(한국|미국|중국|일본|러시아|영국|프랑스|독일)[이가은는]\s+(한국|미국|중국|일본|러시아|영국|프랑스|독일)[와과]\s*(?:협력|연대|공조|합의|동맹)").unwrap(),
         ]);
 
-        patterns.insert(
-            RelationType::InvestedIn,
-            vec![
-                Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)에\s*(투자|출자)")
-                    .unwrap(),
-            ],
-        );
+        // Opposed - 반대 관계
+        patterns.insert(RelationType::Opposed, vec![
+            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당|조국혁신당)[이가은는]\s+([가-힣A-Za-z]+(?:안|법|법안)?)[을를에]\s*(?:반대|저지|거부|불참|퇴장|보이콧)").unwrap(),
+        ]);
 
-        patterns.insert(
-            RelationType::Acquired,
-            vec![
-                Regex::new(r"([가-힣A-Za-z]+)[은는이가]\s*([가-힣A-Za-z]+)[을를]\s*(인수|매입)")
-                    .unwrap(),
-            ],
-        );
+        // InvestedIn - 투자 관계
+        patterns.insert(RelationType::InvestedIn, vec![
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|증권|캐피탈|벤처스))[이가은는]\s+([가-힣A-Za-z]+)에\s*(?:[0-9,]+\s*(?:억|조)\s*원)?[을를]?\s*(?:투자|출자)").unwrap(),
+            Regex::new(r"(정부|[가-힣]+부)[이가은는]\s+([가-힣A-Za-z]+)에\s*(?:[0-9,]+\s*(?:억|조)\s*원)?[을를]?\s*(?:투자|출자|지원)").unwrap(),
+        ]);
+
+        // Acquired - 인수 관계
+        patterns.insert(RelationType::Acquired, vec![
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|건설|은행|증권))[이가은는]\s+([가-힣A-Za-z]+)[을를]\s*(?:인수|매입|매수|인수합병)").unwrap(),
+        ]);
+
+        // MergedWith - 합병 관계
+        patterns.insert(RelationType::MergedWith, vec![
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|물산|건설|은행|증권|보험))[이가은는]\s+([가-힣A-Za-z]+(?:전자|물산|건설|은행|증권|보험))[와과]\s*(?:합병|통합)").unwrap(),
+        ]);
+
+        // Owns - 소유 관계
+        patterns.insert(RelationType::Owns, vec![
+            Regex::new(r"([가-힣A-Za-z]+그룹)\s*(?:계열사|자회사|계열|산하)[인은의]?\s+([가-힣A-Za-z]+(?:전자|물산|건설|생명|화재|증권|카드|SDI|SDS|엔지니어링))").unwrap(),
+        ]);
 
         patterns
     }
