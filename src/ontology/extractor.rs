@@ -1832,6 +1832,198 @@ impl ExtractionResult {
     }
 }
 
+// ============================================================================
+// LLM-based Said Relation Extractor
+// ============================================================================
+
+/// LLM-based Said relation extractor
+///
+/// Uses Ollama to extract "who said what" relations from Korean news articles.
+/// This provides more accurate extraction than regex-based patterns.
+pub struct LlmSaidExtractor {
+    client: crate::llm::LlmClient,
+    verifier: HallucinationVerifier,
+}
+
+impl LlmSaidExtractor {
+    /// Create a new LLM Said extractor
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            client: crate::llm::LlmClient::new()?,
+            verifier: HallucinationVerifier::new(),
+        })
+    }
+
+    /// Create extractor with custom LLM config
+    pub fn with_config(config: crate::llm::LlmConfig) -> Result<Self> {
+        Ok(Self {
+            client: crate::llm::LlmClient::with_config(config)?,
+            verifier: HallucinationVerifier::new(),
+        })
+    }
+
+    /// Create extractor from environment variables
+    pub fn from_env() -> Result<Self> {
+        Ok(Self {
+            client: crate::llm::LlmClient::from_env()?,
+            verifier: HallucinationVerifier::new(),
+        })
+    }
+
+    /// Check if LLM is available
+    pub async fn is_available(&self) -> bool {
+        self.client.is_available().await
+    }
+
+    /// Extract Said relations from article text
+    pub async fn extract(&self, text: &str) -> Result<Vec<ExtractedRelation>> {
+        let said_relations = self.client.extract_said_relations(text).await?;
+
+        let mut extracted = Vec::new();
+        for said in said_relations {
+            // Verify against source text
+            let relation = ExtractedRelation {
+                subject: said.speaker.clone(),
+                subject_type: EntityType::Person,
+                predicate: RelationType::Said,
+                object: said.content.clone(),
+                object_type: EntityType::Other,
+                confidence: said.confidence,
+                evidence: said.evidence.clone(),
+                verified: false,
+            };
+
+            // Verify the relation
+            let verification = self.verifier.verify(&relation, text);
+            if verification.verified {
+                extracted.push(ExtractedRelation {
+                    subject: said.speaker,
+                    subject_type: EntityType::Person,
+                    predicate: RelationType::Said,
+                    object: said.content,
+                    object_type: EntityType::Other,
+                    confidence: verification.adjusted_confidence,
+                    evidence: said.evidence,
+                    verified: true,
+                });
+            }
+        }
+
+        Ok(extracted)
+    }
+
+    /// Extract Said relations from a parsed article
+    pub async fn extract_from_article(&self, article: &ParsedArticle) -> Result<Vec<ExtractedRelation>> {
+        let full_text = format!("{}\n{}", article.title, article.content);
+        self.extract(&full_text).await
+    }
+}
+
+impl Default for LlmSaidExtractor {
+    fn default() -> Self {
+        Self::new().expect("Failed to create LlmSaidExtractor")
+    }
+}
+
+/// Combined extractor using both regex and LLM
+///
+/// Uses regex-based extraction for non-Said relations and LLM for Said relations.
+pub struct CombinedExtractor {
+    regex_extractor: RelationExtractor,
+    llm_extractor: Option<LlmSaidExtractor>,
+}
+
+impl CombinedExtractor {
+    /// Create a combined extractor (regex only, LLM disabled)
+    pub fn new() -> Self {
+        Self {
+            regex_extractor: RelationExtractor::new(),
+            llm_extractor: None,
+        }
+    }
+
+    /// Create combined extractor with LLM enabled
+    pub fn with_llm() -> Result<Self> {
+        Ok(Self {
+            regex_extractor: RelationExtractor::new(),
+            llm_extractor: Some(LlmSaidExtractor::new()?),
+        })
+    }
+
+    /// Create combined extractor with custom config
+    pub fn with_config(
+        extraction_config: ExtractionConfig,
+        llm_config: Option<crate::llm::LlmConfig>,
+    ) -> Result<Self> {
+        let llm_extractor = match llm_config {
+            Some(config) => Some(LlmSaidExtractor::with_config(config)?),
+            None => None,
+        };
+
+        Ok(Self {
+            regex_extractor: RelationExtractor::with_config(extraction_config),
+            llm_extractor,
+        })
+    }
+
+    /// Check if LLM extraction is available
+    pub async fn llm_available(&self) -> bool {
+        match &self.llm_extractor {
+            Some(extractor) => extractor.is_available().await,
+            None => false,
+        }
+    }
+
+    /// Extract entities and relations from article
+    ///
+    /// Returns regex-based extraction results. Use `extract_with_llm` for combined results.
+    pub fn extract(&self, article: &ParsedArticle) -> ExtractionResult {
+        self.regex_extractor.extract_from_article(article)
+    }
+
+    /// Extract entities and relations with LLM-based Said extraction
+    ///
+    /// Combines regex-based extraction with LLM-based Said relation extraction.
+    pub async fn extract_with_llm(&self, article: &ParsedArticle) -> Result<ExtractionResult> {
+        // First, get regex-based extraction
+        let mut result = self.regex_extractor.extract_from_article(article);
+
+        // Then, add LLM-based Said relations if available
+        if let Some(llm) = &self.llm_extractor {
+            if llm.is_available().await {
+                match llm.extract_from_article(article).await {
+                    Ok(said_relations) => {
+                        // Add unique Said relations
+                        for said in said_relations {
+                            // Check for duplicates
+                            let is_duplicate = result.relations.iter().any(|r| {
+                                r.predicate == RelationType::Said
+                                    && r.subject == said.subject
+                                    && r.object == said.object
+                            });
+
+                            if !is_duplicate {
+                                result.relations.push(said);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("LLM Said extraction failed: {}", e);
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+}
+
+impl Default for CombinedExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

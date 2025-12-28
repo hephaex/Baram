@@ -144,6 +144,9 @@ pub use extractor::{
     VerificationSummary,
 };
 
+// Re-export LLM-based extractor types
+pub use extractor::{CombinedExtractor, LlmSaidExtractor};
+
 // Re-export commonly used types from linker
 pub use linker::{
     EntityLinker, KnowledgeBaseEntry, LinkedEntity, LinkedExtractionResult, LinkedRelation,
