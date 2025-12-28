@@ -1209,37 +1209,74 @@ async fn ontology(input: String, format: String, output: Option<String>, use_llm
     let mut total_relations = 0;
     let mut total_said_relations = 0;
 
+    // Batch size for LLM processing
+    const LLM_BATCH_SIZE: usize = 5;
+
+    // Pre-extract LLM Said relations in batches for better performance
+    let mut llm_results: std::collections::HashMap<String, Vec<baram::llm::SaidRelation>> =
+        std::collections::HashMap::new();
+
+    if let Some(ref client) = llm_client {
+        let total_batches = (articles.len() + LLM_BATCH_SIZE - 1) / LLM_BATCH_SIZE;
+        println!("Processing {} batches for LLM extraction...", total_batches);
+
+        for (batch_idx, chunk) in articles.chunks(LLM_BATCH_SIZE).enumerate() {
+            print!(
+                "\r  LLM batch {}/{} ({} articles)...",
+                batch_idx + 1,
+                total_batches,
+                chunk.len()
+            );
+            std::io::Write::flush(&mut std::io::stdout())?;
+
+            // Prepare batch
+            let batch: Vec<baram::llm::ArticleInfo> = chunk
+                .iter()
+                .map(|a| baram::llm::ArticleInfo {
+                    id: a.id().to_string(),
+                    title: a.title.clone(),
+                    content: a.content.clone(),
+                })
+                .collect();
+
+            // Extract Said relations for batch
+            match client.extract_said_batch(&batch).await {
+                Ok(batch_results) => {
+                    for (id, relations) in batch_results {
+                        total_said_relations += relations.len();
+                        llm_results.insert(id, relations);
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(batch = batch_idx, error = %e, "LLM batch extraction failed");
+                }
+            }
+        }
+        println!("\n  LLM extraction: {} Said relations found", total_said_relations);
+    }
+
+    // Now process articles with regex extraction + merge LLM results
     for (idx, article) in articles.iter().enumerate() {
-        print!("\r  Processing {}/{} articles...", idx + 1, articles.len());
+        print!("\r  Building ontology {}/{} articles...", idx + 1, articles.len());
         std::io::Write::flush(&mut std::io::stdout())?;
 
         // Regex-based extraction
         let mut result = extractor.extract_from_article(article);
 
-        // LLM-based Said extraction
-        if let Some(ref client) = llm_client {
-            let full_text = format!("{}\n{}", article.title, article.content);
-            match client.extract_said_relations(&full_text).await {
-                Ok(said_relations) => {
-                    for said in said_relations {
-                        // Convert to ExtractedRelation and add
-                        let relation = baram::ontology::ExtractedRelation {
-                            subject: said.speaker,
-                            subject_type: baram::ontology::EntityType::Person,
-                            predicate: RelationType::Said,
-                            object: said.content,
-                            object_type: baram::ontology::EntityType::Other,
-                            confidence: said.confidence,
-                            evidence: said.evidence,
-                            verified: true,
-                        };
-                        result.relations.push(relation);
-                        total_said_relations += 1;
-                    }
-                }
-                Err(e) => {
-                    tracing::debug!(error = %e, "LLM extraction failed for article");
-                }
+        // Merge LLM Said relations if available
+        if let Some(said_relations) = llm_results.get(&article.id()) {
+            for said in said_relations {
+                let relation = baram::ontology::ExtractedRelation {
+                    subject: said.speaker.clone(),
+                    subject_type: baram::ontology::EntityType::Person,
+                    predicate: RelationType::Said,
+                    object: said.content.clone(),
+                    object_type: baram::ontology::EntityType::Other,
+                    confidence: said.confidence,
+                    evidence: said.evidence.clone(),
+                    verified: true,
+                };
+                result.relations.push(relation);
             }
         }
 

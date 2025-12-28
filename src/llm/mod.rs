@@ -102,6 +102,28 @@ pub struct SaidRelation {
     pub evidence: String,
 }
 
+/// Article info for batch processing
+#[derive(Debug, Clone)]
+pub struct ArticleInfo {
+    /// Article ID
+    pub id: String,
+    /// Article title
+    pub title: String,
+    /// Article content
+    pub content: String,
+}
+
+/// Batch extraction result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchSaidResult {
+    /// Article ID
+    #[serde(default)]
+    pub article_id: String,
+    /// Extracted relations for this article
+    #[serde(default)]
+    pub relations: Vec<SaidRelation>,
+}
+
 /// LLM response for Said extraction
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaidExtractionResponse {
@@ -148,6 +170,164 @@ impl LlmClient {
         let prompt = self.build_said_prompt(text);
         let response = self.generate(&prompt).await?;
         self.parse_said_response(&response)
+    }
+
+    /// Extract Said relations from multiple articles in batch
+    /// Returns a HashMap of article_id -> Vec<SaidRelation>
+    pub async fn extract_said_batch(
+        &self,
+        articles: &[ArticleInfo],
+    ) -> Result<std::collections::HashMap<String, Vec<SaidRelation>>> {
+        if articles.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+
+        let prompt = self.build_batch_prompt(articles);
+        let response = self.generate(&prompt).await?;
+        self.parse_batch_response(&response, articles)
+    }
+
+    /// Build prompt for batch Said relation extraction
+    fn build_batch_prompt(&self, articles: &[ArticleInfo]) -> String {
+        let mut articles_text = String::new();
+        for (i, article) in articles.iter().enumerate() {
+            // Truncate content to avoid token limits (char-safe for Korean)
+            let content = if article.content.chars().count() > 1000 {
+                let truncated: String = article.content.chars().take(1000).collect();
+                format!("{}...", truncated)
+            } else {
+                article.content.clone()
+            };
+            articles_text.push_str(&format!(
+                "\n### [기사 {}] ID: {}\n제목: {}\n내용: {}\n",
+                i + 1,
+                article.id,
+                article.title,
+                content
+            ));
+        }
+
+        format!(
+            r#"당신은 한국어 뉴스 기사에서 발언(Said) 관계를 추출하는 전문가입니다.
+
+다음 여러 뉴스 기사에서 "누가 무엇을 말했는지"를 각각 추출하세요.
+
+## 규칙:
+1. 발언자는 실제 인물 이름이어야 합니다
+2. 각 기사별로 article_id를 반드시 포함하세요
+3. 발언이 없는 기사는 빈 배열로 표시하세요
+4. 신뢰도: 직접인용=0.95, 간접인용=0.8
+
+## 출력 형식 (JSON 배열):
+```json
+[
+  {{
+    "article_id": "기사ID",
+    "relations": [
+      {{"speaker": "이름", "content": "발언", "confidence": 0.9, "evidence": "근거문장"}}
+    ]
+  }}
+]
+```
+
+## 뉴스 기사들:
+{articles_text}
+
+## 추출 결과 (JSON):"#
+        )
+    }
+
+    /// Parse batch response from LLM
+    fn parse_batch_response(
+        &self,
+        response: &str,
+        articles: &[ArticleInfo],
+    ) -> Result<std::collections::HashMap<String, Vec<SaidRelation>>> {
+        let mut results = std::collections::HashMap::new();
+
+        // Initialize with empty results for all articles
+        for article in articles {
+            results.insert(article.id.clone(), Vec::new());
+        }
+
+        let json_str = self.extract_json(response);
+
+        // Try parsing as array of BatchSaidResult
+        if let Ok(batch_results) = serde_json::from_str::<Vec<BatchSaidResult>>(&json_str) {
+            for result in batch_results {
+                if !result.article_id.is_empty() {
+                    results.insert(result.article_id, result.relations);
+                }
+            }
+            return Ok(results);
+        }
+
+        // Try parsing as object with "results" or "articles" key
+        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(&json_str) {
+            if let Some(arr) = obj.get("results").or(obj.get("articles")).and_then(|v| v.as_array())
+            {
+                for item in arr {
+                    if let (Some(id), Some(rels)) = (
+                        item.get("article_id").and_then(|v| v.as_str()),
+                        item.get("relations").and_then(|v| v.as_array()),
+                    ) {
+                        let relations: Vec<SaidRelation> = rels
+                            .iter()
+                            .filter_map(|r| serde_json::from_value(r.clone()).ok())
+                            .collect();
+                        results.insert(id.to_string(), relations);
+                    }
+                }
+                return Ok(results);
+            }
+        }
+
+        // Fallback: try to extract article IDs and relations manually
+        self.parse_batch_manually(response, articles, &mut results);
+
+        Ok(results)
+    }
+
+    /// Manually parse batch response when JSON parsing fails
+    fn parse_batch_manually(
+        &self,
+        text: &str,
+        articles: &[ArticleInfo],
+        results: &mut std::collections::HashMap<String, Vec<SaidRelation>>,
+    ) {
+        // Try to find article_id patterns and associated relations
+        let article_id_re = regex::Regex::new(r#""article_id"\s*:\s*"([^"]+)""#).unwrap();
+
+        // Split by article blocks
+        let blocks: Vec<&str> = text.split(r#""article_id""#).collect();
+
+        for (i, block) in blocks.iter().enumerate().skip(1) {
+            // Extract article_id
+            let block_with_key = format!(r#""article_id"{}"#, block);
+            if let Some(cap) = article_id_re.captures(&block_with_key) {
+                if let Some(id) = cap.get(1) {
+                    let article_id = id.as_str().to_string();
+
+                    // Extract relations from this block using existing manual parser
+                    let relations_json = self.extract_relations_manually(&block_with_key);
+                    if let Ok(parsed) =
+                        serde_json::from_str::<SaidExtractionResponse>(&relations_json)
+                    {
+                        results.insert(article_id, parsed.relations);
+                    }
+                }
+            } else if i <= articles.len() {
+                // Fallback: use article order if ID not found
+                let article_id = articles[i - 1].id.clone();
+                let relations_json = self.extract_relations_manually(block);
+                if let Ok(parsed) = serde_json::from_str::<SaidExtractionResponse>(&relations_json)
+                {
+                    if !parsed.relations.is_empty() {
+                        results.insert(article_id, parsed.relations);
+                    }
+                }
+            }
+        }
     }
 
     /// Build prompt for Said relation extraction
