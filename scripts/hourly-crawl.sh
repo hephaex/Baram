@@ -25,7 +25,7 @@ LOG_FILE="$LOG_DIR/crawl-$(date +%Y%m%d).log"
 CATEGORIES=("politics" "economy" "society" "culture" "world" "it")
 
 # Articles per category
-MAX_ARTICLES=50
+MAX_ARTICLES=300
 
 # Batch size for indexing
 BATCH_SIZE=50
