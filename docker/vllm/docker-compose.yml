@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: baram-vllm
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - vllm-cache:/root/.cache/huggingface
+    ports:
+      - "8002:8000"
+    command: >
+      --model Qwen/Qwen2.5-7B-Instruct
+      --served-model-name qwen2.5
+      --max-model-len 4096
+      --gpu-memory-utilization 0.9
+      --dtype auto
+      --trust-remote-code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  vllm-cache:
