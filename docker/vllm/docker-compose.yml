@@ -5,6 +5,9 @@ services:
     image: vllm/vllm-openai:latest
     container_name: baram-vllm
     runtime: nvidia
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - HF_HOME=/root/.cache/huggingface
@@ -13,11 +16,11 @@ services:
     ports:
       - "8002:8000"
     command: >
-      --model Qwen/Qwen2.5-7B-Instruct
+      --model Qwen/Qwen2.5-3B-Instruct
       --served-model-name qwen2.5
       --max-model-len 4096
       --gpu-memory-utilization 0.9
-      --dtype auto
+      --dtype float16
       --trust-remote-code
     deploy:
       resources:

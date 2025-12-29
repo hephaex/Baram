@@ -23,7 +23,7 @@ use baram::crawler::list::NewsListCrawler;
 use baram::crawler::Crawler;
 use baram::embedding::{Embedder, EmbeddingConfig};
 use baram::models::{CrawlState, NewsCategory, ParsedArticle};
-use baram::llm::LlmClient;
+use baram::llm::{LlmBackend, LlmClient};
 use baram::ontology::{RelationExtractor, RelationType, TripleStore};
 use baram::parser::ArticleParser;
 use baram::scheduler::rotation::CrawlerInstance;
@@ -1183,13 +1183,17 @@ async fn ontology(input: String, format: String, output: Option<String>, use_llm
 
     // Initialize LLM client if requested
     let llm_client = if use_llm {
-        match LlmClient::new() {
+        match LlmClient::from_env() {
             Ok(client) => {
+                let backend_name = match client.backend() {
+                    LlmBackend::Vllm => "vLLM",
+                    LlmBackend::Ollama => "Ollama",
+                };
                 if client.is_available().await {
-                    println!("LLM extraction enabled (Ollama)");
+                    println!("LLM extraction enabled ({backend_name})");
                     Some(client)
                 } else {
-                    println!("Warning: Ollama not available, falling back to regex-only extraction");
+                    println!("Warning: {backend_name} not available, falling back to regex-only extraction");
                     None
                 }
             }
@@ -1210,7 +1214,7 @@ async fn ontology(input: String, format: String, output: Option<String>, use_llm
     let mut total_said_relations = 0;
 
     // Batch size for LLM processing
-    const LLM_BATCH_SIZE: usize = 5;
+    const LLM_BATCH_SIZE: usize = 2;
 
     // Pre-extract LLM Said relations in batches for better performance
     let mut llm_results: std::collections::HashMap<String, Vec<baram::llm::SaidRelation>> =

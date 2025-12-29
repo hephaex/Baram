@@ -62,7 +62,7 @@ impl Default for LlmConfig {
             endpoint: "http://localhost:8002".to_string(),
             model: "qwen2.5".to_string(),
             timeout_secs: 120,
-            max_tokens: 2048,
+            max_tokens: 1024,
             temperature: 0.1,
             max_retries: 3,
             retry_delay_ms: 1000,
@@ -93,7 +93,7 @@ impl LlmConfig {
             max_tokens: std::env::var("LLM_MAX_TOKENS")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(2048),
+                .unwrap_or(1024),
             temperature: std::env::var("LLM_TEMPERATURE")
                 .ok()
                 .and_then(|s| s.parse().ok())
