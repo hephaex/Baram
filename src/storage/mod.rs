@@ -27,6 +27,7 @@ pub use markdown::{
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{Config as PoolConfig, ManagerConfig, Pool, RecyclingMethod, Runtime};
+use sha2::{Digest, Sha256};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 use tokio_postgres::NoTls;
@@ -367,17 +368,21 @@ impl Database {
 
         let now = Utc::now().to_rfc3339();
 
+        // Use URL hash as fallback ID if empty (for failures)
+        let effective_id = if id.is_empty() {
+            let hash = Sha256::digest(url.as_bytes());
+            format!("fail_{:x}", hash).chars().take(40).collect::<String>()
+        } else {
+            id.to_string()
+        };
+
+        // Use INSERT OR REPLACE to handle both id and url conflicts
         conn.execute(
             r#"
-            INSERT INTO crawl_metadata (id, url, content_hash, crawled_at, status, error_message)
+            INSERT OR REPLACE INTO crawl_metadata (id, url, content_hash, crawled_at, status, error_message)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-            ON CONFLICT(url) DO UPDATE SET
-                content_hash = excluded.content_hash,
-                crawled_at = excluded.crawled_at,
-                status = excluded.status,
-                error_message = excluded.error_message
             "#,
-            params![id, url, content_hash, now, status.as_str(), error_message],
+            params![effective_id, url, content_hash, now, status.as_str(), error_message],
         )
         .context("Failed to mark URL as crawled")?;
 

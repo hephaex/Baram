@@ -14,9 +14,19 @@ LOG_DIR="$PROJECT_DIR/logs"
 OUTPUT_DIR="$PROJECT_DIR/output/raw"
 ONTOLOGY_DIR="$PROJECT_DIR/output/ontology"
 DB_PATH="$PROJECT_DIR/output/crawl.db"
+LOCK_FILE="$PROJECT_DIR/.crawl.lock"
 
 # Create directories
 mkdir -p "$LOG_DIR" "$OUTPUT_DIR" "$ONTOLOGY_DIR"
+
+# Atomic lock using flock - prevents race conditions
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Another instance is already running. Skipping."
+    exit 0
+fi
+# Lock acquired - write PID for debugging
+echo $$ >&200
 
 # Log file with date
 LOG_FILE="$LOG_DIR/crawl-$(date +%Y%m%d).log"
