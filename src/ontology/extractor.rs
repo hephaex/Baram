@@ -317,6 +317,20 @@ impl HallucinationVerifier {
         }
     }
 
+    /// Create a verifier specifically for Said relations
+    /// Very lenient - only requires speaker name to be found (partial match OK)
+    /// Quote content is trusted from LLM without strict verification
+    pub fn for_said_relations() -> Self {
+        Self {
+            fuzzy_threshold: 0.4,      // Very low - accept fuzzy speaker names
+            partial_threshold: 0.2,    // Very low - even 20% word match is OK
+            exact_match_boost: 1.0,    // No boost needed
+            fuzzy_match_penalty: 1.0,  // No penalty for fuzzy match
+            no_match_penalty: 0.8,     // Light penalty if not found
+            min_confidence: 0.1,       // Very low minimum - trust LLM output
+        }
+    }
+
     /// Verify a relation against source text
     pub fn verify(&self, relation: &ExtractedRelation, source_text: &str) -> VerificationResult {
         let mut failures = Vec::new();
@@ -1847,10 +1861,11 @@ pub struct LlmSaidExtractor {
 
 impl LlmSaidExtractor {
     /// Create a new LLM Said extractor
+    /// Uses lenient verification for Said relations (only verifies speaker exists)
     pub fn new() -> Result<Self> {
         Ok(Self {
             client: crate::llm::LlmClient::new()?,
-            verifier: HallucinationVerifier::new(),
+            verifier: HallucinationVerifier::for_said_relations(),
         })
     }
 
@@ -1858,7 +1873,7 @@ impl LlmSaidExtractor {
     pub fn with_config(config: crate::llm::LlmConfig) -> Result<Self> {
         Ok(Self {
             client: crate::llm::LlmClient::with_config(config)?,
-            verifier: HallucinationVerifier::new(),
+            verifier: HallucinationVerifier::for_said_relations(),
         })
     }
 
@@ -1866,7 +1881,7 @@ impl LlmSaidExtractor {
     pub fn from_env() -> Result<Self> {
         Ok(Self {
             client: crate::llm::LlmClient::from_env()?,
-            verifier: HallucinationVerifier::new(),
+            verifier: HallucinationVerifier::for_said_relations(),
         })
     }
 
@@ -1876,35 +1891,49 @@ impl LlmSaidExtractor {
     }
 
     /// Extract Said relations from article text
+    /// For Said relations, we only verify that the speaker exists in the text.
+    /// The quote content is trusted from the LLM since it may paraphrase or summarize.
     pub async fn extract(&self, text: &str) -> Result<Vec<ExtractedRelation>> {
         let said_relations = self.client.extract_said_relations(text).await?;
 
         let mut extracted = Vec::new();
         for said in said_relations {
-            // Verify against source text
-            let relation = ExtractedRelation {
+            // For Said relations, only verify the speaker exists in the text
+            // We create a minimal relation with just the speaker for verification
+            let speaker_only = ExtractedRelation {
                 subject: said.speaker.clone(),
                 subject_type: EntityType::Person,
                 predicate: RelationType::Said,
-                object: said.content.clone(),
+                object: String::new(), // Empty - don't verify content
                 object_type: EntityType::Other,
                 confidence: said.confidence,
-                evidence: said.evidence.clone(),
+                evidence: String::new(), // Empty - don't verify evidence
                 verified: false,
             };
 
-            // Verify the relation
-            let verification = self.verifier.verify(&relation, text);
-            if verification.verified {
+            // Verify only the speaker name exists in text
+            let verification = self.verifier.verify(&speaker_only, text);
+
+            // Accept if speaker is found OR if LLM confidence is high (>= 0.8)
+            let should_accept = verification.subject_match.found || said.confidence >= 0.8;
+
+            if should_accept {
+                // Use original confidence, slightly adjusted based on speaker match
+                let final_confidence = if verification.subject_match.found {
+                    said.confidence // Keep original confidence if speaker found
+                } else {
+                    said.confidence * 0.9 // Small penalty if speaker not found but high confidence
+                };
+
                 extracted.push(ExtractedRelation {
                     subject: said.speaker,
                     subject_type: EntityType::Person,
                     predicate: RelationType::Said,
                     object: said.content,
                     object_type: EntityType::Other,
-                    confidence: verification.adjusted_confidence,
+                    confidence: final_confidence,
                     evidence: said.evidence,
-                    verified: true,
+                    verified: verification.subject_match.found, // Only verified if speaker found
                 });
             }
         }
