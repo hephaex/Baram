@@ -1,365 +1,411 @@
-# baram Module Architecture
+# Baram Architecture
 
-## Overview
+> Baram은 네이버 뉴스 크롤링, 온톨로지 추출, 벡터 검색을 지원하는 Rust 기반 시스템입니다.
 
-This document describes the module architecture for the baram Naver News Crawler, designed following Rust best practices and the Actor Model pattern.
+## 시스템 개요
 
-## Module Structure
+```mermaid
+flowchart TB
+    subgraph CLI["CLI Commands"]
+        crawl["/crawl"]
+        index["/index"]
+        ontology["/ontology"]
+        search["/search"]
+        serve["/serve"]
+    end
+
+    subgraph Crawler["Crawler Layer"]
+        fetcher["Fetcher"]
+        parser["HTML Parser"]
+        comment["Comment Extractor"]
+        pipeline["Pipeline"]
+    end
+
+    subgraph Processing["Processing Layer"]
+        llm["LLM Module"]
+        embedding["Embedding"]
+        ont_extract["Ontology Extractor"]
+        linker["Entity Linker"]
+    end
+
+    subgraph Storage["Storage Layer"]
+        markdown["Markdown Writer"]
+        sqlite["SQLite DB"]
+        checkpoint["Checkpoint"]
+        dedup["Bloom Filter Dedup"]
+    end
+
+    subgraph Distributed["Distributed System"]
+        coordinator["Coordinator Server"]
+        scheduler["Scheduler"]
+        workers["Worker Instances"]
+    end
+
+    crawl --> pipeline
+    pipeline --> fetcher
+    fetcher --> parser
+    parser --> comment
+    comment --> markdown
+    markdown --> sqlite
+
+    ontology --> ont_extract
+    ont_extract --> llm
+    ont_extract --> linker
+
+    index --> embedding
+    embedding --> sqlite
+
+    serve --> search
+    search --> sqlite
+
+    coordinator --> scheduler
+    scheduler --> workers
+    workers --> pipeline
+```
+
+## 디렉토리 구조
 
 ```
 src/
-├── utils/
-│   ├── mod.rs           # Utility module re-exports
-│   └── error.rs         # Comprehensive error types
-├── config/
-│   ├── mod.rs           # Configuration module re-exports
-│   └── settings.rs      # Configuration structures and loaders
-├── crawler/
-│   ├── mod.rs           # Crawler module re-exports
-│   └── types.rs         # Core data types
-└── main.rs              # Application entry point
+├── commands/           # CLI 명령어 핸들러
+│   ├── mod.rs         # 모듈 익스포트
+│   ├── crawl.rs       # 크롤링 명령어 (296 lines)
+│   ├── index.rs       # 인덱싱 명령어 (321 lines)
+│   ├── ontology.rs    # 온톨로지 추출 명령어 (319 lines)
+│   ├── search.rs      # 검색 명령어 (83 lines)
+│   └── serve.rs       # 웹 서버 명령어 (515 lines)
+│
+├── config/            # 설정 관리
+│   └── mod.rs         # AppConfig, CrawlerConfig 등
+│
+├── coordinator/       # 분산 크롤링 코디네이터
+│   ├── mod.rs
+│   ├── api.rs         # REST API 엔드포인트
+│   ├── client.rs      # 워커 클라이언트
+│   ├── config.rs      # 코디네이터 설정
+│   ├── registry.rs    # 워커 레지스트리
+│   └── server.rs      # 코디네이터 서버
+│
+├── crawler/           # 크롤링 핵심 로직
+│   ├── mod.rs
+│   ├── comment.rs     # 댓글 수집 (1,774 lines)
+│   ├── distributed.rs # 분산 크롤링 (1,109 lines)
+│   ├── fetcher.rs     # HTTP 요청
+│   ├── headers.rs     # HTTP 헤더 관리
+│   ├── instance.rs    # 크롤러 인스턴스
+│   ├── list.rs        # 기사 목록 크롤링
+│   ├── pipeline.rs    # 크롤링 파이프라인 (904 lines)
+│   ├── status.rs      # 상태 관리 (907 lines)
+│   ├── trigger.rs     # 트리거 메커니즘 (753 lines)
+│   └── url.rs         # URL 처리
+│
+├── embedding/         # 벡터 임베딩
+│   ├── mod.rs         # 임베딩 메인 로직 (875 lines)
+│   ├── tokenizer.rs   # 토크나이저
+│   └── vectorize.rs   # 벡터화
+│
+├── llm/               # LLM 연동
+│   └── mod.rs         # Ollama/vLLM 클라이언트 (775 lines)
+│
+├── metrics/           # 메트릭스 수집
+│   └── mod.rs
+│
+├── ontology/          # 온톨로지 추출
+│   ├── mod.rs
+│   ├── error.rs       # 온톨로지 에러 타입
+│   ├── extractor.rs   # Triple 추출기 (2,702 lines)
+│   ├── linker.rs      # 엔티티 링커 (1,728 lines)
+│   ├── stats.rs       # 통계 (818 lines)
+│   └── storage.rs     # 온톨로지 저장 (910 lines)
+│
+├── parser/            # HTML 파싱
+│   ├── mod.rs
+│   ├── html.rs        # HTML 파서 (727 lines)
+│   ├── sanitize.rs    # 콘텐츠 정제
+│   └── selectors.rs   # CSS 셀렉터 (lazy_static)
+│
+├── scheduler/         # 분산 스케줄러
+│   ├── mod.rs
+│   ├── assignment.rs  # 작업 할당 (728 lines)
+│   ├── distribution.rs # 부하 분산 (734 lines)
+│   ├── error.rs       # 스케줄러 에러
+│   ├── failover.rs    # 장애 복구 (959 lines)
+│   ├── rotation.rs    # 로테이션
+│   ├── schedule.rs    # 스케줄 관리
+│   └── trigger.rs     # 스케줄 트리거
+│
+├── storage/           # 저장소
+│   ├── mod.rs         # SQLite 연동 (731 lines)
+│   ├── checkpoint.rs  # 체크포인트 (783 lines)
+│   ├── dedup.rs       # Bloom Filter 중복제거 (1,108 lines)
+│   └── markdown.rs    # 마크다운 저장 (1,261 lines)
+│
+├── utils/             # 유틸리티
+│   ├── mod.rs
+│   ├── error.rs       # 에러 타입 정의
+│   └── retry.rs       # 재시도 로직 (지수 백오프)
+│
+├── lib.rs             # 라이브러리 엔트리
+├── main.rs            # CLI 엔트리포인트
+└── models.rs          # 공통 데이터 모델
 ```
 
-## Core Modules
+## 핵심 모듈 상세
 
-### 1. utils::error (`src/utils/error.rs`)
+### 1. Commands 모듈 (`src/commands/`)
 
-Comprehensive error handling using `thiserror` crate.
+CLI 명령어를 처리하는 모듈로, main.rs에서 분리되어 독립적으로 관리됩니다.
 
-#### Error Types:
+| 명령어 | 파일 | 설명 |
+|--------|------|------|
+| `crawl` | crawl.rs | 네이버 뉴스 크롤링 실행 |
+| `index` | index.rs | 크롤링된 기사 인덱싱 (체크포인트 지원) |
+| `ontology` | ontology.rs | LLM 기반 온톨로지 추출 (부분 실패 처리) |
+| `search` | search.rs | 저장된 기사 검색 |
+| `serve` | serve.rs | REST API 서버 실행 |
 
-- **AppError**: Top-level application error
-- **CrawlerError**: HTTP requests, parsing, rate limiting
-  - HttpError, RateLimitError, ParseError
-  - InvalidUrl, EncodingError
-  - CommentApiError, JsonpParseError
-  - AntiBotDetected, RetryExhausted
-  - Timeout, ArticleNotFound
+### 2. Crawler 모듈 (`src/crawler/`)
 
-- **StorageError**: Database and file operations
-  - SqliteError, PostgresError
-  - FileError, SerializationError
-  - DuplicateEntry, TransactionError
-  - CheckpointError, MarkdownError
+```mermaid
+sequenceDiagram
+    participant CLI as CLI Command
+    participant Pipeline as Pipeline
+    participant Fetcher as Fetcher
+    participant Parser as HTML Parser
+    participant Comment as Comment Extractor
+    participant Storage as Storage
 
-- **VectorError**: Vector database operations
-  - IndexError, SearchError, EmbeddingError
-  - TokenizationError, ModelLoadError
-  - BulkOperationError, DimensionMismatch
+    CLI->>Pipeline: start_crawl(config)
+    Pipeline->>Fetcher: fetch_article_list()
+    Fetcher-->>Pipeline: article_urls
 
-- **OntologyError**: Knowledge graph extraction
-  - ExtractionError, ValidationError
-  - PromptError, HallucinationDetected
-  - TemplateError, GraphError
-
-- **ConfigError**: Configuration validation
-  - FileNotFound, InvalidToml
-  - MissingField, InvalidValue
-  - EnvVarNotFound, PathError
-
-#### Result Type Aliases:
-
-```rust
-pub type CrawlerResult<T> = Result<T, CrawlerError>;
-pub type StorageResult<T> = Result<T, StorageError>;
-pub type VectorResult<T> = Result<T, VectorError>;
-pub type OntologyResult<T> = Result<T, OntologyError>;
-pub type ConfigResult<T> = Result<T, ConfigError>;
-pub type AppResult<T> = Result<T, AppError>;
+    loop For each article
+        Pipeline->>Fetcher: fetch_article(url)
+        Fetcher-->>Pipeline: html
+        Pipeline->>Parser: parse(html)
+        Parser-->>Pipeline: ParsedArticle
+        Pipeline->>Comment: extract_comments(article_id)
+        Comment-->>Pipeline: comments
+        Pipeline->>Storage: save(article, comments)
+    end
 ```
 
-### 2. config::settings (`src/config/settings.rs`)
+**주요 컴포넌트:**
 
-Configuration management with TOML and environment variable support.
+- **Fetcher**: HTTP 요청 처리, Rate Limiting, 재시도 로직
+- **Pipeline**: 크롤링 파이프라인 오케스트레이션
+- **Comment**: 댓글 API 호출 및 파싱
+- **Distributed**: 다중 워커 분산 크롤링
 
-#### Configuration Structures:
+### 3. Ontology 모듈 (`src/ontology/`)
 
-- **AppConfig**: Main configuration container
-  - AppMetadata: Application info (name, version, environment)
-  - CrawlerConfig: Crawler settings
-  - PostgresConfig: Database connection
-  - OpenSearchConfig: Vector search
-  - StorageConfig: File and checkpoint storage
-  - EmbeddingConfig: ML model settings
-  - OntologyConfig: LLM extraction settings
-  - LoggingConfig: Logging configuration
+```mermaid
+flowchart LR
+    subgraph Input
+        article[Article MD]
+    end
 
-#### Key Features:
+    subgraph Extraction
+        prompt[Prompt Builder]
+        llm[LLM Call]
+        parser[JSON Parser]
+    end
 
-- Environment variable expansion: `${VAR}` or `${VAR:-default}`
-- Hierarchical validation
-- Default value providers
-- Path validation and creation
-- Type-safe configuration with strong defaults
+    subgraph Linking
+        entity[Entity Extractor]
+        relation[Relation Extractor]
+        linker[Entity Linker]
+    end
 
-#### CrawlerConfig Details:
+    subgraph Output
+        triple[Triple Store]
+        stats[Statistics]
+    end
 
+    article --> prompt
+    prompt --> llm
+    llm --> parser
+    parser --> entity
+    entity --> linker
+    linker --> relation
+    relation --> triple
+    triple --> stats
+```
+
+**Triple 구조:**
 ```rust
-pub struct CrawlerConfig {
-    pub base_url: String,
-    pub requests_per_second: u32,      // Rate limiting
-    pub max_retries: u32,              // Retry attempts
-    pub timeout_secs: u64,             // Request timeout
-    pub user_agents: Vec<String>,      // User-Agent pool
-    pub max_concurrent_workers: usize, // Actor workers
-    pub channel_buffer_size: usize,    // mpsc buffer
-    pub enable_cookie_jar: bool,
-    pub enable_compression: bool,
-    pub follow_redirects: bool,
-    pub max_redirects: usize,
-    pub backoff_base_ms: u64,          // Exponential backoff
-    pub backoff_max_ms: u64,
-    pub comments: CommentConfig,
+pub struct Triple {
+    pub subject: String,      // 주어 (예: "김수종")
+    pub subject_type: String, // 타입 (예: "Person")
+    pub predicate: String,    // 관계 (예: "schema:author")
+    pub object: String,       // 목적어 (예: "발언 내용")
+    pub object_type: String,  // 타입 (예: "Statement")
+    pub confidence: f32,      // 신뢰도
+    pub evidence: String,     // 근거 텍스트
+    pub verified: bool,       // 검증 여부
 }
 ```
 
-### 3. crawler::types (`src/crawler/types.rs`)
+### 4. Storage 모듈 (`src/storage/`)
 
-Core data structures for crawling operations.
+```mermaid
+flowchart TB
+    subgraph Dedup["3-Tier Deduplication"]
+        bloom["Tier 1: Bloom Filter<br/>O(1) Fast Rejection"]
+        cache["Tier 2: HashSet Cache<br/>Recent URLs"]
+        db["Tier 3: DB Query<br/>Batch Verification"]
+    end
 
-#### Main Types:
-
-**NewsCategory** (enum):
-- Politics, Economy, Society, Culture, World, IT, Entertainment, Sports
-- Methods: `code()`, `korean_name()`, `from_code()`, `from_str()`
-
-**ParsedArticle** (struct):
-```rust
-pub struct ParsedArticle {
-    pub oid: String,                  // Publisher ID
-    pub aid: String,                  // Article ID
-    pub title: String,
-    pub content: String,
-    pub url: String,
-    pub category: NewsCategory,
-    pub publisher: Option<String>,
-    pub published_at: DateTime<Utc>,
-    pub crawled_at: DateTime<Utc>,
-    pub content_hash: Option<String>, // SHA-256
-    pub author: Option<String>,
-    pub subtitle: Option<String>,
-    pub tags: Vec<String>,
-    pub view_count: Option<u64>,
-    pub like_count: Option<u64>,
-    pub comment_count: Option<u64>,
-    pub related_articles: Vec<String>,
-    pub thumbnail_url: Option<String>,
-    pub metadata: HashMap<String, serde_json::Value>,
-}
+    url[New URL] --> bloom
+    bloom -->|Not in filter| cache
+    bloom -->|Maybe in filter| cache
+    cache -->|Not in cache| db
+    cache -->|In cache| reject[Reject]
+    db -->|Not in DB| accept[Accept]
+    db -->|In DB| reject
 ```
 
-Methods:
-- `id()`: Returns `{oid}_{aid}`
-- `generate_hash()`: Computes SHA-256 hash
-- `date()`, `date_path()`: Date formatting
-- `title_slug()`: URL-safe title
-- `has_comments()`: Boolean check
+**저장소 구성:**
 
-**Comment** (struct):
-```rust
-pub struct Comment {
-    pub comment_id: String,
-    pub parent_id: Option<String>,    // For replies
-    pub article_id: String,
-    pub author: String,
-    pub content: String,
-    pub created_at: DateTime<Utc>,
-    pub like_count: u64,
-    pub dislike_count: u64,
-    pub depth: u32,                   // Nesting level
-    pub is_deleted: bool,
-    pub is_hidden: bool,
-    pub reply_count: u64,
-    pub replies: Vec<Comment>,        // Recursive
-    pub comment_type: CommentType,
-    pub metadata: HashMap<String, serde_json::Value>,
-}
+- **SQLite**: 기사 메타데이터, 크롤 상태
+- **Markdown**: 기사 본문 (파일 시스템)
+- **Checkpoint**: 장기 작업 체크포인트
+- **Bloom Filter**: URL 중복 검사 (~90% DB 쿼리 감소)
+
+### 5. Scheduler 모듈 (`src/scheduler/`)
+
+분산 크롤링을 위한 작업 스케줄링:
+
+- **Assignment**: 워커별 작업 할당
+- **Distribution**: 부하 분산 알고리즘
+- **Failover**: 장애 복구 및 작업 재할당
+- **Rotation**: User-Agent 및 프록시 로테이션
+
+## 데이터 흐름
+
+```mermaid
+flowchart TB
+    subgraph Phase1["Phase 1: Crawling"]
+        naver["Naver News API"]
+        crawler["Crawler"]
+        raw["Raw Markdown Files"]
+    end
+
+    subgraph Phase2["Phase 2: Indexing"]
+        parser["Parser"]
+        sqlite["SQLite DB"]
+    end
+
+    subgraph Phase3["Phase 3: Ontology"]
+        llm["LLM (Ollama/vLLM)"]
+        ontology["Ontology JSON"]
+    end
+
+    subgraph Phase4["Phase 4: Serving"]
+        api["REST API"]
+        search["Search"]
+    end
+
+    naver --> crawler
+    crawler --> raw
+    raw --> parser
+    parser --> sqlite
+    sqlite --> llm
+    llm --> ontology
+    sqlite --> api
+    ontology --> api
+    api --> search
 ```
 
-Methods:
-- `new()`, `new_reply()`: Constructors
-- `is_visible()`: Filter deleted/hidden
-- `total_replies()`: Recursive count
-- `flatten()`: DFS traversal
-- `add_reply()`: Add child comment
-
-**CrawlState** (struct):
-```rust
-pub struct CrawlState {
-    pub session_id: String,
-    pub category: NewsCategory,
-    pub started_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub total_articles: Option<usize>,
-    pub articles_crawled: usize,
-    pub articles_failed: usize,
-    pub articles_skipped: usize,      // Duplicates
-    pub comments_crawled: usize,
-    pub current_page: u32,
-    pub last_article_id: Option<String>,
-    pub failed_articles: Vec<String>, // For retry
-    pub status: CrawlStatus,
-    pub error_message: Option<String>,
-    pub stats: CrawlStatistics,
-    pub metadata: HashMap<String, serde_json::Value>,
-}
-```
-
-Methods:
-- `new()`: Initialize new session
-- `mark_success()`, `mark_failed()`, `mark_skipped()`: Update progress
-- `completion_percentage()`: Progress calculation
-- `crawl_rate()`: Articles per minute
-- `estimated_time_remaining()`: ETA
-
-**CrawlStatus** (enum):
-- Running, Paused, Completed, Failed, Cancelled
-
-**CrawlStatistics** (struct):
-- Performance metrics
-- Error distribution
-- HTTP status codes
-- Category counts
-
-## Configuration File (`config.toml`)
-
-### Structure:
+## 설정 구조
 
 ```toml
 [app]
 name = "baram"
 version = "0.1.0"
-environment = "development"
+environment = "production"
 
 [crawler]
 base_url = "https://news.naver.com"
 requests_per_second = 5
 max_retries = 3
 timeout_secs = 30
-user_agents = [...]
 max_concurrent_workers = 10
 channel_buffer_size = 1000
-# ... more settings
 
 [crawler.comments]
 enabled = true
 max_pages = 100
-max_reply_depth = 10
 
 [storage]
 output_dir = "./output/raw"
 checkpoint_dir = "./output/checkpoints"
-sqlite_path = "./output/crawler.db"
+sqlite_path = "./output/crawl.db"
 
-# Optional: PostgreSQL, OpenSearch, Embedding, Ontology
+[llm]
+provider = "vllm"  # or "ollama"
+base_url = "http://localhost:8000"
+model = "Qwen/Qwen3-8B"
+
+[ontology]
+enabled = true
+batch_size = 2
+max_concurrent = 4
 ```
 
-### Environment Variable Expansion:
+## 에러 처리
 
-```toml
-password = "${DB_PASSWORD}"
-api_key = "${LLM_API_KEY:-default_key}"
-```
-
-## Design Patterns
-
-### 1. Error Handling
-
-- Use `thiserror` for domain errors
-- Provide detailed context in error messages
-- Include source location when wrapping errors
-- Type aliases for cleaner function signatures
-
-### 2. Configuration
-
-- Single source of truth (config.toml)
-- Environment-specific overrides
-- Validation at load time
-- Type-safe defaults
-
-### 3. Data Types
-
-- Strong typing with enums
-- Builder pattern where applicable
-- Recursive structures for comments
-- Comprehensive metadata fields
-
-### 4. Serialization
-
-- `serde` for all structs
-- chrono for timestamps
-- HashMap for flexible metadata
-- SHA-256 for deduplication
-
-## Usage Examples
-
-### Loading Configuration:
+모든 모듈은 `thiserror` 기반 에러 타입을 사용합니다:
 
 ```rust
-use baram::config::AppConfig;
+// 주요 에러 타입
+pub enum CrawlerError { HttpError, RateLimitError, ParseError, ... }
+pub enum StorageError { SqliteError, FileError, ... }
+pub enum OntologyError { ExtractionError, ValidationError, ... }
 
-let config = AppConfig::load("config.toml")?;
-config.validate()?;
+// Result 타입 별칭
+pub type CrawlerResult<T> = Result<T, CrawlerError>;
+pub type AppResult<T> = Result<T, AppError>;
 ```
 
-### Error Handling:
+**재시도 로직** (`src/utils/retry.rs`):
+- 지수 백오프 (Exponential Backoff)
+- 조건부 재시도 (Conditional Retry)
+- 최대 재시도 횟수 설정
 
-```rust
-use baram::utils::{CrawlerError, CrawlerResult};
+## 테스트
 
-fn fetch_article(url: &str) -> CrawlerResult<String> {
-    // ... fetch logic
-    Err(CrawlerError::Timeout {
-        url: url.to_string(),
-        duration_secs: 30,
-    })
-}
-```
-
-### Working with Types:
-
-```rust
-use baram::crawler::{NewsCategory, ParsedArticle, CrawlState};
-
-let mut article = ParsedArticle::default();
-article.oid = "001".to_string();
-article.aid = "12345".to_string();
-article.generate_hash();
-
-let state = CrawlState::new("session1".to_string(), NewsCategory::Politics);
-state.mark_success(article.id());
-```
-
-## Testing
-
-Each module includes comprehensive unit tests:
-
-- Error type display formatting
-- Error conversion chains
-- Configuration validation
-- Default values
-- Type methods and helpers
-
-Run tests:
 ```bash
+# 단위 테스트
 cargo test
+
+# 통합 테스트
+cargo test --test integration
+
+# 특정 모듈 테스트
+cargo test ontology::
+cargo test crawler::
 ```
 
-## Next Steps
+**통합 테스트 구조** (`tests/integration_tests/`):
+- `pipeline_test.rs`: 크롤링 파이프라인 테스트
+- `distributed_test.rs`: 분산 크롤링 테스트
+- `error_scenarios.rs`: 에러 시나리오 테스트
 
-1. Implement fetcher module (`src/crawler/fetcher.rs`)
-2. Implement parser module (`src/crawler/parser.rs`)
-3. Implement storage module (`src/storage/mod.rs`)
-4. Create Actor Model pipeline (`src/pipeline/mod.rs`)
-5. Build CLI interface (`src/main.rs`)
+## 의존성
 
-## References
+| 크레이트 | 용도 |
+|----------|------|
+| `tokio` | 비동기 런타임 |
+| `reqwest` | HTTP 클라이언트 |
+| `scraper` | HTML 파싱 |
+| `rusqlite` | SQLite |
+| `serde` | 직렬화 |
+| `thiserror` | 에러 처리 |
+| `lazy_static` | 정적 초기화 |
+| `bloomfilter` | Bloom Filter |
+| `clap` | CLI 파싱 |
 
-- Sprint Plan: `/home/mare/baram/sprint_plan.md`
-- Development Spec: `/home/mare/baram/development_spec.md`
-- Configuration: `/home/mare/baram/config.toml`
+## 라이선스
 
----
-
-Copyright (c) 2024 hephaex@gmail.com
-License: GPL v3
+GPL v3 - Copyright (c) 2024 hephaex@gmail.com
