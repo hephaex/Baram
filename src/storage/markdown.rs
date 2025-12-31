@@ -417,7 +417,8 @@ impl CommentRenderer {
         // Handle deleted comments
         if comment.is_deleted {
             if self.config.show_deleted_placeholder {
-                writeln!(output, "{prefix}*[삭제된 댓글입니다]*\n").unwrap();
+                // Writing to String cannot fail
+                let _ = writeln!(output, "{prefix}*[삭제된 댓글입니다]*\n");
             }
             return output;
         }
@@ -447,15 +448,15 @@ impl CommentRenderer {
             header_parts.push(format!("👍 {} | 👎 {}", comment.likes, comment.dislikes));
         }
 
-        // Write header
-        writeln!(output, "{}{}", prefix, header_parts.join(" | ")).unwrap();
-        writeln!(output, "{prefix}").unwrap();
+        // Write header (writing to String cannot fail)
+        let _ = writeln!(output, "{}{}", prefix, header_parts.join(" | "));
+        let _ = writeln!(output, "{prefix}");
 
         // Comment content (wrap each line with prefix)
         for line in comment.content.lines() {
-            writeln!(output, "{prefix}{line}").unwrap();
+            let _ = writeln!(output, "{prefix}{line}");
         }
-        writeln!(output, "{prefix}").unwrap();
+        let _ = writeln!(output, "{prefix}");
 
         // Recursively render replies
         if !comment.replies.is_empty() {
@@ -482,7 +483,8 @@ impl CommentRenderer {
             return output;
         }
 
-        writeln!(output, "## 댓글 ({} 개)\n", Self::count_total(comments)).unwrap();
+        // Writing to String cannot fail
+        let _ = writeln!(output, "## 댓글 ({} 개)\n", Self::count_total(comments));
 
         for (i, comment) in comments.iter().enumerate() {
             let comment_md = self.render_comment(comment, 0);
@@ -490,7 +492,7 @@ impl CommentRenderer {
 
             // Add separator between top-level comments (except last)
             if i < comments.len() - 1 {
-                writeln!(output, "---\n").unwrap();
+                let _ = writeln!(output, "---\n");
             }
         }
 
