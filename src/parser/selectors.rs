@@ -3,223 +3,151 @@
 //! This module provides specialized selectors for parsing various types of
 //! Naver News articles including general news, entertainment, sports, and card news.
 
+use lazy_static::lazy_static;
 use scraper::Selector;
 
-/// Selectors for general news format (n.news.naver.com)
-pub struct GeneralSelectors {
-    pub title: Vec<Selector>,
-    pub content: Vec<Selector>,
-    pub date: Vec<Selector>,
-    pub publisher: Vec<Selector>,
-    pub author: Vec<Selector>,
+// Helper macro to parse selectors safely at compile time
+macro_rules! parse_selector {
+    ($s:expr) => {
+        Selector::parse($s).expect(concat!("Invalid CSS selector: ", $s))
+    };
 }
 
-impl GeneralSelectors {
-    pub fn new() -> Self {
-        Self {
-            title: vec![
-                Selector::parse("#title_area span").unwrap(),
-                Selector::parse(".media_end_head_title").unwrap(),
-                Selector::parse("h2.media_end_head_headline").unwrap(),
-            ],
-            content: vec![
-                Selector::parse("#dic_area").unwrap(),
-                Selector::parse("#articleBodyContents").unwrap(),
-                Selector::parse("article#dic_area").unwrap(),
-            ],
-            date: vec![
-                Selector::parse(".media_end_head_info_datestamp_time").unwrap(),
-                Selector::parse("._ARTICLE_DATE_TIME").unwrap(),
-                Selector::parse("span.media_end_head_info_datestamp_time").unwrap(),
-            ],
-            publisher: vec![
-                Selector::parse(".media_end_head_top_logo img").unwrap(),
-                Selector::parse(".press_logo img").unwrap(),
-                Selector::parse("a.media_end_head_top_logo_img img").unwrap(),
-            ],
-            author: vec![
-                Selector::parse(".byline").unwrap(),
-                Selector::parse(".journalist_name").unwrap(),
-                Selector::parse("span.byline_s").unwrap(),
-            ],
-        }
-    }
-}
+lazy_static! {
+    // General news selectors
+    static ref GENERAL_TITLE: Vec<Selector> = vec![
+        parse_selector!("#title_area span"),
+        parse_selector!(".media_end_head_title"),
+        parse_selector!("h2.media_end_head_headline"),
+    ];
 
-impl Default for GeneralSelectors {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+    static ref GENERAL_CONTENT: Vec<Selector> = vec![
+        parse_selector!("#dic_area"),
+        parse_selector!("#articleBodyContents"),
+        parse_selector!("article#dic_area"),
+    ];
 
-/// Selectors for entertainment news format (entertain.naver.com, m.entertain.naver.com)
-pub struct EntertainmentSelectors {
-    pub title: Vec<Selector>,
-    pub content: Vec<Selector>,
-    pub date: Vec<Selector>,
-    pub publisher: Vec<Selector>,
-    pub author: Vec<Selector>,
-}
+    static ref GENERAL_DATE: Vec<Selector> = vec![
+        parse_selector!(".media_end_head_info_datestamp_time"),
+        parse_selector!("._ARTICLE_DATE_TIME"),
+        parse_selector!("span.media_end_head_info_datestamp_time"),
+    ];
 
-impl EntertainmentSelectors {
-    pub fn new() -> Self {
-        Self {
-            title: vec![
-                // Desktop entertain.naver.com
-                Selector::parse(".end_tit").unwrap(),
-                Selector::parse("h2.end_tit").unwrap(),
-                Selector::parse(".article_tit").unwrap(),
-                // Mobile m.entertain.naver.com
-                Selector::parse("h2.ArticleHead_article_title__qh8GV").unwrap(),
-                Selector::parse(".ArticleHead_article_title__qh8GV").unwrap(),
-                Selector::parse("h2[class*='article_title']").unwrap(),
-            ],
-            content: vec![
-                // Desktop entertain.naver.com
-                Selector::parse(".article_body").unwrap(),
-                Selector::parse("#articeBody").unwrap(),
-                Selector::parse("div.end_body_wrp").unwrap(),
-                // Mobile m.entertain.naver.com
-                Selector::parse("article.Article_comp_news_article__XIpve").unwrap(),
-                Selector::parse("article[class*='_article_body']").unwrap(),
-                Selector::parse("div._article_content").unwrap(),
-                Selector::parse("article#comp_news_article").unwrap(),
-            ],
-            date: vec![
-                // Desktop entertain.naver.com
-                Selector::parse(".article_info .author em").unwrap(),
-                Selector::parse(".info_date").unwrap(),
-                Selector::parse("span.author em").unwrap(),
-                // Mobile m.entertain.naver.com
-                Selector::parse(".DateInfo_info_item__3yQPs em.date").unwrap(),
-                Selector::parse(".DateInfo_article_head_date_info__CS6Gx em.date").unwrap(),
-                Selector::parse("div[class*='DateInfo'] em.date").unwrap(),
-            ],
-            publisher: vec![
-                Selector::parse(".JournalistCard_press_name__s3Eup").unwrap(),
-                Selector::parse("em[class*='press_name']").unwrap(),
-                Selector::parse(".press_name").unwrap(),
-            ],
-            author: vec![
-                Selector::parse(".JournalistCard_name__0ZSAO").unwrap(),
-                Selector::parse("em[class*='name']").unwrap(),
-                Selector::parse(".journalist_name").unwrap(),
-            ],
-        }
-    }
-}
+    static ref GENERAL_PUBLISHER: Vec<Selector> = vec![
+        parse_selector!(".media_end_head_top_logo img"),
+        parse_selector!(".press_logo img"),
+        parse_selector!("a.media_end_head_top_logo_img img"),
+    ];
 
-impl Default for EntertainmentSelectors {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+    static ref GENERAL_AUTHOR: Vec<Selector> = vec![
+        parse_selector!(".byline"),
+        parse_selector!(".journalist_name"),
+        parse_selector!("span.byline_s"),
+    ];
 
-/// Selectors for sports news format (sports.naver.com, m.sports.naver.com)
-pub struct SportsSelectors {
-    pub title: Vec<Selector>,
-    pub content: Vec<Selector>,
-    pub date: Vec<Selector>,
-    pub publisher: Vec<Selector>,
-    pub author: Vec<Selector>,
-}
+    // Entertainment news selectors
+    static ref ENTERTAINMENT_TITLE: Vec<Selector> = vec![
+        parse_selector!(".end_tit"),
+        parse_selector!("h2.end_tit"),
+        parse_selector!(".article_tit"),
+        parse_selector!("h2.ArticleHead_article_title__qh8GV"),
+        parse_selector!(".ArticleHead_article_title__qh8GV"),
+        parse_selector!("h2[class*='article_title']"),
+    ];
 
-impl SportsSelectors {
-    pub fn new() -> Self {
-        Self {
-            title: vec![
-                // Desktop sports.naver.com
-                Selector::parse(".news_headline .title").unwrap(),
-                Selector::parse("h4.title").unwrap(),
-                Selector::parse(".NewsEndMain_article_title__j5ND9").unwrap(),
-                // Mobile m.sports.naver.com (esports/game)
-                Selector::parse("h2.ArticleHead_article_title__qh8GV").unwrap(),
-                Selector::parse(".ArticleHead_article_title__qh8GV").unwrap(),
-                Selector::parse("h2[class*='article_title']").unwrap(),
-            ],
-            content: vec![
-                // Desktop sports.naver.com
-                Selector::parse(".news_end").unwrap(),
-                Selector::parse("#newsEndContents").unwrap(),
-                Selector::parse("div.NewsEndMain_article_body__D5MUB").unwrap(),
-                // Mobile m.sports.naver.com (esports/game)
-                Selector::parse("article.Article_comp_news_article__XIpve").unwrap(),
-                Selector::parse("article[class*='_article_body']").unwrap(),
-                Selector::parse("div._article_content").unwrap(),
-                Selector::parse("article#comp_news_article").unwrap(),
-            ],
-            date: vec![
-                // Desktop sports.naver.com
-                Selector::parse(".info span").unwrap(),
-                Selector::parse(".news_date").unwrap(),
-                Selector::parse("em.date").unwrap(),
-                // Mobile m.sports.naver.com
-                Selector::parse(".DateInfo_info_item__3yQPs em.date").unwrap(),
-                Selector::parse(".DateInfo_article_head_date_info__CS6Gx em.date").unwrap(),
-                Selector::parse("div[class*='DateInfo'] em.date").unwrap(),
-            ],
-            publisher: vec![
-                Selector::parse(".JournalistCard_press_name__s3Eup").unwrap(),
-                Selector::parse("em[class*='press_name']").unwrap(),
-                Selector::parse(".press_name").unwrap(),
-            ],
-            author: vec![
-                Selector::parse(".JournalistCard_name__0ZSAO").unwrap(),
-                Selector::parse("em[class*='name']").unwrap(),
-                Selector::parse(".journalist_name").unwrap(),
-            ],
-        }
-    }
-}
+    static ref ENTERTAINMENT_CONTENT: Vec<Selector> = vec![
+        parse_selector!(".article_body"),
+        parse_selector!("#articeBody"),
+        parse_selector!("div.end_body_wrp"),
+        parse_selector!("article.Article_comp_news_article__XIpve"),
+        parse_selector!("article[class*='_article_body']"),
+        parse_selector!("div._article_content"),
+        parse_selector!("article#comp_news_article"),
+    ];
 
-impl Default for SportsSelectors {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+    static ref ENTERTAINMENT_DATE: Vec<Selector> = vec![
+        parse_selector!(".article_info .author em"),
+        parse_selector!(".info_date"),
+        parse_selector!("span.author em"),
+        parse_selector!(".DateInfo_info_item__3yQPs em.date"),
+        parse_selector!(".DateInfo_article_head_date_info__CS6Gx em.date"),
+        parse_selector!("div[class*='DateInfo'] em.date"),
+    ];
 
-/// Selectors for card/photo news format
-pub struct CardNewsSelectors {
-    pub title: Vec<Selector>,
-    pub content: Vec<Selector>,
-    pub captions: Vec<Selector>,
-}
+    static ref ENTERTAINMENT_PUBLISHER: Vec<Selector> = vec![
+        parse_selector!(".JournalistCard_press_name__s3Eup"),
+        parse_selector!("em[class*='press_name']"),
+        parse_selector!(".press_name"),
+    ];
 
-impl CardNewsSelectors {
-    pub fn new() -> Self {
-        Self {
-            title: vec![
-                Selector::parse("h2.end_tit").unwrap(),
-                Selector::parse(".media_end_head_title").unwrap(),
-                Selector::parse("h3.tit_view").unwrap(),
-            ],
-            content: vec![
-                Selector::parse("div.end_ct_area").unwrap(),
-                Selector::parse("div.card_area").unwrap(),
-                Selector::parse("div.content_area").unwrap(),
-            ],
-            captions: vec![
-                Selector::parse("em.img_desc").unwrap(),
-                Selector::parse(".txt").unwrap(),
-                Selector::parse("figcaption").unwrap(),
-            ],
-        }
-    }
-}
+    static ref ENTERTAINMENT_AUTHOR: Vec<Selector> = vec![
+        parse_selector!(".JournalistCard_name__0ZSAO"),
+        parse_selector!("em[class*='name']"),
+        parse_selector!(".journalist_name"),
+    ];
 
-impl Default for CardNewsSelectors {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+    // Sports news selectors
+    static ref SPORTS_TITLE: Vec<Selector> = vec![
+        parse_selector!(".news_headline .title"),
+        parse_selector!("h4.title"),
+        parse_selector!(".NewsEndMain_article_title__j5ND9"),
+        parse_selector!("h2.ArticleHead_article_title__qh8GV"),
+        parse_selector!(".ArticleHead_article_title__qh8GV"),
+        parse_selector!("h2[class*='article_title']"),
+    ];
 
-/// Selectors for noise elements to remove during parsing
-pub struct NoiseSelectors {
-    pub elements: Vec<Selector>,
-}
+    static ref SPORTS_CONTENT: Vec<Selector> = vec![
+        parse_selector!(".news_end"),
+        parse_selector!("#newsEndContents"),
+        parse_selector!("div.NewsEndMain_article_body__D5MUB"),
+        parse_selector!("article.Article_comp_news_article__XIpve"),
+        parse_selector!("article[class*='_article_body']"),
+        parse_selector!("div._article_content"),
+        parse_selector!("article#comp_news_article"),
+    ];
 
-impl NoiseSelectors {
-    pub fn new() -> Self {
+    static ref SPORTS_DATE: Vec<Selector> = vec![
+        parse_selector!(".info span"),
+        parse_selector!(".news_date"),
+        parse_selector!("em.date"),
+        parse_selector!(".DateInfo_info_item__3yQPs em.date"),
+        parse_selector!(".DateInfo_article_head_date_info__CS6Gx em.date"),
+        parse_selector!("div[class*='DateInfo'] em.date"),
+    ];
+
+    static ref SPORTS_PUBLISHER: Vec<Selector> = vec![
+        parse_selector!(".JournalistCard_press_name__s3Eup"),
+        parse_selector!("em[class*='press_name']"),
+        parse_selector!(".press_name"),
+    ];
+
+    static ref SPORTS_AUTHOR: Vec<Selector> = vec![
+        parse_selector!(".JournalistCard_name__0ZSAO"),
+        parse_selector!("em[class*='name']"),
+        parse_selector!(".journalist_name"),
+    ];
+
+    // Card news selectors
+    static ref CARD_TITLE: Vec<Selector> = vec![
+        parse_selector!("h2.end_tit"),
+        parse_selector!(".media_end_head_title"),
+        parse_selector!("h3.tit_view"),
+    ];
+
+    static ref CARD_CONTENT: Vec<Selector> = vec![
+        parse_selector!("div.end_ct_area"),
+        parse_selector!("div.card_area"),
+        parse_selector!("div.content_area"),
+    ];
+
+    static ref CARD_CAPTIONS: Vec<Selector> = vec![
+        parse_selector!("em.img_desc"),
+        parse_selector!(".txt"),
+        parse_selector!("figcaption"),
+    ];
+
+    // Noise selectors - elements to filter out
+    static ref NOISE_ELEMENTS: Vec<Selector> = {
         let selectors = vec![
             "em.img_desc",      // Image captions
             "div.link_news",    // Related article links
@@ -236,11 +164,126 @@ impl NoiseSelectors {
             ".source",        // Source attribution
         ];
 
+        selectors
+            .iter()
+            .filter_map(|s| Selector::parse(s).ok())
+            .collect()
+    };
+}
+
+/// Selectors for general news format (n.news.naver.com)
+pub struct GeneralSelectors {
+    pub title: &'static [Selector],
+    pub content: &'static [Selector],
+    pub date: &'static [Selector],
+    pub publisher: &'static [Selector],
+    pub author: &'static [Selector],
+}
+
+impl GeneralSelectors {
+    pub fn new() -> Self {
         Self {
-            elements: selectors
-                .iter()
-                .filter_map(|s| Selector::parse(s).ok())
-                .collect(),
+            title: &GENERAL_TITLE,
+            content: &GENERAL_CONTENT,
+            date: &GENERAL_DATE,
+            publisher: &GENERAL_PUBLISHER,
+            author: &GENERAL_AUTHOR,
+        }
+    }
+}
+
+impl Default for GeneralSelectors {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Selectors for entertainment news format (entertain.naver.com, m.entertain.naver.com)
+pub struct EntertainmentSelectors {
+    pub title: &'static [Selector],
+    pub content: &'static [Selector],
+    pub date: &'static [Selector],
+    pub publisher: &'static [Selector],
+    pub author: &'static [Selector],
+}
+
+impl EntertainmentSelectors {
+    pub fn new() -> Self {
+        Self {
+            title: &ENTERTAINMENT_TITLE,
+            content: &ENTERTAINMENT_CONTENT,
+            date: &ENTERTAINMENT_DATE,
+            publisher: &ENTERTAINMENT_PUBLISHER,
+            author: &ENTERTAINMENT_AUTHOR,
+        }
+    }
+}
+
+impl Default for EntertainmentSelectors {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Selectors for sports news format (sports.naver.com, m.sports.naver.com)
+pub struct SportsSelectors {
+    pub title: &'static [Selector],
+    pub content: &'static [Selector],
+    pub date: &'static [Selector],
+    pub publisher: &'static [Selector],
+    pub author: &'static [Selector],
+}
+
+impl SportsSelectors {
+    pub fn new() -> Self {
+        Self {
+            title: &SPORTS_TITLE,
+            content: &SPORTS_CONTENT,
+            date: &SPORTS_DATE,
+            publisher: &SPORTS_PUBLISHER,
+            author: &SPORTS_AUTHOR,
+        }
+    }
+}
+
+impl Default for SportsSelectors {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Selectors for card/photo news format
+pub struct CardNewsSelectors {
+    pub title: &'static [Selector],
+    pub content: &'static [Selector],
+    pub captions: &'static [Selector],
+}
+
+impl CardNewsSelectors {
+    pub fn new() -> Self {
+        Self {
+            title: &CARD_TITLE,
+            content: &CARD_CONTENT,
+            captions: &CARD_CAPTIONS,
+        }
+    }
+}
+
+impl Default for CardNewsSelectors {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Selectors for noise elements to remove during parsing
+pub struct NoiseSelectors {
+    pub elements: &'static [Selector],
+}
+
+impl NoiseSelectors {
+    pub fn new() -> Self {
+        Self {
+            elements: &NOISE_ELEMENTS,
         }
     }
 }

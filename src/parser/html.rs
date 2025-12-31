@@ -330,7 +330,7 @@ impl ArticleParser {
         let doc = Html::parse_fragment(html);
         let mut result = html.to_string();
 
-        for selector in &self.noise.elements {
+        for selector in self.noise.elements {
             for element in doc.select(selector) {
                 let noise_html = element.html();
                 result = result.replace(&noise_html, "");
