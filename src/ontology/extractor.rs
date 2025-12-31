@@ -11,6 +11,7 @@
 //! - Hallucination verification against source text
 
 use anyhow::{Context, Result};
+use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -885,6 +886,150 @@ impl RelationType {
     }
 }
 
+// ============================================================================
+// Static Regex Patterns (compiled once at startup)
+// ============================================================================
+
+lazy_static! {
+    /// Person name extraction patterns
+    static ref PERSON_PATTERNS: Vec<Regex> = vec![
+        // Korean names with title: 홍길동 대표, 김철수 장관
+        Regex::new(r"([가-힣]{2,4})\s*(대표|장관|의원|대통령|총리|사장|회장|원장|교수|박사|기자|작가|배우|감독|위원장|총재|검사|판사|변호사|국장|실장|수석|비서관)").expect("Invalid person pattern 1"),
+        // Names with quotes: '홍길동' or "홍길동"
+        Regex::new(r#"['"]([가-힣]{2,4})['"]"#).expect("Invalid person pattern 2"),
+        // Names followed by 씨, 님
+        Regex::new(r"([가-힣]{2,4})\s*(씨|님)").expect("Invalid person pattern 3"),
+        // Names with particles followed by speaking verbs: 홍길동은 말했다
+        Regex::new(r"([가-힣]{2,4})[은는이가]\s*(?:말했다|밝혔다|전했다|설명했다|강조했다|주장했다|언급했다|덧붙였다|지적했다|발표했다)").expect("Invalid person pattern 4"),
+        // Names with title and particles: 홍길동 장관이
+        Regex::new(r"([가-힣]{2,4})\s+(?:대표|장관|의원|대통령|총리|사장|회장|원장)[이가은는]").expect("Invalid person pattern 5"),
+    ];
+
+    /// Organization extraction patterns
+    static ref ORG_PATTERNS: Vec<Regex> = vec![
+        // Companies: 삼성전자, LG전자
+        Regex::new(r"([가-힣A-Za-z]+)(전자|그룹|은행|증권|보험|건설|제약|바이오|엔터|통신)").expect("Invalid org pattern 1"),
+        // Government: 기획재정부, 외교부
+        Regex::new(r"([가-힣]+)(부|처|청|원|위원회|공사|공단)").expect("Invalid org pattern 2"),
+        // Political parties
+        Regex::new(r"(국민의힘|더불어민주당|민주당|정의당|국민의당|조국혁신당|개혁신당|진보당|새로운미래|무소속)").expect("Invalid org pattern 3"),
+        // Political/government entities (targets of criticism/support)
+        Regex::new(r"(정부|청와대|대통령실|국회|여당|야당|행정부|사법부|입법부|헌법재판소|대법원|검찰|경찰)").expect("Invalid org pattern 4"),
+    ];
+
+    /// Location extraction patterns
+    static ref LOCATION_PATTERNS: Vec<Regex> = vec![
+        // Korean cities/provinces
+        Regex::new(r"(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)(시|도|특별시|광역시)?").expect("Invalid location pattern 1"),
+        // Districts
+        Regex::new(r"([가-힣]+)(구|군|읍|면|동)").expect("Invalid location pattern 2"),
+        // Countries
+        Regex::new(r"(미국|중국|일본|러시아|북한|영국|프랑스|독일|호주|캐나다|인도)").expect("Invalid location pattern 3"),
+    ];
+
+    /// Money amount extraction pattern
+    static ref MONEY_PATTERN: Regex = Regex::new(r"(\d+(?:,\d{3})*(?:\.\d+)?)\s*(원|달러|위안|엔|유로|억|조)").expect("Invalid money pattern");
+
+    /// Percentage extraction pattern
+    static ref PCT_PATTERN: Regex = Regex::new(r"(\d+(?:\.\d+)?)\s*(%|퍼센트|프로)").expect("Invalid percentage pattern");
+
+    /// Relation extraction patterns (trigger patterns for each relation type)
+    static ref RELATION_PATTERNS: HashMap<RelationType, Vec<Regex>> = {
+        let mut patterns = HashMap::new();
+
+        // WorksFor - 소속 관계: 인물 → 기관
+        patterns.insert(RelationType::WorksFor, vec![
+            // "홍길동 삼성전자 사장" / "홍길동 OO그룹 회장"
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:전자|그룹|물산|건설|은행|증권|보험|생명|화학|중공업|에너지|제약|바이오))\s*(?:회장|사장|대표|부회장|부사장|전무|상무|이사|대표이사)").expect("Invalid WorksFor pattern"),
+        ]);
+
+        // MemberOf - 정당 소속: 인물 → 정당
+        patterns.insert(RelationType::MemberOf, vec![
+            // "홍길동 국민의힘 의원" / "홍길동 더불어민주당 대표"
+            Regex::new(r"([가-힣]{2,4})\s+(국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").expect("Invalid MemberOf pattern"),
+        ]);
+
+        // Leads - 리더십 관계: 인물 → 직함/기관
+        patterns.insert(RelationType::Leads, vec![
+            // "윤석열 대통령" / "한덕수 국무총리" - 3자 이름만 허용 (2자는 국가명일 수 있음)
+            Regex::new(r"([가-힣]{3})\s+(대통령|국무총리|대법원장|헌법재판소장|국회의장|감사원장)[은는이가을를의]").expect("Invalid Leads pattern 1"),
+            // "홍길동 외교부 장관"
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣]+부)\s*장관").expect("Invalid Leads pattern 2"),
+            // "홍길동 OO그룹 회장"
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:그룹|재단|협회|연구원|공사|공단))\s*(회장|총재|이사장|원장|사장)").expect("Invalid Leads pattern 3"),
+            // 북한 지도자 - 명시적 이름 지정
+            Regex::new(r"(김정은|김여정|김정일)\s+(국무위원장|노동당\s*총비서|당\s*중앙군사위원장)").expect("Invalid Leads pattern 4"),
+            // 트럼프, 바이든 등 외국 정상
+            Regex::new(r"(트럼프|바이든|시진핑|푸틴|기시다|마크롱|숄츠)\s+(대통령|총리|주석|총서기)").expect("Invalid Leads pattern 5"),
+        ]);
+
+        // LocatedIn - 위치 관계
+        patterns.insert(RelationType::LocatedIn, vec![
+            // "서울 강남구" / "서울시 서초구"
+            Regex::new(r"(서울|부산|인천|대구|대전|광주|울산|세종)(?:시|특별시|광역시)?\s+([가-힣]{1,3}구)").expect("Invalid LocatedIn pattern 1"),
+            // "경기 수원시"
+            Regex::new(r"(경기|강원|충북|충남|전북|전남|경북|경남)(?:도)?\s+([가-힣]{2,4}시)").expect("Invalid LocatedIn pattern 2"),
+        ]);
+
+        // Founded - 설립 관계
+        patterns.insert(RelationType::Founded, vec![
+            Regex::new(r"([가-힣]{2,4})[이가은는]\s+([가-힣A-Za-z]+)[을를]\s*(?:설립|창립|창업|창설)").expect("Invalid Founded pattern 1"),
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+)\s*(?:창업자|설립자|창업주)").expect("Invalid Founded pattern 2"),
+        ]);
+
+        // ParticipatedIn - 참여 관계
+        patterns.insert(RelationType::ParticipatedIn, vec![
+            Regex::new(r"([가-힣]{2,4})\s+(?:대통령|총리|장관|수석)?[이가은는]?\s+([가-힣A-Za-z]+(?:정상회담|회담|회의|포럼|총회|간담회|행사))에\s*(?:참석|참여|참가)").expect("Invalid ParticipatedIn pattern 1"),
+            Regex::new(r"(한국|미국|중국|일본|러시아|북한|영국|프랑스|독일)[이가은는]\s+([가-힣A-Za-z0-9]+(?:회담|협상|협의|회의))에\s*(?:참여|참가|참석)").expect("Invalid ParticipatedIn pattern 2"),
+        ]);
+
+        // Announced - 발표 관계
+        patterns.insert(RelationType::Announced, vec![
+            Regex::new(r"(정부|청와대|대통령실|국회|[가-힣]+부|[가-힣]+위원회|한국은행)[이가은는]\s+([가-힣]+(?:안|대책|방안|계획|정책))[을를]\s*(?:발표|공개|공표|발의)").expect("Invalid Announced pattern"),
+        ]);
+
+        // Criticized - 비판 관계
+        patterns.insert(RelationType::Criticized, vec![
+            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당|조국혁신당|진보당)[이가은는]\s+([가-힣]+)[을를에]\s*(?:비판|비난|질타|규탄|공격|맹비난)").expect("Invalid Criticized pattern 1"),
+            Regex::new(r"([가-힣]{2,4})\s+(?:의원|대표|위원장)?[이가은는]\s+([가-힣]+)[을를에]\s*(?:비판|비난|질타|규탄|공격)").expect("Invalid Criticized pattern 2"),
+        ]);
+
+        // Supported - 지지/협력 관계
+        patterns.insert(RelationType::Supported, vec![
+            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당)[이가은는]\s+([가-힣A-Za-z]+)[을를에]\s*(?:지지|찬성|옹호|환영|동의)").expect("Invalid Supported pattern 1"),
+            Regex::new(r"(한국|미국|중국|일본|러시아|영국|프랑스|독일)[이가은는]\s+(한국|미국|중국|일본|러시아|영국|프랑스|독일)[와과]\s*(?:협력|연대|공조|합의|동맹)").expect("Invalid Supported pattern 2"),
+        ]);
+
+        // Opposed - 반대 관계
+        patterns.insert(RelationType::Opposed, vec![
+            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당|조국혁신당)[이가은는]\s+([가-힣A-Za-z]+(?:안|법|법안)?)[을를에]\s*(?:반대|저지|거부|불참|퇴장|보이콧)").expect("Invalid Opposed pattern"),
+        ]);
+
+        // InvestedIn - 투자 관계
+        patterns.insert(RelationType::InvestedIn, vec![
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|증권|캐피탈|벤처스))[이가은는]\s+([가-힣A-Za-z]+)에\s*(?:[0-9,]+\s*(?:억|조)\s*원)?[을를]?\s*(?:투자|출자)").expect("Invalid InvestedIn pattern 1"),
+            Regex::new(r"(정부|[가-힣]+부)[이가은는]\s+([가-힣A-Za-z]+)에\s*(?:[0-9,]+\s*(?:억|조)\s*원)?[을를]?\s*(?:투자|출자|지원)").expect("Invalid InvestedIn pattern 2"),
+        ]);
+
+        // Acquired - 인수 관계
+        patterns.insert(RelationType::Acquired, vec![
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|건설|은행|증권))[이가은는]\s+([가-힣A-Za-z]+)[을를]\s*(?:인수|매입|매수|인수합병)").expect("Invalid Acquired pattern"),
+        ]);
+
+        // MergedWith - 합병 관계
+        patterns.insert(RelationType::MergedWith, vec![
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|물산|건설|은행|증권|보험))[이가은는]\s+([가-힣A-Za-z]+(?:전자|물산|건설|은행|증권|보험))[와과]\s*(?:합병|통합)").expect("Invalid MergedWith pattern"),
+        ]);
+
+        // Owns - 소유 관계
+        patterns.insert(RelationType::Owns, vec![
+            Regex::new(r"([가-힣A-Za-z]+그룹)\s*(?:계열사|자회사|계열|산하)[인은의]?\s+([가-힣A-Za-z]+(?:전자|물산|건설|생명|화재|증권|카드|SDI|SDS|엔지니어링))").expect("Invalid Owns pattern"),
+        ]);
+
+        patterns
+    };
+}
+
 /// LLM prompt template for relation extraction
 #[derive(Debug, Clone)]
 pub struct PromptTemplate {
@@ -1333,18 +1478,6 @@ pub struct RelationExtractor {
     /// Prompt template
     prompt: PromptTemplate,
 
-    /// Person name patterns (Korean)
-    person_patterns: Vec<Regex>,
-
-    /// Organization patterns
-    org_patterns: Vec<Regex>,
-
-    /// Location patterns
-    location_patterns: Vec<Regex>,
-
-    /// Relation trigger patterns
-    relation_patterns: HashMap<RelationType, Vec<Regex>>,
-
     /// Known entity cache (reserved for incremental extraction)
     #[allow(dead_code)]
     known_entities: HashSet<String>,
@@ -1361,157 +1494,8 @@ impl RelationExtractor {
         Self {
             config,
             prompt: PromptTemplate::default(),
-            person_patterns: Self::build_person_patterns(),
-            org_patterns: Self::build_org_patterns(),
-            location_patterns: Self::build_location_patterns(),
-            relation_patterns: Self::build_relation_patterns(),
             known_entities: HashSet::new(),
         }
-    }
-
-    /// Build person name patterns
-    fn build_person_patterns() -> Vec<Regex> {
-        vec![
-            // Korean names with title: 홍길동 대표, 김철수 장관
-            Regex::new(r"([가-힣]{2,4})\s*(대표|장관|의원|대통령|총리|사장|회장|원장|교수|박사|기자|작가|배우|감독|위원장|총재|검사|판사|변호사|국장|실장|수석|비서관)").unwrap(),
-            // Names with quotes: '홍길동' or "홍길동"
-            Regex::new(r#"['"]([가-힣]{2,4})['"]"#).unwrap(),
-            // Names followed by 씨, 님
-            Regex::new(r"([가-힣]{2,4})\s*(씨|님)").unwrap(),
-            // Names with particles followed by speaking verbs: 홍길동은 말했다
-            Regex::new(r"([가-힣]{2,4})[은는이가]\s*(?:말했다|밝혔다|전했다|설명했다|강조했다|주장했다|언급했다|덧붙였다|지적했다|발표했다)").unwrap(),
-            // Names with title and particles: 홍길동 장관이
-            Regex::new(r"([가-힣]{2,4})\s+(?:대표|장관|의원|대통령|총리|사장|회장|원장)[이가은는]").unwrap(),
-        ]
-    }
-
-    /// Build organization patterns
-    fn build_org_patterns() -> Vec<Regex> {
-        vec![
-            // Companies: 삼성전자, LG전자
-            Regex::new(r"([가-힣A-Za-z]+)(전자|그룹|은행|증권|보험|건설|제약|바이오|엔터|통신)")
-                .unwrap(),
-            // Government: 기획재정부, 외교부
-            Regex::new(r"([가-힣]+)(부|처|청|원|위원회|공사|공단)").unwrap(),
-            // Political parties
-            Regex::new(r"(국민의힘|더불어민주당|민주당|정의당|국민의당|조국혁신당|개혁신당|진보당|새로운미래|무소속)").unwrap(),
-            // Political/government entities (targets of criticism/support)
-            Regex::new(r"(정부|청와대|대통령실|국회|여당|야당|행정부|사법부|입법부|헌법재판소|대법원|검찰|경찰)").unwrap(),
-        ]
-    }
-
-    /// Build location patterns
-    fn build_location_patterns() -> Vec<Regex> {
-        vec![
-            // Korean cities/provinces
-            Regex::new(r"(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)(시|도|특별시|광역시)?").unwrap(),
-            // Districts
-            Regex::new(r"([가-힣]+)(구|군|읍|면|동)").unwrap(),
-            // Countries
-            Regex::new(r"(미국|중국|일본|러시아|북한|영국|프랑스|독일|호주|캐나다|인도)").unwrap(),
-        ]
-    }
-
-    /// Build relation trigger patterns
-    /// v4: 균형 잡힌 접근법 - 일반 패턴 사용, 엔티티 검증은 extract_relations에서 처리
-    fn build_relation_patterns() -> HashMap<RelationType, Vec<Regex>> {
-        let mut patterns = HashMap::new();
-
-        // Said 관계는 정확도 문제로 비활성화
-        // NER 없이 regex만으로 인물 이름을 정확히 추출하기 어려움
-        // TODO: LLM 기반 추출 또는 Korean NER 라이브러리 도입 필요
-
-        // WorksFor - 소속 관계: 인물 → 기관
-        patterns.insert(RelationType::WorksFor, vec![
-            // "홍길동 삼성전자 사장" / "홍길동 OO그룹 회장"
-            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:전자|그룹|물산|건설|은행|증권|보험|생명|화학|중공업|에너지|제약|바이오))\s*(?:회장|사장|대표|부회장|부사장|전무|상무|이사|대표이사)").unwrap(),
-        ]);
-
-        // MemberOf - 정당 소속: 인물 → 정당
-        patterns.insert(RelationType::MemberOf, vec![
-            // "홍길동 국민의힘 의원" / "홍길동 더불어민주당 대표"
-            Regex::new(r"([가-힣]{2,4})\s+(국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").unwrap(),
-        ]);
-
-        // Leads - 리더십 관계: 인물 → 직함/기관
-        // 국가명(미국, 한국 등)은 제외
-        patterns.insert(RelationType::Leads, vec![
-            // "윤석열 대통령" / "한덕수 국무총리" - 3자 이름만 허용 (2자는 국가명일 수 있음)
-            Regex::new(r"([가-힣]{3})\s+(대통령|국무총리|대법원장|헌법재판소장|국회의장|감사원장)[은는이가을를의]").unwrap(),
-            // "홍길동 외교부 장관"
-            Regex::new(r"([가-힣]{2,4})\s+([가-힣]+부)\s*장관").unwrap(),
-            // "홍길동 OO그룹 회장"
-            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:그룹|재단|협회|연구원|공사|공단))\s*(회장|총재|이사장|원장|사장)").unwrap(),
-            // 북한 지도자 - 명시적 이름 지정
-            Regex::new(r"(김정은|김여정|김정일)\s+(국무위원장|노동당\s*총비서|당\s*중앙군사위원장)").unwrap(),
-            // 트럼프, 바이든 등 외국 정상
-            Regex::new(r"(트럼프|바이든|시진핑|푸틴|기시다|마크롱|숄츠)\s+(대통령|총리|주석|총서기)").unwrap(),
-        ]);
-
-        // LocatedIn - 위치 관계
-        patterns.insert(RelationType::LocatedIn, vec![
-            // "서울 강남구" / "서울시 서초구"
-            Regex::new(r"(서울|부산|인천|대구|대전|광주|울산|세종)(?:시|특별시|광역시)?\s+([가-힣]{1,3}구)").unwrap(),
-            // "경기 수원시"
-            Regex::new(r"(경기|강원|충북|충남|전북|전남|경북|경남)(?:도)?\s+([가-힣]{2,4}시)").unwrap(),
-        ]);
-
-        // Founded - 설립 관계
-        patterns.insert(RelationType::Founded, vec![
-            Regex::new(r"([가-힣]{2,4})[이가은는]\s+([가-힣A-Za-z]+)[을를]\s*(?:설립|창립|창업|창설)").unwrap(),
-            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+)\s*(?:창업자|설립자|창업주)").unwrap(),
-        ]);
-
-        // ParticipatedIn - 참여 관계
-        patterns.insert(RelationType::ParticipatedIn, vec![
-            Regex::new(r"([가-힣]{2,4})\s+(?:대통령|총리|장관|수석)?[이가은는]?\s+([가-힣A-Za-z]+(?:정상회담|회담|회의|포럼|총회|간담회|행사))에\s*(?:참석|참여|참가)").unwrap(),
-            Regex::new(r"(한국|미국|중국|일본|러시아|북한|영국|프랑스|독일)[이가은는]\s+([가-힣A-Za-z0-9]+(?:회담|협상|협의|회의))에\s*(?:참여|참가|참석)").unwrap(),
-        ]);
-
-        // Announced - 발표 관계
-        patterns.insert(RelationType::Announced, vec![
-            Regex::new(r"(정부|청와대|대통령실|국회|[가-힣]+부|[가-힣]+위원회|한국은행)[이가은는]\s+([가-힣]+(?:안|대책|방안|계획|정책))[을를]\s*(?:발표|공개|공표|발의)").unwrap(),
-        ]);
-
-        // Criticized - 비판 관계
-        patterns.insert(RelationType::Criticized, vec![
-            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당|조국혁신당|진보당)[이가은는]\s+([가-힣]+)[을를에]\s*(?:비판|비난|질타|규탄|공격|맹비난)").unwrap(),
-            Regex::new(r"([가-힣]{2,4})\s+(?:의원|대표|위원장)?[이가은는]\s+([가-힣]+)[을를에]\s*(?:비판|비난|질타|규탄|공격)").unwrap(),
-        ]);
-
-        // Supported - 지지/협력 관계
-        patterns.insert(RelationType::Supported, vec![
-            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당)[이가은는]\s+([가-힣A-Za-z]+)[을를에]\s*(?:지지|찬성|옹호|환영|동의)").unwrap(),
-            Regex::new(r"(한국|미국|중국|일본|러시아|영국|프랑스|독일)[이가은는]\s+(한국|미국|중국|일본|러시아|영국|프랑스|독일)[와과]\s*(?:협력|연대|공조|합의|동맹)").unwrap(),
-        ]);
-
-        // Opposed - 반대 관계
-        patterns.insert(RelationType::Opposed, vec![
-            Regex::new(r"(여당|야당|국민의힘|더불어민주당|민주당|조국혁신당)[이가은는]\s+([가-힣A-Za-z]+(?:안|법|법안)?)[을를에]\s*(?:반대|저지|거부|불참|퇴장|보이콧)").unwrap(),
-        ]);
-
-        // InvestedIn - 투자 관계
-        patterns.insert(RelationType::InvestedIn, vec![
-            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|증권|캐피탈|벤처스))[이가은는]\s+([가-힣A-Za-z]+)에\s*(?:[0-9,]+\s*(?:억|조)\s*원)?[을를]?\s*(?:투자|출자)").unwrap(),
-            Regex::new(r"(정부|[가-힣]+부)[이가은는]\s+([가-힣A-Za-z]+)에\s*(?:[0-9,]+\s*(?:억|조)\s*원)?[을를]?\s*(?:투자|출자|지원)").unwrap(),
-        ]);
-
-        // Acquired - 인수 관계
-        patterns.insert(RelationType::Acquired, vec![
-            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|건설|은행|증권))[이가은는]\s+([가-힣A-Za-z]+)[을를]\s*(?:인수|매입|매수|인수합병)").unwrap(),
-        ]);
-
-        // MergedWith - 합병 관계
-        patterns.insert(RelationType::MergedWith, vec![
-            Regex::new(r"([가-힣A-Za-z]+(?:전자|물산|건설|은행|증권|보험))[이가은는]\s+([가-힣A-Za-z]+(?:전자|물산|건설|은행|증권|보험))[와과]\s*(?:합병|통합)").unwrap(),
-        ]);
-
-        // Owns - 소유 관계
-        patterns.insert(RelationType::Owns, vec![
-            Regex::new(r"([가-힣A-Za-z]+그룹)\s*(?:계열사|자회사|계열|산하)[인은의]?\s+([가-힣A-Za-z]+(?:전자|물산|건설|생명|화재|증권|카드|SDI|SDS|엔지니어링))").unwrap(),
-        ]);
-
-        patterns
     }
 
     /// Extract entities from text
@@ -1520,7 +1504,7 @@ impl RelationExtractor {
         let mut seen: HashSet<String> = HashSet::new();
 
         // Extract persons
-        for pattern in &self.person_patterns {
+        for pattern in &*PERSON_PATTERNS {
             for cap in pattern.captures_iter(text) {
                 if let Some(m) = cap.get(1) {
                     let name = m.as_str().to_string();
@@ -1541,7 +1525,7 @@ impl RelationExtractor {
         }
 
         // Extract organizations
-        for pattern in &self.org_patterns {
+        for pattern in &*ORG_PATTERNS {
             for cap in pattern.captures_iter(text) {
                 if let Some(m) = cap.get(0) {
                     let name = m.as_str().to_string();
@@ -1562,7 +1546,7 @@ impl RelationExtractor {
         }
 
         // Extract locations
-        for pattern in &self.location_patterns {
+        for pattern in &*LOCATION_PATTERNS {
             for cap in pattern.captures_iter(text) {
                 if let Some(m) = cap.get(0) {
                     let name = m.as_str().to_string();
@@ -1583,9 +1567,7 @@ impl RelationExtractor {
         }
 
         // Extract money amounts
-        let money_pattern =
-            Regex::new(r"(\d+(?:,\d{3})*(?:\.\d+)?)\s*(원|달러|위안|엔|유로|억|조)").unwrap();
-        for cap in money_pattern.captures_iter(text) {
+        for cap in MONEY_PATTERN.captures_iter(text) {
             if let Some(m) = cap.get(0) {
                 let name = m.as_str().to_string();
                 if !seen.contains(&name) {
@@ -1604,8 +1586,7 @@ impl RelationExtractor {
         }
 
         // Extract percentages
-        let pct_pattern = Regex::new(r"(\d+(?:\.\d+)?)\s*(%|퍼센트|프로)").unwrap();
-        for cap in pct_pattern.captures_iter(text) {
+        for cap in PCT_PATTERN.captures_iter(text) {
             if let Some(m) = cap.get(0) {
                 let name = m.as_str().to_string();
                 if !seen.contains(&name) {
@@ -1647,7 +1628,7 @@ impl RelationExtractor {
 
         for sentence in sentences {
             // Check each relation pattern
-            for (relation_type, patterns) in &self.relation_patterns {
+            for (relation_type, patterns) in &*RELATION_PATTERNS {
                 for pattern in patterns {
                     if let Some(cap) = pattern.captures(sentence) {
                         // Extract subject and object from capture groups
