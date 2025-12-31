@@ -81,6 +81,8 @@ pub async fn ontology(
     let mut total_entities = 0;
     let mut total_relations = 0;
     let mut total_said_relations = 0;
+    let mut failed_llm_batches = 0;
+    let mut failed_articles = Vec::new();
 
     // Batch size for LLM processing
     const LLM_BATCH_SIZE: usize = 2;
@@ -112,8 +114,28 @@ pub async fn ontology(
                 })
                 .collect();
 
-            // Extract Said relations for batch
-            match client.extract_said_batch(&batch).await {
+            // Extract Said relations for batch with retry
+            use baram::utils::retry::{with_retry_if, RetryConfig};
+
+            let retry_config = RetryConfig::with_delays(2, 2000, 10_000);
+            let client_ref = client;
+            let batch_clone = batch.clone();
+
+            match with_retry_if(
+                &retry_config,
+                || {
+                    let batch = batch_clone.clone();
+                    async move { client_ref.extract_said_batch(&batch).await }
+                },
+                |e| {
+                    // Retry on network/timeout errors, not on validation errors
+                    let err_str = e.to_string().to_lowercase();
+                    err_str.contains("timeout")
+                        || err_str.contains("connection")
+                        || err_str.contains("network")
+                        || err_str.contains("unavailable")
+                },
+            ).await {
                 Ok(batch_results) => {
                     for (id, relations) in batch_results {
                         total_said_relations += relations.len();
@@ -121,7 +143,16 @@ pub async fn ontology(
                     }
                 }
                 Err(e) => {
-                    tracing::warn!(batch = batch_idx, error = %e, "LLM batch extraction failed");
+                    failed_llm_batches += 1;
+                    tracing::warn!(
+                        batch = batch_idx,
+                        error = %e,
+                        "LLM batch extraction failed after retries, continuing with next batch"
+                    );
+                    // Record which articles failed for final report
+                    for article_info in &batch_clone {
+                        failed_articles.push((article_info.id.clone(), "LLM extraction failed"));
+                    }
                 }
             }
         }
@@ -132,6 +163,7 @@ pub async fn ontology(
     }
 
     // Now process articles with regex extraction + merge LLM results
+    let mut successful_articles = 0;
     for (idx, article) in articles.iter().enumerate() {
         print!(
             "\r  Building ontology {}/{} articles...",
@@ -140,39 +172,66 @@ pub async fn ontology(
         );
         std::io::Write::flush(&mut std::io::stdout())?;
 
-        // Regex-based extraction
-        let mut result = extractor.extract_from_article(article);
-
-        // Merge LLM Said relations if available
-        if let Some(said_relations) = llm_results.get(&article.id()) {
-            for said in said_relations {
-                let relation = baram::ontology::ExtractedRelation {
-                    subject: said.speaker.clone(),
-                    subject_type: baram::ontology::EntityType::Person,
-                    predicate: RelationType::Said,
-                    object: said.content.clone(),
-                    object_type: baram::ontology::EntityType::Other,
-                    confidence: said.confidence,
-                    evidence: said.evidence.clone(),
-                    verified: true,
-                };
-                result.relations.push(relation);
+        // Regex-based extraction with error handling
+        let result = match std::panic::catch_unwind(|| extractor.extract_from_article(article)) {
+            Ok(mut result) => {
+                // Merge LLM Said relations if available
+                if let Some(said_relations) = llm_results.get(&article.id()) {
+                    for said in said_relations {
+                        let relation = baram::ontology::ExtractedRelation {
+                            subject: said.speaker.clone(),
+                            subject_type: baram::ontology::EntityType::Person,
+                            predicate: RelationType::Said,
+                            object: said.content.clone(),
+                            object_type: baram::ontology::EntityType::Other,
+                            confidence: said.confidence,
+                            evidence: said.evidence.clone(),
+                            verified: true,
+                        };
+                        result.relations.push(relation);
+                    }
+                }
+                Some(result)
             }
+            Err(e) => {
+                tracing::warn!(
+                    article_id = %article.id(),
+                    error = ?e,
+                    "Regex extraction panicked for article, skipping"
+                );
+                failed_articles.push((article.id(), "Regex extraction panicked"));
+                None
+            }
+        };
+
+        if let Some(result) = result {
+            total_entities += result.entities.len();
+            total_relations += result.relations.len();
+
+            let store = TripleStore::from_extraction(&result, &article.title);
+            all_stores.push(store);
+            successful_articles += 1;
         }
-
-        total_entities += result.entities.len();
-        total_relations += result.relations.len();
-
-        let store = TripleStore::from_extraction(&result, &article.title);
-        all_stores.push(store);
     }
     println!();
 
     println!("Extraction complete:");
+    println!("  Successful articles: {}/{}", successful_articles, articles.len());
     println!("  Total entities: {total_entities}");
     println!("  Total relations: {total_relations}");
     if total_said_relations > 0 {
         println!("  Said relations (LLM): {total_said_relations}");
+    }
+
+    // Report failures if any
+    if !failed_articles.is_empty() {
+        println!("\n  Failed articles: {}", failed_articles.len());
+        for (id, reason) in &failed_articles {
+            tracing::warn!(article_id = %id, reason = %reason, "Article processing failed");
+        }
+    }
+    if failed_llm_batches > 0 {
+        println!("  Failed LLM batches: {}", failed_llm_batches);
     }
 
     // Combine all stores and export

@@ -3,6 +3,7 @@
 //! This module provides shared utilities used across the application.
 
 pub mod error;
+pub mod retry;
 
 use anyhow::{Context, Result};
 use encoding_rs::EUC_KR;

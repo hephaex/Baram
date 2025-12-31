@@ -4,12 +4,18 @@ use std::path::PathBuf;
 
 use baram::config::OpenSearchConfig;
 use baram::embedding::VectorStore;
+use baram::storage::checkpoint::CheckpointManager;
+use baram::utils::retry::{with_retry, RetryConfig};
 
 pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
     use std::fs;
 
     println!("Indexing articles from: {input}");
     println!("================================");
+
+    // Initialize checkpoint manager
+    let checkpoint_dir = PathBuf::from("./checkpoints");
+    let checkpoint_mgr = CheckpointManager::with_interval(&checkpoint_dir, 10)?;
 
     // Create OpenSearch client
     let opensearch_config = OpenSearchConfig {
@@ -94,16 +100,64 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
         println!("Warning: Embedding server not available, using dummy embeddings");
     }
 
+    // Define checkpoint state
+    #[derive(Serialize, Deserialize, Clone)]
+    struct IndexCheckpoint {
+        last_processed_batch: usize,
+        total_success: usize,
+        total_failed: usize,
+        processed_doc_ids: std::collections::HashSet<String>,
+    }
+
+    // Try to resume from checkpoint
+    let checkpoint_name = format!("index_{}",
+        input_path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+    );
+
+    let mut checkpoint_state: IndexCheckpoint = checkpoint_mgr
+        .load(&checkpoint_name)?
+        .unwrap_or(IndexCheckpoint {
+            last_processed_batch: 0,
+            total_success: 0,
+            total_failed: 0,
+            processed_doc_ids: std::collections::HashSet::new(),
+        });
+
+    // Filter out already processed documents
+    let remaining_docs: Vec<_> = documents
+        .into_iter()
+        .filter(|doc| !checkpoint_state.processed_doc_ids.contains(&doc.id))
+        .collect();
+
+    if checkpoint_state.last_processed_batch > 0 {
+        println!(
+            "Resuming from checkpoint: batch {}, {} documents already processed",
+            checkpoint_state.last_processed_batch,
+            checkpoint_state.processed_doc_ids.len()
+        );
+    }
+
+    let documents = remaining_docs;
+    if documents.is_empty() {
+        println!("All documents already indexed.");
+        checkpoint_mgr.delete(&checkpoint_name)?;
+        return Ok(());
+    }
+
     // Index in batches
-    let mut total_success = 0;
-    let mut total_failed = 0;
+    let mut total_success = checkpoint_state.total_success;
+    let mut total_failed = checkpoint_state.total_failed;
     let client = reqwest::Client::new();
+    let retry_config = RetryConfig::with_delays(2, 1000, 5000);
 
     for (batch_num, batch) in documents.chunks(batch_size).enumerate() {
+        let actual_batch_num = checkpoint_state.last_processed_batch + batch_num;
         print!(
             "\rProcessing batch {}/{}...",
-            batch_num + 1,
-            documents.len().div_ceil(batch_size)
+            actual_batch_num + 1,
+            checkpoint_state.last_processed_batch + documents.len().div_ceil(batch_size)
         );
         std::io::Write::flush(&mut std::io::stdout())?;
 
@@ -112,14 +166,16 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
             let mut updated_batch = Vec::with_capacity(batch.len());
             for doc in batch {
                 let text = format!("{} {}", doc.title, doc.content);
-                match generate_embedding(&client, &embedding_server_url, &text).await {
+                match with_retry(&retry_config, || async {
+                    generate_embedding(&client, &embedding_server_url, &text).await
+                }).await {
                     Ok(embedding) => {
                         let mut new_doc = doc.clone();
                         new_doc.embedding = embedding;
                         updated_batch.push(new_doc);
                     }
                     Err(e) => {
-                        tracing::warn!(doc_id = %doc.id, error = %e, "Failed to generate embedding");
+                        tracing::warn!(doc_id = %doc.id, error = %e, "Failed to generate embedding after retries");
                         updated_batch.push(doc.clone());
                     }
                 }
@@ -129,13 +185,31 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
             batch.to_vec()
         };
 
-        let result = store.bulk_index(&batch_with_embeddings).await?;
+        // Bulk index with retry
+        let result = with_retry(&retry_config, || async {
+            store.bulk_index(&batch_with_embeddings).await
+        }).await?;
+
         total_success += result.success;
         total_failed += result.failed;
 
+        // Update checkpoint state
+        for doc in batch {
+            checkpoint_state.processed_doc_ids.insert(doc.id.clone());
+        }
+        checkpoint_state.last_processed_batch = actual_batch_num + 1;
+        checkpoint_state.total_success = total_success;
+        checkpoint_state.total_failed = total_failed;
+
+        // Save checkpoint periodically
+        if checkpoint_mgr.should_auto_save() {
+            checkpoint_mgr.save(&checkpoint_name, &checkpoint_state)?;
+            tracing::debug!("Checkpoint saved at batch {}", actual_batch_num + 1);
+        }
+
         // Print errors if any
         if !result.errors.is_empty() {
-            eprintln!("\nErrors in batch {}:", batch_num + 1);
+            eprintln!("\nErrors in batch {}:", actual_batch_num + 1);
             for (i, err) in result.errors.iter().take(3).enumerate() {
                 eprintln!("  {}: {}", i + 1, err);
             }
@@ -144,6 +218,9 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
             }
         }
     }
+
+    // Final checkpoint save
+    checkpoint_mgr.save(&checkpoint_name, &checkpoint_state)?;
 
     println!("\n\nIndexing Complete");
     println!("=================");
@@ -155,6 +232,14 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
 
     let count = store.count().await?;
     println!("Total documents in index: {count}");
+
+    // Delete checkpoint on successful completion
+    if total_failed == 0 {
+        checkpoint_mgr.delete(&checkpoint_name)?;
+        println!("Checkpoint deleted (all documents indexed successfully)");
+    } else {
+        println!("Checkpoint saved for retry of failed documents");
+    }
 
     Ok(())
 }
