@@ -175,9 +175,9 @@ pub async fn ontology(
         // Regex-based extraction with error handling
         let result = match std::panic::catch_unwind(|| extractor.extract_from_article(article)) {
             Ok(mut result) => {
-                // Merge LLM Said relations if available
-                if let Some(said_relations) = llm_results.get(&article.id()) {
-                    for said in said_relations {
+                // Merge LLM Said relations if available (remove to free memory after use)
+                if let Some(said_relations) = llm_results.remove(&article.id()) {
+                    for said in &said_relations {
                         let relation = baram::ontology::ExtractedRelation {
                             subject: said.speaker.clone(),
                             subject_type: baram::ontology::EntityType::Person,
