@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Newspaper,
   TrendingUp,
@@ -10,6 +11,7 @@ import {
   Users,
   Building2,
   MapPin,
+  AlertCircle,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -26,6 +28,7 @@ import {
   Cell,
 } from 'recharts';
 import { StatCard } from '../components/StatCard';
+import { getCrawlStats, getSystemStatus } from '../api/client';
 import type { CrawlStats, SystemStatus } from '../types';
 
 interface OntologyStats {
@@ -36,7 +39,7 @@ interface OntologyStats {
   relation_types: Record<string, number>;
 }
 
-// Demo data (replace with API calls)
+// Fallback demo data (used when API is not available)
 const demoStats: CrawlStats = {
   total_articles: 33934,
   today_articles: 342,
@@ -86,10 +89,39 @@ const entityTypeLabels: Record<string, string> = {
 };
 
 export function Dashboard() {
-  const [stats] = useState<CrawlStats>(demoStats);
-  const [status] = useState<SystemStatus>(demoStatus);
+  const queryClient = useQueryClient();
   const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch crawl stats with React Query
+  const {
+    data: apiStats,
+    error: statsError,
+    isFetching: statsFetching,
+  } = useQuery({
+    queryKey: ['crawlStats'],
+    queryFn: getCrawlStats,
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 1,
+  });
+
+  // Fetch system status with React Query
+  const {
+    data: apiStatus,
+    error: statusError,
+    isFetching: statusFetching,
+  } = useQuery({
+    queryKey: ['systemStatus'],
+    queryFn: getSystemStatus,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+    retry: 1,
+  });
+
+  // Use API data or fallback to demo data
+  const stats = apiStats ?? demoStats;
+  const status = apiStatus ?? demoStatus;
+  const isRefreshing = statsFetching || statusFetching;
+  const hasError = statsError || statusError;
 
   // Load ontology stats
   useEffect(() => {
@@ -134,11 +166,10 @@ export function Dashboard() {
         }))
     : [];
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+  const handleRefresh = () => {
+    // Invalidate queries to trigger refetch
+    queryClient.invalidateQueries({ queryKey: ['crawlStats'] });
+    queryClient.invalidateQueries({ queryKey: ['systemStatus'] });
   };
 
   const formatUptime = (seconds: number) => {
@@ -159,6 +190,19 @@ export function Dashboard() {
 
   return (
     <div className="p-6">
+      {/* Error Banner */}
+      {hasError && (
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+          <div>
+            <p className="text-yellow-800 font-medium">API 연결 불가</p>
+            <p className="text-yellow-600 text-sm">
+              서버에 연결할 수 없습니다. 데모 데이터를 표시합니다.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -168,9 +212,10 @@ export function Dashboard() {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
+          aria-label="새로고침"
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
           새로고침
         </button>
       </div>
