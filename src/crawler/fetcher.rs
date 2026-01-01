@@ -25,6 +25,13 @@ use reqwest::{
 use std::num::NonZeroU32;
 use std::time::Duration;
 
+/// Default rate limit (1 request per second) when an invalid rate is provided.
+/// Uses `new_unchecked` as a compile-time constant since the value 1 is always valid.
+const DEFAULT_RATE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(1) };
+
+/// Fallback User-Agent string used when random selection fails
+const FALLBACK_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 /// Pool of realistic User-Agent strings for rotation
 const USER_AGENTS: &[&str] = &[
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -90,7 +97,7 @@ impl NaverFetcher {
             .cookie_store(true)
             .build()?;
 
-        let rate = NonZeroU32::new(requests_per_second).unwrap_or(NonZeroU32::new(1).unwrap());
+        let rate = NonZeroU32::new(requests_per_second).unwrap_or(DEFAULT_RATE);
         let quota = Quota::per_second(rate);
         let rate_limiter = RateLimiter::direct(quota);
 
@@ -426,7 +433,7 @@ impl NaverFetcher {
     /// Get a random user agent from the pool
     fn random_user_agent(&self) -> &'static str {
         let mut rng = rand::thread_rng();
-        USER_AGENTS.choose(&mut rng).unwrap_or(&USER_AGENTS[0])
+        USER_AGENTS.choose(&mut rng).copied().unwrap_or(FALLBACK_USER_AGENT)
     }
 }
 
