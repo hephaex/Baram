@@ -893,16 +893,18 @@ impl RelationType {
 lazy_static! {
     /// Person name extraction patterns
     static ref PERSON_PATTERNS: Vec<Regex> = vec![
-        // Korean names with title: 홍길동 대표, 김철수 장관
-        Regex::new(r"([가-힣]{2,4})\s*(대표|장관|의원|대통령|총리|사장|회장|원장|교수|박사|기자|작가|배우|감독|위원장|총재|검사|판사|변호사|국장|실장|수석|비서관)").expect("Invalid person pattern 1"),
+        // Korean names with title: 홍길동 대표, 김철수 장관, 김민수 최고위원
+        Regex::new(r"([가-힣]{2,4})\s*(대표|장관|의원|대통령|총리|사장|회장|원장|교수|박사|기자|작가|배우|감독|위원장|총재|검사|판사|변호사|국장|실장|수석|비서관|최고위원|사무총장|대변인|정책위의장|원내대표|당대표|비대위원장)").expect("Invalid person pattern 1"),
         // Names with quotes: '홍길동' or "홍길동"
         Regex::new(r#"['"]([가-힣]{2,4})['"]"#).expect("Invalid person pattern 2"),
         // Names followed by 씨, 님
         Regex::new(r"([가-힣]{2,4})\s*(씨|님)").expect("Invalid person pattern 3"),
         // Names with particles followed by speaking verbs: 홍길동은 말했다
         Regex::new(r"([가-힣]{2,4})[은는이가]\s*(?:말했다|밝혔다|전했다|설명했다|강조했다|주장했다|언급했다|덧붙였다|지적했다|발표했다)").expect("Invalid person pattern 4"),
-        // Names with title and particles: 홍길동 장관이
-        Regex::new(r"([가-힣]{2,4})\s+(?:대표|장관|의원|대통령|총리|사장|회장|원장)[이가은는]").expect("Invalid person pattern 5"),
+        // Names with title and particles: 홍길동 장관이, 김민수 최고위원이
+        Regex::new(r"([가-힣]{2,4})\s+(?:대표|장관|의원|대통령|총리|사장|회장|원장|최고위원|사무총장|대변인|정책위의장|원내대표)[이가은는]").expect("Invalid person pattern 5"),
+        // Political party member format: 국민의힘 홍길동 의원 (ORG NAME TITLE)
+        Regex::new(r"(?:국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s+([가-힣]{2,4})\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").expect("Invalid person pattern 6"),
     ];
 
     /// Organization extraction patterns
@@ -940,15 +942,21 @@ lazy_static! {
         let mut patterns = HashMap::new();
 
         // WorksFor - 소속 관계: 인물 → 기관
+        // Note: Pattern 2 captures ORG first, NAME second - extractor handles swap for WorksFor
         patterns.insert(RelationType::WorksFor, vec![
-            // "홍길동 삼성전자 사장" / "홍길동 OO그룹 회장"
-            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:전자|그룹|물산|건설|은행|증권|보험|생명|화학|중공업|에너지|제약|바이오))\s*(?:회장|사장|대표|부회장|부사장|전무|상무|이사|대표이사)").expect("Invalid WorksFor pattern"),
+            // Pattern 1: "홍길동 삼성전자 사장" (NAME ORG TITLE)
+            Regex::new(r"([가-힣]{2,4})\s+([가-힣A-Za-z]+(?:전자|그룹|물산|건설|은행|증권|보험|생명|화학|중공업|에너지|제약|바이오))\s*(?:회장|사장|대표|부회장|부사장|전무|상무|이사|대표이사)").expect("Invalid WorksFor pattern 1"),
+            // Pattern 2: "삼성전자 홍길동 사장" (ORG NAME TITLE) - will be swapped in extractor
+            Regex::new(r"([가-힣A-Za-z]+(?:전자|그룹|물산|건설|은행|증권|보험|생명|화학|중공업|에너지|제약|바이오))\s+([가-힣]{2,4})\s*(?:회장|사장|대표|부회장|부사장|전무|상무|이사|대표이사)").expect("Invalid WorksFor pattern 2"),
         ]);
 
         // MemberOf - 정당 소속: 인물 → 정당
+        // Note: Pattern 2 captures ORG first, NAME second - extractor handles swap for MemberOf
         patterns.insert(RelationType::MemberOf, vec![
-            // "홍길동 국민의힘 의원" / "홍길동 더불어민주당 대표"
-            Regex::new(r"([가-힣]{2,4})\s+(국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").expect("Invalid MemberOf pattern"),
+            // Pattern 1: "홍길동 국민의힘 의원" (NAME ORG TITLE)
+            Regex::new(r"([가-힣]{2,4})\s+(국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").expect("Invalid MemberOf pattern 1"),
+            // Pattern 2: "국민의힘 홍길동 의원" (ORG NAME TITLE) - will be swapped in extractor
+            Regex::new(r"(국민의힘|더불어민주당|민주당|조국혁신당|개혁신당|정의당|진보당|새로운미래)\s+([가-힣]{2,4})\s*(?:의원|대표|원내대표|비대위원장|당대표|최고위원|사무총장|대변인|정책위의장)").expect("Invalid MemberOf pattern 2"),
         ]);
 
         // Leads - 리더십 관계: 인물 → 직함/기관
@@ -1649,8 +1657,28 @@ impl RelationExtractor {
                     if let Some(cap) = pattern.captures(sentence) {
                         // Extract subject and object from capture groups
                         if cap.len() >= 2 {
-                            let subject = cap.get(1).map(|m| m.as_str()).unwrap_or("");
-                            let object = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+                            let mut subject = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                            let mut object = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+
+                            // For MemberOf/WorksFor: if subject is org and object is person name, swap them
+                            // This handles "국민의힘 김민수 의원" or "삼성전자 홍길동 사장" format where ORG comes before NAME
+                            let object_is_korean_name = object.chars().count() >= 2 && object.chars().count() <= 4
+                                && object.chars().all(|c| ('\u{AC00}'..='\u{D7AF}').contains(&c));
+
+                            if *relation_type == RelationType::MemberOf {
+                                let parties = ["국민의힘", "더불어민주당", "민주당", "조국혁신당", "개혁신당", "정의당", "진보당", "새로운미래"];
+                                if parties.contains(&subject) && object_is_korean_name {
+                                    std::mem::swap(&mut subject, &mut object);
+                                    tracing::debug!("MemberOf: swapped subject/object for ORG-NAME pattern");
+                                }
+                            } else if *relation_type == RelationType::WorksFor {
+                                let org_suffixes = ["전자", "그룹", "물산", "건설", "은행", "증권", "보험", "생명", "화학", "중공업", "에너지", "제약", "바이오"];
+                                let subject_is_org = org_suffixes.iter().any(|s| subject.ends_with(s));
+                                if subject_is_org && object_is_korean_name {
+                                    std::mem::swap(&mut subject, &mut object);
+                                    tracing::debug!("WorksFor: swapped subject/object for ORG-NAME pattern");
+                                }
+                            }
 
                             // Validate entities exist in our entity list (bidirectional partial matching)
                             let subject_valid = entity_texts.contains(subject)
