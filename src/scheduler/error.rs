@@ -1,90 +1,59 @@
 //! Error types for the scheduler module
+//!
+//! Uses `thiserror` for standardized error type definitions consistent
+//! with the rest of the codebase.
 
-use std::fmt;
+use thiserror::Error;
 
 /// Result type for scheduler operations
 pub type SchedulerResult<T> = Result<T, SchedulerError>;
 
 /// Scheduler-specific errors
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum SchedulerError {
     /// Invalid instance ID provided
+    #[error("Invalid instance ID '{id}'. Valid options: {}", valid_options.join(", "))]
     InvalidInstance {
         id: String,
         valid_options: Vec<String>,
     },
 
     /// Invalid hour value (must be 0-23)
+    #[error("Invalid hour '{hour}'. Must be 0-23")]
     InvalidHour { hour: u32 },
 
     /// Schedule not found for date
+    #[error("Schedule not found for date: {date}")]
     ScheduleNotFound { date: String },
 
     /// Failed to generate schedule
+    #[error("Failed to generate schedule: {reason}")]
     ScheduleGenerationFailed { reason: String },
 
     /// Trigger configuration error
+    #[error("Trigger config error in '{field}': {reason}")]
     TriggerConfigError { field: String, reason: String },
 
     /// Trigger execution error
+    #[error("Trigger execution failed: {reason}")]
     TriggerExecutionFailed { reason: String },
 
     /// Cache error
+    #[error("Cache error during '{operation}': {reason}")]
     CacheError { operation: String, reason: String },
 
     /// Serialization/deserialization error
+    #[error("Serialization error: {reason}")]
     SerializationError { reason: String },
 
     /// IO error
+    #[error("IO error during '{operation}': {reason}")]
     IoError { operation: String, reason: String },
 
     /// Invalid timezone
+    #[error("Invalid timezone: {tz}")]
     InvalidTimezone { tz: String },
 }
-
-impl fmt::Display for SchedulerError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidInstance { id, valid_options } => {
-                write!(
-                    f,
-                    "Invalid instance ID '{}'. Valid options: {}",
-                    id,
-                    valid_options.join(", ")
-                )
-            }
-            Self::InvalidHour { hour } => {
-                write!(f, "Invalid hour '{hour}'. Must be 0-23")
-            }
-            Self::ScheduleNotFound { date } => {
-                write!(f, "Schedule not found for date: {date}")
-            }
-            Self::ScheduleGenerationFailed { reason } => {
-                write!(f, "Failed to generate schedule: {reason}")
-            }
-            Self::TriggerConfigError { field, reason } => {
-                write!(f, "Trigger config error in '{field}': {reason}")
-            }
-            Self::TriggerExecutionFailed { reason } => {
-                write!(f, "Trigger execution failed: {reason}")
-            }
-            Self::CacheError { operation, reason } => {
-                write!(f, "Cache error during '{operation}': {reason}")
-            }
-            Self::SerializationError { reason } => {
-                write!(f, "Serialization error: {reason}")
-            }
-            Self::IoError { operation, reason } => {
-                write!(f, "IO error during '{operation}': {reason}")
-            }
-            Self::InvalidTimezone { tz } => {
-                write!(f, "Invalid timezone: {tz}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for SchedulerError {}
 
 impl From<serde_json::Error> for SchedulerError {
     fn from(err: serde_json::Error) -> Self {
