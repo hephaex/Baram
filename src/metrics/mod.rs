@@ -3,6 +3,13 @@
 //! This module provides metrics tracking for:
 //! - Coordinator: instance registration, heartbeats, errors
 //! - Distributed Crawler: crawl duration, articles per category, dedup hits, pipeline stats
+//!
+//! # Error Handling
+//!
+//! Metric registration uses `unwrap_or_else` with detailed logging for better
+//! error context during initialization. Registration failures indicate serious
+//! configuration issues (e.g., duplicate metric names) and will cause controlled
+//! panic with descriptive error messages.
 
 use lazy_static::lazy_static;
 use prometheus::{
@@ -11,6 +18,21 @@ use prometheus::{
     TextEncoder,
 };
 
+/// Helper function to handle metric registration errors with proper logging.
+/// Panics with a descriptive message including the metric name and error details.
+fn handle_registration_error<T>(
+    result: Result<T, prometheus::Error>,
+    metric_name: &str,
+) -> T {
+    result.unwrap_or_else(|e| {
+        panic!(
+            "Failed to register Prometheus metric '{}': {}. \
+             This typically indicates a duplicate metric name or invalid configuration.",
+            metric_name, e
+        )
+    })
+}
+
 // ============================================================================
 // Coordinator Metrics
 // ============================================================================
@@ -18,59 +40,83 @@ use prometheus::{
 lazy_static! {
     // Instance metrics
     pub static ref COORDINATOR_REGISTERED_INSTANCES: Gauge =
-        register_gauge!(
-            "baram_coordinator_registered_instances",
-            "Number of registered crawler instances"
-        ).expect("Failed to register baram_coordinator_registered_instances metric");
+        handle_registration_error(
+            register_gauge!(
+                "baram_coordinator_registered_instances",
+                "Number of registered crawler instances"
+            ),
+            "baram_coordinator_registered_instances"
+        );
 
     pub static ref COORDINATOR_ONLINE_INSTANCES: Gauge =
-        register_gauge!(
-            "baram_coordinator_online_instances",
-            "Number of currently online crawler instances"
-        ).expect("Failed to register baram_coordinator_online_instances metric");
+        handle_registration_error(
+            register_gauge!(
+                "baram_coordinator_online_instances",
+                "Number of currently online crawler instances"
+            ),
+            "baram_coordinator_online_instances"
+        );
 
     pub static ref COORDINATOR_TOTAL_HEARTBEATS: Counter =
-        register_counter!(
-            "baram_coordinator_total_heartbeats",
-            "Total number of heartbeats received"
-        ).expect("Failed to register baram_coordinator_total_heartbeats metric");
+        handle_registration_error(
+            register_counter!(
+                "baram_coordinator_total_heartbeats",
+                "Total number of heartbeats received"
+            ),
+            "baram_coordinator_total_heartbeats"
+        );
 
     pub static ref COORDINATOR_HEARTBEAT_ERRORS: Counter =
-        register_counter!(
-            "baram_coordinator_heartbeat_errors_total",
-            "Total number of heartbeat errors"
-        ).expect("Failed to register baram_coordinator_heartbeat_errors_total metric");
+        handle_registration_error(
+            register_counter!(
+                "baram_coordinator_heartbeat_errors_total",
+                "Total number of heartbeat errors"
+            ),
+            "baram_coordinator_heartbeat_errors_total"
+        );
 
     // Article tracking from all instances
     pub static ref COORDINATOR_ARTICLES_CRAWLED: CounterVec =
-        register_counter_vec!(
-            "baram_coordinator_articles_crawled_total",
-            "Total articles crawled by instance",
-            &["instance"]
-        ).expect("Failed to register baram_coordinator_articles_crawled_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_coordinator_articles_crawled_total",
+                "Total articles crawled by instance",
+                &["instance"]
+            ),
+            "baram_coordinator_articles_crawled_total"
+        );
 
     pub static ref COORDINATOR_ERRORS: CounterVec =
-        register_counter_vec!(
-            "baram_coordinator_errors_total",
-            "Total errors reported by instance",
-            &["instance"]
-        ).expect("Failed to register baram_coordinator_errors_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_coordinator_errors_total",
+                "Total errors reported by instance",
+                &["instance"]
+            ),
+            "baram_coordinator_errors_total"
+        );
 
     // API request metrics
     pub static ref COORDINATOR_API_REQUESTS: CounterVec =
-        register_counter_vec!(
-            "baram_coordinator_api_requests_total",
-            "Total API requests by endpoint and status",
-            &["endpoint", "status"]
-        ).expect("Failed to register baram_coordinator_api_requests_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_coordinator_api_requests_total",
+                "Total API requests by endpoint and status",
+                &["endpoint", "status"]
+            ),
+            "baram_coordinator_api_requests_total"
+        );
 
     pub static ref COORDINATOR_API_DURATION: HistogramVec =
-        register_histogram_vec!(
-            "baram_coordinator_api_request_duration_seconds",
-            "API request duration in seconds",
-            &["endpoint"],
-            vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
-        ).expect("Failed to register baram_coordinator_api_request_duration_seconds metric");
+        handle_registration_error(
+            register_histogram_vec!(
+                "baram_coordinator_api_request_duration_seconds",
+                "API request duration in seconds",
+                &["endpoint"],
+                vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+            ),
+            "baram_coordinator_api_request_duration_seconds"
+        );
 }
 
 // ============================================================================
@@ -80,85 +126,118 @@ lazy_static! {
 lazy_static! {
     // Crawl execution metrics
     pub static ref CRAWLER_CRAWL_DURATION: HistogramVec =
-        register_histogram_vec!(
-            "baram_crawler_crawl_duration_seconds",
-            "Time spent crawling a category in seconds",
-            &["instance", "category"],
-            vec![1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0]
-        ).expect("Failed to register baram_crawler_crawl_duration_seconds metric");
+        handle_registration_error(
+            register_histogram_vec!(
+                "baram_crawler_crawl_duration_seconds",
+                "Time spent crawling a category in seconds",
+                &["instance", "category"],
+                vec![1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0, 3600.0]
+            ),
+            "baram_crawler_crawl_duration_seconds"
+        );
 
     pub static ref CRAWLER_ARTICLES_PER_CATEGORY: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_articles_per_category_total",
-            "Total articles crawled per category",
-            &["instance", "category"]
-        ).expect("Failed to register baram_crawler_articles_per_category_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_articles_per_category_total",
+                "Total articles crawled per category",
+                &["instance", "category"]
+            ),
+            "baram_crawler_articles_per_category_total"
+        );
 
     pub static ref CRAWLER_DEDUP_HITS: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_dedup_hits_total",
-            "Total deduplication cache hits (URLs already crawled)",
-            &["instance"]
-        ).expect("Failed to register baram_crawler_dedup_hits_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_dedup_hits_total",
+                "Total deduplication cache hits (URLs already crawled)",
+                &["instance"]
+            ),
+            "baram_crawler_dedup_hits_total"
+        );
 
     pub static ref CRAWLER_DEDUP_MISSES: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_dedup_misses_total",
-            "Total deduplication cache misses (new URLs)",
-            &["instance"]
-        ).expect("Failed to register baram_crawler_dedup_misses_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_dedup_misses_total",
+                "Total deduplication cache misses (new URLs)",
+                &["instance"]
+            ),
+            "baram_crawler_dedup_misses_total"
+        );
 
     // Pipeline metrics
     pub static ref CRAWLER_PIPELINE_SUCCESS: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_pipeline_success_total",
-            "Total successful pipeline executions",
-            &["instance", "category"]
-        ).expect("Failed to register baram_crawler_pipeline_success_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_pipeline_success_total",
+                "Total successful pipeline executions",
+                &["instance", "category"]
+            ),
+            "baram_crawler_pipeline_success_total"
+        );
 
     pub static ref CRAWLER_PIPELINE_FAILURE: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_pipeline_failure_total",
-            "Total failed pipeline executions",
-            &["instance", "category"]
-        ).expect("Failed to register baram_crawler_pipeline_failure_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_pipeline_failure_total",
+                "Total failed pipeline executions",
+                &["instance", "category"]
+            ),
+            "baram_crawler_pipeline_failure_total"
+        );
 
     pub static ref CRAWLER_PIPELINE_SKIPPED: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_pipeline_skipped_total",
-            "Total skipped articles in pipeline",
-            &["instance", "category"]
-        ).expect("Failed to register baram_crawler_pipeline_skipped_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_pipeline_skipped_total",
+                "Total skipped articles in pipeline",
+                &["instance", "category"]
+            ),
+            "baram_crawler_pipeline_skipped_total"
+        );
 
     // Slot execution metrics
     pub static ref CRAWLER_SLOT_EXECUTIONS: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_slot_executions_total",
-            "Total slot executions",
-            &["instance", "hour"]
-        ).expect("Failed to register baram_crawler_slot_executions_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_slot_executions_total",
+                "Total slot executions",
+                &["instance", "hour"]
+            ),
+            "baram_crawler_slot_executions_total"
+        );
 
     pub static ref CRAWLER_SLOT_ERRORS: CounterVec =
-        register_counter_vec!(
-            "baram_crawler_slot_errors_total",
-            "Total slot execution errors",
-            &["instance", "hour"]
-        ).expect("Failed to register baram_crawler_slot_errors_total metric");
+        handle_registration_error(
+            register_counter_vec!(
+                "baram_crawler_slot_errors_total",
+                "Total slot execution errors",
+                &["instance", "hour"]
+            ),
+            "baram_crawler_slot_errors_total"
+        );
 
     // Current state gauges
     pub static ref CRAWLER_CURRENT_HOUR: GaugeVec =
-        register_gauge_vec!(
-            "baram_crawler_current_hour",
-            "Current hour being crawled (0-23)",
-            &["instance"]
-        ).expect("Failed to register baram_crawler_current_hour metric");
+        handle_registration_error(
+            register_gauge_vec!(
+                "baram_crawler_current_hour",
+                "Current hour being crawled (0-23)",
+                &["instance"]
+            ),
+            "baram_crawler_current_hour"
+        );
 
     pub static ref CRAWLER_IS_CRAWLING: GaugeVec =
-        register_gauge_vec!(
-            "baram_crawler_is_crawling",
-            "Whether the crawler is currently crawling (1 = yes, 0 = no)",
-            &["instance"]
-        ).expect("Failed to register baram_crawler_is_crawling metric");
+        handle_registration_error(
+            register_gauge_vec!(
+                "baram_crawler_is_crawling",
+                "Whether the crawler is currently crawling (1 = yes, 0 = no)",
+                &["instance"]
+            ),
+            "baram_crawler_is_crawling"
+        );
 }
 
 // ============================================================================
