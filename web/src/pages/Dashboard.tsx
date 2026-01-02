@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Newspaper,
   TrendingUp,
@@ -109,45 +109,59 @@ export function Dashboard() {
   }, []);
 
   // Category data available but not displayed in current layout
-  const _categoryData = Object.entries(stats.categories).map(([name, value]) => ({
-    name,
-    value,
-  }));
+  const _categoryData = useMemo(
+    () =>
+      Object.entries(stats.categories).map(([name, value]) => ({
+        name,
+        value,
+      })),
+    [stats.categories]
+  );
   void _categoryData; // Suppress unused variable warning
 
-  const entityTypeData = ontologyStats
-    ? Object.entries(ontologyStats.entity_types)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([name, value]) => ({
-          name: entityTypeLabels[name] || name,
-          value,
-        }))
-    : [];
+  // Memoize expensive data transformations
+  const entityTypeData = useMemo(
+    () =>
+      ontologyStats
+        ? Object.entries(ontologyStats.entity_types)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, value]) => ({
+              name: entityTypeLabels[name] || name,
+              value,
+            }))
+        : [],
+    [ontologyStats]
+  );
 
-  const relationTypeData = ontologyStats
-    ? Object.entries(ontologyStats.relation_types)
-        .sort(([, a], [, b]) => b - a)
-        .map(([name, value]) => ({
-          name,
-          value,
-        }))
-    : [];
+  const relationTypeData = useMemo(
+    () =>
+      ontologyStats
+        ? Object.entries(ontologyStats.relation_types)
+            .sort(([, a], [, b]) => b - a)
+            .map(([name, value]) => ({
+              name,
+              value,
+            }))
+        : [],
+    [ontologyStats]
+  );
 
-  const handleRefresh = async () => {
+  // Memoize callback functions to prevent unnecessary re-renders
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setIsRefreshing(false);
-  };
+  }, []);
 
-  const formatUptime = (seconds: number) => {
+  const formatUptime = useCallback((seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     return `${days}일 ${hours}시간`;
-  };
+  }, []);
 
-  const formatNumber = (num: number) => {
+  const formatNumber = useCallback((num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
     }
@@ -155,7 +169,7 @@ export function Dashboard() {
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
-  };
+  }, []);
 
   return (
     <div className="p-6">
