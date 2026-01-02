@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Search } from './pages/Search';
 import { Ontology } from './pages/Ontology';
 import { Settings } from './pages/Settings';
+import { ErrorBoundary, PageErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,20 +16,64 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Root error handler for logging errors to console or external service
+ */
+const handleError = (error: Error, errorInfo: React.ErrorInfo) => {
+  // Log to console in development
+  console.error('Application error:', error);
+  console.error('Component stack:', errorInfo.componentStack);
+
+  // TODO: Send to error tracking service (e.g., Sentry) in production
+  // if (process.env.NODE_ENV === 'production') {
+  //   errorTrackingService.captureException(error, { extra: errorInfo });
+  // }
+};
+
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="search" element={<Search />} />
-            <Route path="ontology" element={<Ontology />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary onError={handleError}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route
+                index
+                element={
+                  <PageErrorBoundary>
+                    <Dashboard />
+                  </PageErrorBoundary>
+                }
+              />
+              <Route
+                path="search"
+                element={
+                  <PageErrorBoundary>
+                    <Search />
+                  </PageErrorBoundary>
+                }
+              />
+              <Route
+                path="ontology"
+                element={
+                  <PageErrorBoundary>
+                    <Ontology />
+                  </PageErrorBoundary>
+                }
+              />
+              <Route
+                path="settings"
+                element={
+                  <PageErrorBoundary>
+                    <Settings />
+                  </PageErrorBoundary>
+                }
+              />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
