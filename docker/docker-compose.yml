@@ -6,6 +6,16 @@ services:
     image: pgvector/pgvector:pg18
     container_name: baram-postgres
     restart: unless-stopped
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-baram}
       POSTGRES_USER: ${POSTGRES_USER:-baram}
@@ -73,6 +83,16 @@ services:
     image: opensearchproject/opensearch:3.4.0
     container_name: baram-opensearch
     restart: unless-stopped
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - SYS_RESOURCE  # Required for memlock
     environment:
       - cluster.name=baram-cluster
       - node.name=baram-node-1
@@ -123,6 +143,17 @@ services:
     image: redis:7-alpine
     container_name: baram-redis
     restart: unless-stopped
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     command:
       - "redis-server"
       - "--appendonly"
@@ -174,6 +205,15 @@ services:
     image: opensearchproject/opensearch-dashboards:3.4.0
     container_name: baram-dashboards
     restart: unless-stopped
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
     profiles:
       - development
     environment:
@@ -202,6 +242,15 @@ services:
     image: dpage/pgadmin4:latest
     container_name: baram-pgadmin
     restart: unless-stopped
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
     profiles:
       - development
     environment:
