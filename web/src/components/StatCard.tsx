@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
@@ -8,13 +9,24 @@ interface StatCardProps {
   changeType?: 'positive' | 'negative' | 'neutral';
 }
 
-export function StatCard({ title, value, icon: Icon, change, changeType = 'neutral' }: StatCardProps) {
-  const changeColors = {
-    positive: 'text-green-600',
-    negative: 'text-red-600',
-    neutral: 'text-gray-500',
-  };
+// Moved outside component to prevent recreation on each render
+const changeColors = {
+  positive: 'text-green-600',
+  negative: 'text-red-600',
+  neutral: 'text-gray-500',
+} as const;
 
+/**
+ * StatCard component for displaying statistics with an icon and optional change indicator.
+ * Memoized to prevent unnecessary re-renders when parent component updates.
+ */
+export const StatCard = memo(function StatCard({
+  title,
+  value,
+  icon: Icon,
+  change,
+  changeType = 'neutral',
+}: StatCardProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex items-center justify-between">
@@ -33,4 +45,4 @@ export function StatCard({ title, value, icon: Icon, change, changeType = 'neutr
       </div>
     </div>
   );
-}
+});

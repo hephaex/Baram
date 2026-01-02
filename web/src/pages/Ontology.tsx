@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Search, ZoomIn, ZoomOut, Maximize2, Filter, Loader2, RefreshCw } from 'lucide-react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
@@ -88,22 +88,26 @@ export function Ontology() {
     loadData();
   }, []);
 
-  // Filter triples based on search and relation type
-  const filteredTriples = data?.triples.filter((triple) => {
-    const matchesSearch =
-      !searchQuery ||
-      triple.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      triple.object.toLowerCase().includes(searchQuery.toLowerCase());
+  // Memoize filtered triples based on search and relation type
+  const filteredTriples = useMemo(
+    () =>
+      data?.triples.filter((triple) => {
+        const matchesSearch =
+          !searchQuery ||
+          triple.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          triple.object.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesRelationType =
-      selectedRelationType === 'all' ||
-      triple.predicate_label === selectedRelationType;
+        const matchesRelationType =
+          selectedRelationType === 'all' ||
+          triple.predicate_label === selectedRelationType;
 
-    return matchesSearch && matchesRelationType;
-  }).slice(0, displayLimit) || [];
+        return matchesSearch && matchesRelationType;
+      }).slice(0, displayLimit) || [],
+    [data?.triples, searchQuery, selectedRelationType, displayLimit]
+  );
 
-  // Convert triples to cytoscape elements
-  const elements = (() => {
+  // Memoize cytoscape elements conversion
+  const elements = useMemo(() => {
     const nodes = new Map<string, { id: string; label: string; type: string }>();
     const edges: { source: string; target: string; label: string }[] = [];
 
@@ -142,68 +146,73 @@ export function Ontology() {
         data: { ...edge, id: `edge_${i}` },
       })),
     ];
-  })();
+  }, [filteredTriples]);
 
-  const cyStylesheet = [
-    {
-      selector: 'node',
-      style: {
-        'background-color': (ele: any) =>
-          nodeColors[ele.data('type')] || nodeColors.default,
-        label: 'data(label)',
-        'text-valign': 'bottom',
-        'text-halign': 'center',
-        'font-size': '10px',
-        'text-margin-y': 5,
-        width: 40,
-        height: 40,
+  // Memoize stylesheet (constant, doesn't change)
+  const cyStylesheet = useMemo(
+    () => [
+      {
+        selector: 'node',
+        style: {
+          'background-color': (ele: any) =>
+            nodeColors[ele.data('type')] || nodeColors.default,
+          label: 'data(label)',
+          'text-valign': 'bottom',
+          'text-halign': 'center',
+          'font-size': '10px',
+          'text-margin-y': 5,
+          width: 40,
+          height: 40,
+        },
       },
-    },
-    {
-      selector: 'edge',
-      style: {
-        width: 2,
-        'line-color': '#94a3b8',
-        'target-arrow-color': '#94a3b8',
-        'target-arrow-shape': 'triangle',
-        'curve-style': 'bezier',
-        label: 'data(label)',
-        'font-size': '8px',
-        'text-rotation': 'autorotate',
+      {
+        selector: 'edge',
+        style: {
+          width: 2,
+          'line-color': '#94a3b8',
+          'target-arrow-color': '#94a3b8',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          label: 'data(label)',
+          'font-size': '8px',
+          'text-rotation': 'autorotate',
+        },
       },
-    },
-    {
-      selector: 'node:selected',
-      style: {
-        'border-width': 3,
-        'border-color': '#1e40af',
+      {
+        selector: 'node:selected',
+        style: {
+          'border-width': 3,
+          'border-color': '#1e40af',
+        },
       },
-    },
-  ];
+    ],
+    []
+  );
 
-  const handleZoomIn = () => {
+  // Memoize event handlers
+  const handleZoomIn = useCallback(() => {
     if (cyRef.current) {
       cyRef.current.zoom(cyRef.current.zoom() * 1.2);
     }
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (cyRef.current) {
       cyRef.current.zoom(cyRef.current.zoom() * 0.8);
     }
-  };
+  }, []);
 
-  const handleFit = () => {
+  const handleFit = useCallback(() => {
     if (cyRef.current) {
       cyRef.current.fit();
     }
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     if (cyRef.current) {
       cyRef.current.layout({ name: 'cose', animate: true } as any).run();
     }
-  };
+  }, []);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Search as SearchIcon, Filter, Calendar } from 'lucide-react';
 import type { Article, SearchParams } from '../types';
 
@@ -57,33 +57,38 @@ export function Search() {
   const [showFilters, setShowFilters] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSearching(true);
+  // Memoize search handler
+  const handleSearch = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSearching(true);
 
-    // Simulate search
-    await new Promise((resolve) => setTimeout(resolve, 500));
+      // Simulate search
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // Filter demo data
-    const filtered = demoArticles.filter((article) => {
-      const matchesQuery =
-        !query ||
-        article.title.toLowerCase().includes(query.toLowerCase()) ||
-        article.content.toLowerCase().includes(query.toLowerCase());
+      // Filter demo data
+      const filtered = demoArticles.filter((article) => {
+        const matchesQuery =
+          !query ||
+          article.title.toLowerCase().includes(query.toLowerCase()) ||
+          article.content.toLowerCase().includes(query.toLowerCase());
 
-      const matchesCategory =
-        !filters.category ||
-        filters.category === '전체' ||
-        article.category === filters.category;
+        const matchesCategory =
+          !filters.category ||
+          filters.category === '전체' ||
+          article.category === filters.category;
 
-      return matchesQuery && matchesCategory;
-    });
+        return matchesQuery && matchesCategory;
+      });
 
-    setResults(filtered);
-    setIsSearching(false);
-  };
+      setResults(filtered);
+      setIsSearching(false);
+    },
+    [query, filters.category]
+  );
 
-  const highlightText = (text: string, highlight: string) => {
+  // Memoize text highlighting function
+  const highlightText = useCallback((text: string, highlight: string) => {
     if (!highlight) return text;
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
     return parts.map((part, i) =>
@@ -95,9 +100,10 @@ export function Search() {
         part
       )
     );
-  };
+  }, []);
 
-  const formatDate = (dateStr: string) => {
+  // Memoize date formatter
+  const formatDate = useCallback((dateStr: string) => {
     return new Date(dateStr).toLocaleString('ko-KR', {
       year: 'numeric',
       month: 'long',
@@ -105,7 +111,7 @@ export function Search() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
+  }, []);
 
   return (
     <div className="p-6">
