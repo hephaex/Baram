@@ -1,7 +1,11 @@
 //! Coordinator configuration
 
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
+/// Default bind address (0.0.0.0:8080)
+const DEFAULT_BIND_ADDR: SocketAddr =
+    SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 8080));
 
 /// Configuration for the Coordinator server
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,9 +36,12 @@ pub struct CoordinatorConfig {
 }
 
 impl Default for CoordinatorConfig {
+    /// Create default configuration.
+    ///
+    /// This is guaranteed not to panic - uses const DEFAULT_BIND_ADDR.
     fn default() -> Self {
         Self {
-            bind_address: "0.0.0.0:8080".parse().unwrap(),
+            bind_address: DEFAULT_BIND_ADDR,
             heartbeat_timeout_secs: 90,
             heartbeat_interval_secs: 30,
             enable_cors: true,

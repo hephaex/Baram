@@ -724,11 +724,11 @@ impl LlmClient {
     }
 }
 
-impl Default for LlmClient {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default LlmClient")
-    }
-}
+// NOTE: LlmClient intentionally does NOT implement Default trait.
+// Creating an LlmClient requires network resources and can fail.
+// Use LlmClient::new() or LlmClient::with_config() instead.
+// This follows Rust API Guidelines C-CTOR:
+// https://rust-lang.github.io/api-guidelines/interoperability.html#c-ctor
 
 #[cfg(test)]
 mod tests {
