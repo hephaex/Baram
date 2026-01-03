@@ -1,3 +1,8 @@
+/**
+ * StatCard component with React.memo optimization
+ * Issue #35: React.memo/useMemo performance optimization
+ */
+import { memo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
@@ -8,7 +13,13 @@ interface StatCardProps {
   changeType?: 'positive' | 'negative' | 'neutral';
 }
 
-export function StatCard({ title, value, icon: Icon, change, changeType = 'neutral' }: StatCardProps) {
+export const StatCard = memo(function StatCard({
+  title,
+  value,
+  icon: Icon,
+  change,
+  changeType = 'neutral',
+}: StatCardProps) {
   const changeColors = {
     positive: 'text-green-600',
     negative: 'text-red-600',
@@ -33,4 +44,4 @@ export function StatCard({ title, value, icon: Icon, change, changeType = 'neutr
       </div>
     </div>
   );
-}
+});
