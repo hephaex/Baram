@@ -144,20 +144,20 @@ impl ArticleParser {
     /// Parse general news format
     fn parse_general(&self, document: &Html, url: &str) -> Result<ParsedArticle, ParseError> {
         let title = self
-            .extract_first_match(document, &self.general.title)
+            .extract_first_match(document, self.general.title.as_ref())
             .ok_or(ParseError::TitleNotFound)?;
 
         let content = self
-            .extract_content_text(document, &self.general.content)
+            .extract_content_text(document, self.general.content.as_ref())
             .ok_or(ParseError::ContentNotFound)?;
 
         if !has_content(&content) {
             return Err(ParseError::ContentNotFound);
         }
 
-        let date = self.extract_first_match(document, &self.general.date);
-        let publisher = self.extract_publisher(document, &self.general.publisher);
-        let author = self.extract_first_match(document, &self.general.author);
+        let date = self.extract_first_match(document, self.general.date.as_ref());
+        let publisher = self.extract_publisher(document, self.general.publisher.as_ref());
+        let author = self.extract_first_match(document, self.general.author.as_ref());
 
         Ok(ParsedArticle {
             title: sanitize_text(&title),
@@ -174,20 +174,20 @@ impl ArticleParser {
     /// Parse entertainment news format (desktop and mobile)
     fn parse_entertainment(&self, document: &Html, url: &str) -> Result<ParsedArticle, ParseError> {
         let title = self
-            .extract_first_match(document, &self.entertainment.title)
+            .extract_first_match(document, self.entertainment.title.as_ref())
             .ok_or(ParseError::TitleNotFound)?;
 
         let content = self
-            .extract_content_text(document, &self.entertainment.content)
+            .extract_content_text(document, self.entertainment.content.as_ref())
             .ok_or(ParseError::ContentNotFound)?;
 
         if !has_content(&content) {
             return Err(ParseError::ContentNotFound);
         }
 
-        let date = self.extract_first_match(document, &self.entertainment.date);
-        let publisher = self.extract_first_match(document, &self.entertainment.publisher);
-        let author = self.extract_first_match(document, &self.entertainment.author);
+        let date = self.extract_first_match(document, self.entertainment.date.as_ref());
+        let publisher = self.extract_first_match(document, self.entertainment.publisher.as_ref());
+        let author = self.extract_first_match(document, self.entertainment.author.as_ref());
 
         Ok(ParsedArticle {
             title: sanitize_text(&title),
@@ -205,20 +205,20 @@ impl ArticleParser {
     /// Parse sports news format (desktop and mobile)
     fn parse_sports(&self, document: &Html, url: &str) -> Result<ParsedArticle, ParseError> {
         let title = self
-            .extract_first_match(document, &self.sports.title)
+            .extract_first_match(document, self.sports.title.as_ref())
             .ok_or(ParseError::TitleNotFound)?;
 
         let content = self
-            .extract_content_text(document, &self.sports.content)
+            .extract_content_text(document, self.sports.content.as_ref())
             .ok_or(ParseError::ContentNotFound)?;
 
         if !has_content(&content) {
             return Err(ParseError::ContentNotFound);
         }
 
-        let date = self.extract_first_match(document, &self.sports.date);
-        let publisher = self.extract_first_match(document, &self.sports.publisher);
-        let author = self.extract_first_match(document, &self.sports.author);
+        let date = self.extract_first_match(document, self.sports.date.as_ref());
+        let publisher = self.extract_first_match(document, self.sports.publisher.as_ref());
+        let author = self.extract_first_match(document, self.sports.author.as_ref());
 
         Ok(ParsedArticle {
             title: sanitize_text(&title),
@@ -236,12 +236,12 @@ impl ArticleParser {
     /// Parse card/photo news format
     fn parse_card(&self, document: &Html, url: &str) -> Result<ParsedArticle, ParseError> {
         let title = self
-            .extract_first_match(document, &self.card.title)
+            .extract_first_match(document, self.card.title.as_ref())
             .ok_or(ParseError::TitleNotFound)?;
 
         // For card news, try content areas first, then captions
         let content = self
-            .extract_content_text(document, &self.card.content)
+            .extract_content_text(document, self.card.content.as_ref())
             .or_else(|| self.extract_captions(document))
             .ok_or(ParseError::ContentNotFound)?;
 

@@ -450,8 +450,7 @@ impl AsyncDedupChecker {
 
         let query = if let Some(limit) = limit {
             format!(
-                "SELECT url, content_hash FROM crawl_dedup WHERE success = TRUE ORDER BY crawled_at DESC LIMIT {}",
-                limit
+                "SELECT url, content_hash FROM crawl_dedup WHERE success = TRUE ORDER BY crawled_at DESC LIMIT {limit}"
             )
         } else {
             "SELECT url, content_hash FROM crawl_dedup WHERE success = TRUE".to_string()
