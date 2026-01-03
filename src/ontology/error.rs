@@ -146,7 +146,7 @@ pub enum OntologyError {
     // I/O Errors
     // =========================================================================
     /// File I/O error
-    #[error("I/O error during {operation}{}: {source}", path.as_ref().map(|p| format!(" on {:?}", p)).unwrap_or_default())]
+    #[error("I/O error during {operation}{}: {source}", path.as_ref().map(|p| format!(" on {p:?}")).unwrap_or_default())]
     IoError {
         operation: String,
         path: Option<PathBuf>,
@@ -158,7 +158,7 @@ pub enum OntologyError {
     // Generic Errors
     // =========================================================================
     /// Generic error with context
-    #[error("{context}{}", source.as_ref().map(|s| format!(": {}", s)).unwrap_or_default())]
+    #[error("{context}{}", source.as_ref().map(|s| format!(": {s}")).unwrap_or_default())]
     Other {
         context: String,
         #[source]

@@ -371,7 +371,7 @@ impl Database {
         // Use URL hash as fallback ID if empty (for failures)
         let effective_id = if id.is_empty() {
             let hash = Sha256::digest(url.as_bytes());
-            format!("fail_{:x}", hash).chars().take(40).collect::<String>()
+            format!("fail_{hash:x}").chars().take(40).collect::<String>()
         } else {
             id.to_string()
         };
