@@ -344,7 +344,7 @@ async fn heartbeat(
             (StatusCode::OK, Json(ApiResponse::success(response))).into_response()
         }
         Err(e) => {
-            metrics::COORDINATOR_HEARTBEAT_ERRORS.inc();
+            metrics::record_heartbeat_error();
 
             let duration = start.elapsed().as_secs_f64();
             metrics::record_api_request("/api/instances/heartbeat", 400, duration);
