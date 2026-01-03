@@ -18,12 +18,14 @@ pub enum LlmBackend {
     Ollama,
 }
 
-impl LlmBackend {
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+impl std::str::FromStr for LlmBackend {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
             "ollama" => LlmBackend::Ollama,
             _ => LlmBackend::Vllm,
-        }
+        })
     }
 }
 
@@ -74,7 +76,8 @@ impl LlmConfig {
     /// Create config from environment variables
     pub fn from_env() -> Self {
         let backend = std::env::var("LLM_BACKEND")
-            .map(|s| LlmBackend::from_str(&s))
+            .ok()
+            .and_then(|s| s.parse().ok())
             .unwrap_or(LlmBackend::Vllm);
 
         let (default_endpoint, default_model) = match backend {
@@ -348,7 +351,7 @@ impl LlmClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            anyhow::bail!("vLLM request failed: {} - {}", status, body);
+            anyhow::bail!("vLLM request failed: {status} - {body}");
         }
 
         let openai_response: OpenAIResponse = response
@@ -388,7 +391,7 @@ impl LlmClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            anyhow::bail!("Ollama request failed: {} - {}", status, body);
+            anyhow::bail!("Ollama request failed: {status} - {body}");
         }
 
         let ollama_response: OllamaResponse = response
@@ -405,7 +408,7 @@ impl LlmClient {
         for (i, article) in articles.iter().enumerate() {
             let content = if article.content.chars().count() > 1000 {
                 let truncated: String = article.content.chars().take(1000).collect();
-                format!("{}...", truncated)
+                format!("{truncated}...")
             } else {
                 article.content.clone()
             };
@@ -542,7 +545,7 @@ impl LlmClient {
         let blocks: Vec<&str> = text.split(r#""article_id""#).collect();
 
         for (i, block) in blocks.iter().enumerate().skip(1) {
-            let block_with_key = format!(r#""article_id"{}"#, block);
+            let block_with_key = format!(r#""article_id"{block}"#);
             if let Some(cap) = article_id_re.captures(&block_with_key) {
                 if let Some(id) = cap.get(1) {
                     let article_id = id.as_str().to_string();
@@ -681,7 +684,7 @@ impl LlmClient {
         let evidence_re = regex::Regex::new(r#""evidence"\s*:\s*"([^"]*(?:[^"\\]|\\.)*)""#).unwrap();
 
         for block in text.split(r#"{"#).skip(1) {
-            let block = format!("{{{}", block);
+            let block = format!("{{{block}");
 
             let speaker = speaker_re
                 .captures(&block)
@@ -744,9 +747,9 @@ mod tests {
 
     #[test]
     fn test_backend_from_str() {
-        assert_eq!(LlmBackend::from_str("ollama"), LlmBackend::Ollama);
-        assert_eq!(LlmBackend::from_str("vllm"), LlmBackend::Vllm);
-        assert_eq!(LlmBackend::from_str("openai"), LlmBackend::Vllm);
+        assert_eq!("ollama".parse::<LlmBackend>().unwrap(), LlmBackend::Ollama);
+        assert_eq!("vllm".parse::<LlmBackend>().unwrap(), LlmBackend::Vllm);
+        assert_eq!("openai".parse::<LlmBackend>().unwrap(), LlmBackend::Vllm);
     }
 
     #[test]
