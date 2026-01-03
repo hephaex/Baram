@@ -505,20 +505,28 @@ impl Database {
     }
 
     /// Filter URLs that haven't been crawled
+    ///
+    /// Uses batch query with `WHERE url IN (...)` for O(1) database round trips
+    /// instead of O(n) individual queries.
     pub fn filter_uncrawled(&self, urls: &[String]) -> Result<Vec<String>> {
         let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
+        if urls.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // SQLite has a limit on number of parameters (default 999)
+        // Process in chunks to avoid hitting this limit
+        const CHUNK_SIZE: usize = 500;
+
         let mut uncrawled = Vec::new();
 
-        for url in urls {
-            let exists: bool = conn.query_row(
-                "SELECT EXISTS(SELECT 1 FROM crawl_metadata WHERE url = ?1 AND status = 'success')",
-                params![url],
-                |row| row.get(0),
-            )?;
-
-            if !exists {
-                uncrawled.push(url.clone());
+        for chunk in urls.chunks(CHUNK_SIZE) {
+            let crawled_in_chunk = self.get_crawled_urls_batch(conn, chunk)?;
+            for url in chunk {
+                if !crawled_in_chunk.contains(url) {
+                    uncrawled.push(url.clone());
+                }
             }
         }
 
@@ -526,22 +534,64 @@ impl Database {
     }
 
     /// Batch check URLs for crawl status
+    ///
+    /// Uses batch query with `WHERE url IN (...)` for O(1) database round trips
+    /// instead of O(n) individual queries.
     pub fn batch_check_urls(&self, urls: &[String]) -> Result<Vec<(String, bool)>> {
         let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
 
+        if urls.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // SQLite has a limit on number of parameters (default 999)
+        // Process in chunks to avoid hitting this limit
+        const CHUNK_SIZE: usize = 500;
+
         let mut results = Vec::with_capacity(urls.len());
 
-        for url in urls {
-            let exists: bool = conn.query_row(
-                "SELECT EXISTS(SELECT 1 FROM crawl_metadata WHERE url = ?1 AND status = 'success')",
-                params![url],
-                |row| row.get(0),
-            )?;
-
-            results.push((url.clone(), exists));
+        for chunk in urls.chunks(CHUNK_SIZE) {
+            let crawled_in_chunk = self.get_crawled_urls_batch(conn, chunk)?;
+            for url in chunk {
+                results.push((url.clone(), crawled_in_chunk.contains(url)));
+            }
         }
 
         Ok(results)
+    }
+
+    /// Get set of URLs that have been successfully crawled from a batch
+    ///
+    /// Internal helper for batch URL operations. Uses a single query with
+    /// `WHERE url IN (...)` clause for efficiency.
+    fn get_crawled_urls_batch(
+        &self,
+        conn: &Connection,
+        urls: &[String],
+    ) -> Result<std::collections::HashSet<String>> {
+        use std::collections::HashSet;
+
+        if urls.is_empty() {
+            return Ok(HashSet::new());
+        }
+
+        // Build parameterized query: WHERE url IN (?, ?, ?, ...)
+        let placeholders: String = urls.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!(
+            "SELECT url FROM crawl_metadata WHERE url IN ({placeholders}) AND status = 'success'"
+        );
+
+        let mut stmt = conn.prepare(&query).context("Failed to prepare batch query")?;
+
+        // Bind all URL parameters
+        let params: Vec<&dyn rusqlite::ToSql> = urls.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+
+        let crawled_urls: HashSet<String> = stmt
+            .query_map(params.as_slice(), |row| row.get::<_, String>(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(crawled_urls)
     }
 }
 
@@ -727,5 +777,80 @@ mod tests {
             skipped: 0,
         };
         assert!((stats.success_rate() - 0.95).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_filter_uncrawled_empty() {
+        let (db, _temp) = create_test_db();
+
+        let urls: Vec<String> = vec![];
+        let uncrawled = db.filter_uncrawled(&urls).unwrap();
+        assert!(uncrawled.is_empty());
+    }
+
+    #[test]
+    fn test_batch_check_urls() {
+        let (db, _temp) = create_test_db();
+
+        // Mark some URLs as crawled
+        db.mark_url_crawled("1", "url1", "h1", CrawlStatus::Success, None)
+            .unwrap();
+        db.mark_url_crawled("2", "url3", "h3", CrawlStatus::Success, None)
+            .unwrap();
+
+        let urls = vec![
+            "url1".to_string(),
+            "url2".to_string(),
+            "url3".to_string(),
+            "url4".to_string(),
+        ];
+
+        let results = db.batch_check_urls(&urls).unwrap();
+
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0], ("url1".to_string(), true));
+        assert_eq!(results[1], ("url2".to_string(), false));
+        assert_eq!(results[2], ("url3".to_string(), true));
+        assert_eq!(results[3], ("url4".to_string(), false));
+    }
+
+    #[test]
+    fn test_batch_check_urls_empty() {
+        let (db, _temp) = create_test_db();
+
+        let urls: Vec<String> = vec![];
+        let results = db.batch_check_urls(&urls).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_filter_uncrawled_large_batch() {
+        let (db, _temp) = create_test_db();
+
+        // Create a large batch of URLs (more than CHUNK_SIZE of 500)
+        let urls: Vec<String> = (0..600).map(|i| format!("url{}", i)).collect();
+
+        // Mark every 10th URL as crawled
+        for i in (0..600).step_by(10) {
+            db.mark_url_crawled(
+                &format!("{}", i),
+                &format!("url{}", i),
+                &format!("h{}", i),
+                CrawlStatus::Success,
+                None,
+            )
+            .unwrap();
+        }
+
+        let uncrawled = db.filter_uncrawled(&urls).unwrap();
+
+        // Should have 540 uncrawled (600 - 60 crawled)
+        assert_eq!(uncrawled.len(), 540);
+
+        // Verify some specific ones
+        assert!(!uncrawled.contains(&"url0".to_string())); // crawled
+        assert!(uncrawled.contains(&"url1".to_string())); // not crawled
+        assert!(!uncrawled.contains(&"url10".to_string())); // crawled
+        assert!(uncrawled.contains(&"url11".to_string())); // not crawled
     }
 }
