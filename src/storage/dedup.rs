@@ -191,7 +191,7 @@ impl DedupCheckResult {
 // In-Memory Cache with Bloom Filter
 // ============================================================================
 
-/// In-memory cache for fast deduplication using Bloom Filter
+/// In-memory cache for fast deduplication using Bloom Filter with rotation
 ///
 /// This cache uses a Bloom filter for O(1) duplicate checking with minimal memory usage.
 /// The Bloom filter may have false positives (saying a URL exists when it doesn't),
@@ -199,12 +199,27 @@ impl DedupCheckResult {
 ///
 /// When the Bloom filter indicates a URL might exist, we fall back to the database
 /// for confirmation.
+///
+/// ## Rotation Strategy
+///
+/// To prevent unbounded memory growth in long-running processes, this cache implements
+/// a double-buffer rotation strategy:
+/// 1. When the current bloom filter reaches 80% capacity, create a new one
+/// 2. Keep the previous filter to avoid false negatives during rotation
+/// 3. Check both current and previous filters when querying
+/// 4. Discard the previous filter when a new rotation occurs
 struct DedupCache {
-    /// Bloom filter for URLs (primary fast check)
+    /// Current bloom filter for URLs (primary fast check)
     url_bloom: Bloom<String>,
 
-    /// Bloom filter for content hashes
+    /// Previous bloom filter for URLs (kept during rotation for accuracy)
+    prev_url_bloom: Option<Bloom<String>>,
+
+    /// Current bloom filter for content hashes
     hash_bloom: Bloom<String>,
+
+    /// Previous bloom filter for hashes (kept during rotation)
+    prev_hash_bloom: Option<Bloom<String>>,
 
     /// Fallback HashSet for definitive positive checks (limited size)
     /// Used to reduce false positives from bloom filter
@@ -218,6 +233,18 @@ struct DedupCache {
 
     /// Expected number of items for bloom filter
     bloom_capacity: usize,
+
+    /// Count of items added to current URL bloom filter
+    url_bloom_count: usize,
+
+    /// Count of items added to current hash bloom filter
+    hash_bloom_count: usize,
+
+    /// Threshold for rotation (percentage of capacity, e.g., 0.8 = 80%)
+    rotation_threshold: f64,
+
+    /// Number of rotations performed
+    rotation_count: usize,
 }
 
 impl DedupCache {
@@ -229,6 +256,15 @@ impl DedupCache {
     /// The bloom filter is sized for 10x the max_size to handle larger datasets
     /// with a false positive rate of 1%.
     fn new(max_size: usize) -> Self {
+        Self::with_rotation_threshold(max_size, 0.8)
+    }
+
+    /// Create a new cache with custom rotation threshold
+    ///
+    /// # Arguments
+    /// * `max_size` - Maximum size for the fallback HashSet cache
+    /// * `rotation_threshold` - Trigger rotation when bloom filter reaches this percentage (0.0-1.0)
+    fn with_rotation_threshold(max_size: usize, rotation_threshold: f64) -> Self {
         // Bloom filter capacity: 10x the cache size to handle more URLs
         let bloom_capacity = max_size * 10;
 
@@ -238,12 +274,55 @@ impl DedupCache {
 
         Self {
             url_bloom,
+            prev_url_bloom: None,
             hash_bloom,
+            prev_hash_bloom: None,
             url_cache: HashSet::with_capacity(max_size),
             hash_cache: HashSet::with_capacity(max_size / 2),
             max_cache_size: max_size,
             bloom_capacity,
+            url_bloom_count: 0,
+            hash_bloom_count: 0,
+            rotation_threshold: rotation_threshold.clamp(0.5, 0.95),
+            rotation_count: 0,
         }
+    }
+
+    /// Check if URL bloom filter needs rotation
+    fn should_rotate_url_bloom(&self) -> bool {
+        let threshold = (self.bloom_capacity as f64 * self.rotation_threshold) as usize;
+        self.url_bloom_count >= threshold
+    }
+
+    /// Check if hash bloom filter needs rotation
+    fn should_rotate_hash_bloom(&self) -> bool {
+        let threshold = ((self.bloom_capacity / 2) as f64 * self.rotation_threshold) as usize;
+        self.hash_bloom_count >= threshold
+    }
+
+    /// Rotate URL bloom filter
+    fn rotate_url_bloom(&mut self) {
+        // Move current to previous, create new current
+        self.prev_url_bloom = Some(std::mem::replace(
+            &mut self.url_bloom,
+            Bloom::new_for_fp_rate(self.bloom_capacity, 0.01),
+        ));
+        self.url_bloom_count = 0;
+        self.rotation_count += 1;
+
+        tracing::info!(
+            "Rotated URL bloom filter (rotation #{})",
+            self.rotation_count
+        );
+    }
+
+    /// Rotate hash bloom filter
+    fn rotate_hash_bloom(&mut self) {
+        self.prev_hash_bloom = Some(std::mem::replace(
+            &mut self.hash_bloom,
+            Bloom::new_for_fp_rate(self.bloom_capacity / 2, 0.01),
+        ));
+        self.hash_bloom_count = 0;
     }
 
     /// Check if URL might exist (bloom filter check)
@@ -251,10 +330,20 @@ impl DedupCache {
     /// Returns true if the URL definitely or possibly exists.
     /// Returns false if the URL definitely does not exist.
     fn contains_url(&self, url: &str) -> bool {
-        // First check bloom filter (fast, may have false positives)
-        if !self.url_bloom.check(&url.to_string()) {
-            // Definitely not in cache
-            return false;
+        let url_string = url.to_string();
+
+        // Check current bloom filter
+        if !self.url_bloom.check(&url_string) {
+            // Also check previous bloom filter if it exists
+            if let Some(ref prev) = self.prev_url_bloom {
+                if !prev.check(&url_string) {
+                    // Definitely not in either bloom filter
+                    return false;
+                }
+            } else {
+                // No previous bloom filter and not in current
+                return false;
+            }
         }
 
         // Bloom filter says it might exist, check HashSet for confirmation
@@ -263,16 +352,30 @@ impl DedupCache {
 
     /// Check if content hash might exist
     fn contains_hash(&self, hash: &str) -> bool {
-        if !self.hash_bloom.check(&hash.to_string()) {
-            return false;
+        let hash_string = hash.to_string();
+
+        if !self.hash_bloom.check(&hash_string) {
+            if let Some(ref prev) = self.prev_hash_bloom {
+                if !prev.check(&hash_string) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
         }
         self.hash_cache.contains(hash)
     }
 
     /// Insert URL into both bloom filter and cache
     fn insert_url(&mut self, url: String) {
-        // Always add to bloom filter (never evicted)
+        // Check if rotation is needed before inserting
+        if self.should_rotate_url_bloom() {
+            self.rotate_url_bloom();
+        }
+
+        // Add to bloom filter and increment count
         self.url_bloom.set(&url);
+        self.url_bloom_count += 1;
 
         // Add to HashSet with eviction policy
         if self.url_cache.len() >= self.max_cache_size {
@@ -292,7 +395,13 @@ impl DedupCache {
 
     /// Insert content hash into both bloom filter and cache
     fn insert_hash(&mut self, hash: String) {
+        // Check if rotation is needed
+        if self.should_rotate_hash_bloom() {
+            self.rotate_hash_bloom();
+        }
+
         self.hash_bloom.set(&hash);
+        self.hash_bloom_count += 1;
 
         if self.hash_cache.len() >= self.max_cache_size / 2 {
             let to_remove: Vec<_> = self
@@ -311,8 +420,18 @@ impl DedupCache {
     /// Check bloom filter directly (for quick rejection without DB query)
     ///
     /// This is useful for filtering out definitely new URLs before batch DB queries.
+    /// Checks both current and previous bloom filters.
     fn bloom_check_url(&self, url: &str) -> bool {
-        self.url_bloom.check(&url.to_string())
+        let url_string = url.to_string();
+        // Check current first
+        if self.url_bloom.check(&url_string) {
+            return true;
+        }
+        // Fall back to previous if it exists
+        if let Some(ref prev) = self.prev_url_bloom {
+            return prev.check(&url_string);
+        }
+        false
     }
 
     /// Get bloom filter statistics
@@ -322,16 +441,32 @@ impl DedupCache {
             hash_capacity: self.bloom_capacity / 2,
             cache_size: self.url_cache.len(),
             hash_cache_size: self.hash_cache.len(),
+            url_bloom_count: self.url_bloom_count,
+            hash_bloom_count: self.hash_bloom_count,
+            rotation_count: self.rotation_count,
+            has_previous_bloom: self.prev_url_bloom.is_some(),
         }
     }
 
     /// Clear all caches (bloom filters and HashSets)
     fn clear(&mut self) {
-        // Note: Bloom filters cannot be cleared, only recreated
+        // Recreate bloom filters
         self.url_bloom = Bloom::new_for_fp_rate(self.bloom_capacity, 0.01);
         self.hash_bloom = Bloom::new_for_fp_rate(self.bloom_capacity / 2, 0.01);
+        self.prev_url_bloom = None;
+        self.prev_hash_bloom = None;
         self.url_cache.clear();
         self.hash_cache.clear();
+        self.url_bloom_count = 0;
+        self.hash_bloom_count = 0;
+    }
+
+    /// Force rotation of bloom filters
+    ///
+    /// This can be called periodically (e.g., daily) to ensure memory doesn't grow unbounded
+    pub fn force_rotation(&mut self) {
+        self.rotate_url_bloom();
+        self.rotate_hash_bloom();
     }
 }
 
@@ -349,6 +484,18 @@ pub struct BloomStats {
 
     /// Current HashSet cache size for hashes
     pub hash_cache_size: usize,
+
+    /// Number of items in current URL bloom filter
+    pub url_bloom_count: usize,
+
+    /// Number of items in current hash bloom filter
+    pub hash_bloom_count: usize,
+
+    /// Number of rotations performed
+    pub rotation_count: usize,
+
+    /// Whether there's a previous bloom filter (double-buffer active)
+    pub has_previous_bloom: bool,
 }
 
 // ============================================================================
@@ -832,6 +979,16 @@ impl AsyncDedupChecker {
         cache.clear();
     }
 
+    /// Force rotation of bloom filters
+    ///
+    /// This can be called periodically (e.g., daily) to ensure memory doesn't grow unbounded.
+    /// The rotation uses a double-buffer strategy to maintain accuracy during the transition.
+    pub async fn force_bloom_rotation(&self) {
+        let mut cache = self.cache.write().await;
+        cache.force_rotation();
+        tracing::info!("Forced bloom filter rotation");
+    }
+
     /// Get pool status
     pub fn pool_status(&self) -> PoolStatus {
         let status = self.pool.status();
@@ -1079,6 +1236,82 @@ mod tests {
         assert_eq!(stats.hash_capacity, 5000);
         assert_eq!(stats.cache_size, 0);
         assert_eq!(stats.hash_cache_size, 0);
+        assert_eq!(stats.url_bloom_count, 0);
+        assert_eq!(stats.hash_bloom_count, 0);
+        assert_eq!(stats.rotation_count, 0);
+        assert!(!stats.has_previous_bloom);
+    }
+
+    #[test]
+    fn test_bloom_rotation_threshold() {
+        // Create cache with small capacity for testing (10 items, 80% threshold = 8)
+        let mut cache = DedupCache::with_rotation_threshold(1, 0.8);
+        // bloom_capacity = 1 * 10 = 10, threshold = 10 * 0.8 = 8
+
+        // Insert 8 URLs (0-7) - count reaches threshold but rotation happens on next insert
+        for i in 0..8 {
+            cache.insert_url(format!("url{i}"));
+        }
+        assert_eq!(cache.url_bloom_count, 8);
+        assert_eq!(cache.rotation_count, 0);
+        assert!(cache.prev_url_bloom.is_none());
+
+        // Insert 9th URL - should trigger rotation (count was >= 8 threshold)
+        cache.insert_url("url8".to_string());
+        assert_eq!(cache.rotation_count, 1);
+        assert!(cache.prev_url_bloom.is_some());
+        // After rotation, count resets to 1 (the newly inserted url8)
+        assert_eq!(cache.url_bloom_count, 1);
+
+        // Previous URLs should still be found via double-buffer
+        assert!(cache.bloom_check_url("url0"));
+        assert!(cache.bloom_check_url("url8"));
+    }
+
+    #[test]
+    fn test_bloom_double_buffer() {
+        let mut cache = DedupCache::with_rotation_threshold(1, 0.5);
+        // bloom_capacity = 10, threshold = 5
+
+        // Insert some URLs
+        for i in 0..4 {
+            cache.insert_url(format!("old_url{i}"));
+        }
+
+        // Force rotation
+        cache.force_rotation();
+        assert_eq!(cache.rotation_count, 1);
+
+        // Old URLs should still be checkable via previous bloom
+        assert!(cache.bloom_check_url("old_url0"));
+        assert!(cache.bloom_check_url("old_url3"));
+
+        // New URLs should be in current bloom
+        cache.insert_url("new_url".to_string());
+        assert!(cache.bloom_check_url("new_url"));
+
+        // Second rotation - old bloom is discarded
+        cache.force_rotation();
+        assert_eq!(cache.rotation_count, 2);
+
+        // Very old URLs may no longer be found (previous bloom replaced)
+        // But new_url should be in prev_url_bloom now
+        assert!(cache.bloom_check_url("new_url"));
+    }
+
+    #[test]
+    fn test_bloom_stats_after_rotation() {
+        let mut cache = DedupCache::with_rotation_threshold(1, 0.8);
+
+        for i in 0..10 {
+            cache.insert_url(format!("url{i}"));
+        }
+
+        let stats = cache.bloom_stats();
+        assert!(stats.rotation_count >= 1);
+        assert!(stats.has_previous_bloom);
+        // After rotation, count should be low (only items added after rotation)
+        assert!(stats.url_bloom_count < 10);
     }
 
     #[test]
