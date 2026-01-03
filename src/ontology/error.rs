@@ -3,54 +3,66 @@
 //! This module provides specific error variants for different failure modes
 //! in the ontology extraction pipeline, enabling better error handling
 //! and more informative error messages.
+//!
+//! Uses `thiserror` for standardized error type definitions consistent
+//! with the rest of the codebase.
 
-use std::fmt;
 use std::io;
 use std::path::PathBuf;
+use thiserror::Error;
 
 /// Result type alias for ontology operations
 pub type OntologyResult<T> = Result<T, OntologyError>;
 
 /// Custom error type for ontology operations
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum OntologyError {
     // =========================================================================
     // Extraction Errors
     // =========================================================================
     /// Failed to extract entities from article
+    #[error("Extraction failed for article '{article_id}': {reason}")]
     ExtractionFailed { article_id: String, reason: String },
 
     /// No entities found in article
+    #[error("No entities found in article '{article_id}'")]
     NoEntitiesFound { article_id: String },
 
     /// Entity type is invalid or unknown
+    #[error("Invalid entity type: '{value}'")]
     InvalidEntityType { value: String },
 
     /// Relation type is invalid or unknown
+    #[error("Invalid relation type: '{value}'")]
     InvalidRelationType { value: String },
 
     // =========================================================================
     // LLM Response Errors
     // =========================================================================
     /// Failed to parse LLM response
+    #[error("Failed to parse LLM response: {reason}")]
     LlmResponseParseFailed {
         reason: String,
         raw_response: Option<String>,
     },
 
     /// LLM response is empty or malformed
+    #[error("LLM response is empty or malformed")]
     EmptyLlmResponse,
 
     /// LLM returned invalid JSON
+    #[error("Invalid JSON in LLM response: {reason}")]
     InvalidLlmJson { reason: String },
 
     // =========================================================================
     // Verification Errors
     // =========================================================================
     /// Hallucination detected - entity not in source
+    #[error("Hallucination detected for '{entity}': {reason}")]
     HallucinationDetected { entity: String, reason: String },
 
     /// Verification failed for relation
+    #[error("Verification failed for relation ({subject} {predicate} {object}): {reason}")]
     VerificationFailed {
         subject: String,
         predicate: String,
@@ -62,51 +74,64 @@ pub enum OntologyError {
     // Linking Errors
     // =========================================================================
     /// Entity linking failed
+    #[error("Entity linking failed for '{entity}': {reason}")]
     LinkingFailed { entity: String, reason: String },
 
     /// Knowledge base entry not found
+    #[error("Knowledge base entry not found: '{canonical_name}'")]
     KnowledgeBaseEntryNotFound { canonical_name: String },
 
     /// Invalid knowledge base format
+    #[error("Invalid knowledge base: {reason}")]
     InvalidKnowledgeBase { reason: String },
 
     // =========================================================================
     // Storage Errors
     // =========================================================================
     /// Storage directory does not exist
+    #[error("Storage directory not found: {path:?}")]
     StorageDirectoryNotFound { path: PathBuf },
 
     /// Failed to create storage directory
+    #[error("Failed to create storage directory {path:?}: {reason}")]
     StorageDirectoryCreationFailed { path: PathBuf, reason: String },
 
     /// Failed to save triples to storage
+    #[error("Failed to save article '{article_id}': {reason}")]
     StorageSaveFailed { article_id: String, reason: String },
 
     /// Failed to load triples from storage
+    #[error("Failed to load article '{article_id}': {reason}")]
     StorageLoadFailed { article_id: String, reason: String },
 
     /// Article not found in storage
+    #[error("Article not found in storage: '{article_id}'")]
     ArticleNotFound { article_id: String },
 
     /// Index is corrupted or invalid
+    #[error("Storage index corrupted: {reason}")]
     IndexCorrupted { reason: String },
 
     // =========================================================================
     // Serialization Errors
     // =========================================================================
     /// JSON serialization failed
+    #[error("JSON serialization failed: {reason}")]
     JsonSerializationFailed { reason: String },
 
     /// JSON deserialization failed
+    #[error("JSON deserialization failed: {reason}")]
     JsonDeserializationFailed { reason: String },
 
     /// RDF/Turtle export failed
+    #[error("RDF export to {format} failed: {reason}")]
     RdfExportFailed { format: String, reason: String },
 
     // =========================================================================
     // Configuration Errors
     // =========================================================================
     /// Invalid configuration value
+    #[error("Invalid config '{field}' = '{value}': {reason}")]
     InvalidConfig {
         field: String,
         value: String,
@@ -114,15 +139,18 @@ pub enum OntologyError {
     },
 
     /// Missing required configuration
+    #[error("Missing required config: '{field}'")]
     MissingConfig { field: String },
 
     // =========================================================================
     // I/O Errors
     // =========================================================================
     /// File I/O error
+    #[error("I/O error during {operation}{}: {source}", path.as_ref().map(|p| format!(" on {:?}", p)).unwrap_or_default())]
     IoError {
         operation: String,
         path: Option<PathBuf>,
+        #[source]
         source: io::Error,
     },
 
@@ -130,145 +158,12 @@ pub enum OntologyError {
     // Generic Errors
     // =========================================================================
     /// Generic error with context
+    #[error("{context}{}", source.as_ref().map(|s| format!(": {}", s)).unwrap_or_default())]
     Other {
         context: String,
+        #[source]
         source: Option<Box<dyn std::error::Error + Send + Sync>>,
     },
-}
-
-impl fmt::Display for OntologyError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            // Extraction
-            OntologyError::ExtractionFailed { article_id, reason } => {
-                write!(f, "Extraction failed for article '{article_id}': {reason}")
-            }
-            OntologyError::NoEntitiesFound { article_id } => {
-                write!(f, "No entities found in article '{article_id}'")
-            }
-            OntologyError::InvalidEntityType { value } => {
-                write!(f, "Invalid entity type: '{value}'")
-            }
-            OntologyError::InvalidRelationType { value } => {
-                write!(f, "Invalid relation type: '{value}'")
-            }
-
-            // LLM Response
-            OntologyError::LlmResponseParseFailed { reason, .. } => {
-                write!(f, "Failed to parse LLM response: {reason}")
-            }
-            OntologyError::EmptyLlmResponse => {
-                write!(f, "LLM response is empty or malformed")
-            }
-            OntologyError::InvalidLlmJson { reason } => {
-                write!(f, "Invalid JSON in LLM response: {reason}")
-            }
-
-            // Verification
-            OntologyError::HallucinationDetected { entity, reason } => {
-                write!(f, "Hallucination detected for '{entity}': {reason}")
-            }
-            OntologyError::VerificationFailed {
-                subject,
-                predicate,
-                object,
-                reason,
-            } => {
-                write!(
-                    f,
-                    "Verification failed for relation ({subject} {predicate} {object}): {reason}"
-                )
-            }
-
-            // Linking
-            OntologyError::LinkingFailed { entity, reason } => {
-                write!(f, "Entity linking failed for '{entity}': {reason}")
-            }
-            OntologyError::KnowledgeBaseEntryNotFound { canonical_name } => {
-                write!(f, "Knowledge base entry not found: '{canonical_name}'")
-            }
-            OntologyError::InvalidKnowledgeBase { reason } => {
-                write!(f, "Invalid knowledge base: {reason}")
-            }
-
-            // Storage
-            OntologyError::StorageDirectoryNotFound { path } => {
-                write!(f, "Storage directory not found: {path:?}")
-            }
-            OntologyError::StorageDirectoryCreationFailed { path, reason } => {
-                write!(f, "Failed to create storage directory {path:?}: {reason}")
-            }
-            OntologyError::StorageSaveFailed { article_id, reason } => {
-                write!(f, "Failed to save article '{article_id}': {reason}")
-            }
-            OntologyError::StorageLoadFailed { article_id, reason } => {
-                write!(f, "Failed to load article '{article_id}': {reason}")
-            }
-            OntologyError::ArticleNotFound { article_id } => {
-                write!(f, "Article not found in storage: '{article_id}'")
-            }
-            OntologyError::IndexCorrupted { reason } => {
-                write!(f, "Storage index corrupted: {reason}")
-            }
-
-            // Serialization
-            OntologyError::JsonSerializationFailed { reason } => {
-                write!(f, "JSON serialization failed: {reason}")
-            }
-            OntologyError::JsonDeserializationFailed { reason } => {
-                write!(f, "JSON deserialization failed: {reason}")
-            }
-            OntologyError::RdfExportFailed { format, reason } => {
-                write!(f, "RDF export to {format} failed: {reason}")
-            }
-
-            // Configuration
-            OntologyError::InvalidConfig {
-                field,
-                value,
-                reason,
-            } => {
-                write!(f, "Invalid config '{field}' = '{value}': {reason}")
-            }
-            OntologyError::MissingConfig { field } => {
-                write!(f, "Missing required config: '{field}'")
-            }
-
-            // I/O
-            OntologyError::IoError {
-                operation,
-                path,
-                source,
-            } => {
-                if let Some(p) = path {
-                    write!(f, "I/O error during {operation} on {p:?}: {source}")
-                } else {
-                    write!(f, "I/O error during {operation}: {source}")
-                }
-            }
-
-            // Generic
-            OntologyError::Other { context, source } => {
-                if let Some(src) = source {
-                    write!(f, "{context}: {src}")
-                } else {
-                    write!(f, "{context}")
-                }
-            }
-        }
-    }
-}
-
-impl std::error::Error for OntologyError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            OntologyError::IoError { source, .. } => Some(source),
-            OntologyError::Other {
-                source: Some(src), ..
-            } => Some(src.as_ref()),
-            _ => None,
-        }
-    }
 }
 
 // ============================================================================
