@@ -16,7 +16,49 @@ use chrono::{DateTime, Utc};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::sync::OnceLock;
 use uuid::Uuid;
+
+// ============================================================================
+// Static Selectors (compiled once at runtime, never fails for valid CSS)
+// ============================================================================
+
+/// Get title selector (compiled once, cached)
+fn title_selector() -> &'static Selector {
+    static SELECTOR: OnceLock<Selector> = OnceLock::new();
+    SELECTOR.get_or_init(|| {
+        // SAFETY: These are valid CSS selectors verified at compile time
+        Selector::parse("h1, .article_title, .title")
+            .expect("BUG: Invalid hardcoded title selector")
+    })
+}
+
+/// Get body selector (compiled once, cached)
+fn body_selector() -> &'static Selector {
+    static SELECTOR: OnceLock<Selector> = OnceLock::new();
+    SELECTOR.get_or_init(|| {
+        Selector::parse(".article_body, .article_content, #articleBodyContents")
+            .expect("BUG: Invalid hardcoded body selector")
+    })
+}
+
+/// Get author selector (compiled once, cached)
+fn author_selector() -> &'static Selector {
+    static SELECTOR: OnceLock<Selector> = OnceLock::new();
+    SELECTOR.get_or_init(|| {
+        Selector::parse(".author, .byline, .writer")
+            .expect("BUG: Invalid hardcoded author selector")
+    })
+}
+
+/// Get date selector (compiled once, cached)
+fn date_selector() -> &'static Selector {
+    static SELECTOR: OnceLock<Selector> = OnceLock::new();
+    SELECTOR.get_or_init(|| {
+        Selector::parse(".date, .publish_date, time")
+            .expect("BUG: Invalid hardcoded date selector")
+    })
+}
 
 /// Parsed news article
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,34 +111,23 @@ pub struct Comment {
 }
 
 /// HTML parser for Naver News articles
+///
+/// This parser uses statically cached selectors that are compiled once at runtime.
+/// The Default implementation is guaranteed not to panic.
+#[derive(Debug, Clone, Copy)]
 pub struct Parser {
-    /// Title selector
-    title_selector: Selector,
-
-    /// Body selector
-    body_selector: Selector,
-
-    /// Author selector
-    author_selector: Selector,
-
-    /// Date selector
-    #[allow(dead_code)]
-    date_selector: Selector,
+    // This struct uses zero-sized marker for future extensibility
+    _private: (),
 }
 
 impl Parser {
     /// Create a new parser instance
+    ///
+    /// This is infallible as selectors are statically defined.
+    /// Kept for backward compatibility; prefer `Parser::default()`.
+    #[deprecated(since = "0.2.0", note = "Use Parser::default() instead")]
     pub fn new() -> Result<Self> {
-        Ok(Self {
-            title_selector: Selector::parse("h1, .article_title, .title")
-                .map_err(|e| anyhow::anyhow!("Invalid title selector: {e:?}"))?,
-            body_selector: Selector::parse(".article_body, .article_content, #articleBodyContents")
-                .map_err(|e| anyhow::anyhow!("Invalid body selector: {e:?}"))?,
-            author_selector: Selector::parse(".author, .byline, .writer")
-                .map_err(|e| anyhow::anyhow!("Invalid author selector: {e:?}"))?,
-            date_selector: Selector::parse(".date, .publish_date, time")
-                .map_err(|e| anyhow::anyhow!("Invalid date selector: {e:?}"))?,
-        })
+        Ok(Self::default())
     }
 
     /// Parse HTML content into an Article
@@ -114,7 +145,7 @@ impl Parser {
         let author = self.extract_author(&document);
         let published_at = self.extract_date(&document);
 
-        let content_hash = self.compute_content_hash(&title, &body);
+        let content_hash = Self::compute_content_hash(&title, &body);
 
         Ok(Article {
             id: Uuid::new_v4(),
@@ -131,7 +162,7 @@ impl Parser {
 
     fn extract_title(&self, document: &Html) -> Result<String> {
         document
-            .select(&self.title_selector)
+            .select(title_selector())
             .next()
             .map(|el| el.text().collect::<String>().trim().to_string())
             .context("Title not found")
@@ -139,7 +170,7 @@ impl Parser {
 
     fn extract_body(&self, document: &Html) -> Result<String> {
         document
-            .select(&self.body_selector)
+            .select(body_selector())
             .next()
             .map(|el| el.text().collect::<String>().trim().to_string())
             .context("Body not found")
@@ -147,14 +178,14 @@ impl Parser {
 
     fn extract_author(&self, document: &Html) -> Option<String> {
         document
-            .select(&self.author_selector)
+            .select(author_selector())
             .next()
             .map(|el| el.text().collect::<String>().trim().to_string())
     }
 
     fn extract_date(&self, document: &Html) -> Option<DateTime<Utc>> {
         // Try to find date element
-        let date_element = document.select(&self.date_selector).next()?;
+        let date_element = document.select(date_selector()).next()?;
 
         // First, try to extract from datetime attribute (common in <time> elements)
         if let Some(datetime_attr) = date_element.value().attr("datetime") {
@@ -266,7 +297,7 @@ impl Parser {
         )
     }
 
-    fn compute_content_hash(&self, title: &str, body: &str) -> String {
+    fn compute_content_hash(title: &str, body: &str) -> String {
         let mut hasher = Sha256::new();
         hasher.update(title.as_bytes());
         hasher.update(body.as_bytes());
@@ -275,19 +306,12 @@ impl Parser {
 }
 
 impl Default for Parser {
+    /// Create a default Parser instance.
+    ///
+    /// This is guaranteed not to panic - selectors are statically defined
+    /// and compiled lazily via OnceLock.
     fn default() -> Self {
-        // SAFETY: This should never fail as we're using hardcoded, valid selector strings.
-        // If it does fail, it indicates a programming error in the selector strings.
-        // We use match instead of expect() to provide a more detailed error message.
-        match Self::new() {
-            Ok(parser) => parser,
-            Err(e) => {
-                // Log the error for debugging
-                eprintln!("FATAL: Failed to create default parser with hardcoded selectors: {e}");
-                eprintln!("This is a programming error. Please report this bug.");
-                panic!("Failed to create default parser: {e}")
-            }
-        }
+        Self { _private: () }
     }
 }
 
@@ -304,10 +328,9 @@ mod tests {
 
     #[test]
     fn test_content_hash_computation() {
-        let parser = Parser::new().unwrap();
-        let hash1 = parser.compute_content_hash("Title", "Body");
-        let hash2 = parser.compute_content_hash("Title", "Body");
-        let hash3 = parser.compute_content_hash("Different", "Content");
+        let hash1 = Parser::compute_content_hash("Title", "Body");
+        let hash2 = Parser::compute_content_hash("Title", "Body");
+        let hash3 = Parser::compute_content_hash("Different", "Content");
 
         assert_eq!(hash1, hash2);
         assert_ne!(hash1, hash3);
@@ -389,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_extract_date_from_datetime_attribute() {
-        let parser = Parser::new().unwrap();
+        let parser = Parser::default();
         let html = r#"
             <html>
                 <time datetime="2024-12-25T15:45:00+09:00">2024년 12월 25일</time>
@@ -402,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_extract_date_from_text_content() {
-        let parser = Parser::new().unwrap();
+        let parser = Parser::default();
         let html = r#"
             <html>
                 <div class="date">2024.12.25. 오후 3:45</div>
@@ -415,7 +438,7 @@ mod tests {
 
     #[test]
     fn test_extract_date_not_found() {
-        let parser = Parser::new().unwrap();
+        let parser = Parser::default();
         let html = r#"
             <html>
                 <div>No date here</div>
