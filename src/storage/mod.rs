@@ -6,10 +6,12 @@
 //! - Async PostgreSQL deduplication for distributed crawling
 //! - Markdown files for article output
 //! - Checkpointing for resumable crawls
+//! - Repository pattern abstractions for testable data access
 
 pub mod checkpoint;
 pub mod dedup;
 pub mod markdown;
+pub mod repository;
 
 pub use checkpoint::{
     AsyncCheckpointManager, CheckpointManager, CheckpointStats, ConcurrencyConfig,
@@ -22,6 +24,10 @@ pub use dedup::{
 pub use markdown::{
     ArticleStorage, ArticleWithCommentsData, ArticleWithCommentsWriter, BatchSaveResult,
     CommentRenderConfig, CommentRenderer, MarkdownWriter,
+};
+pub use repository::{
+    ArticleRepository, CheckpointRepository, CrawlMetadataRepository,
+    MockArticleRepository, MockCheckpointRepository, MockCrawlMetadataRepository,
 };
 
 use anyhow::{Context, Result};
@@ -371,7 +377,7 @@ impl Database {
         // Use URL hash as fallback ID if empty (for failures)
         let effective_id = if id.is_empty() {
             let hash = Sha256::digest(url.as_bytes());
-            format!("fail_{:x}", hash).chars().take(40).collect::<String>()
+            format!("fail_{hash:x}").chars().take(40).collect::<String>()
         } else {
             id.to_string()
         };
@@ -611,6 +617,207 @@ impl CrawlStats {
             return 1.0;
         }
         self.success as f64 / self.total as f64
+    }
+}
+
+// ============================================================================
+// Repository Trait Implementations for Database
+// ============================================================================
+
+#[async_trait::async_trait(?Send)]
+impl ArticleRepository for Database {
+    async fn store(&self, article: &Article) -> Result<()> {
+        self.store_article(article).await
+    }
+
+    async fn get(&self, id: &str) -> Result<Option<Article>> {
+        self.get_article(id).await
+    }
+
+    async fn exists_by_url(&self, url: &str) -> Result<bool> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        let row = client
+            .query_one(
+                "SELECT EXISTS(SELECT 1 FROM articles WHERE url = $1)",
+                &[&url],
+            )
+            .await
+            .context("Failed to check article existence")?;
+
+        Ok(row.get(0))
+    }
+
+    async fn delete(&self, id: &str) -> Result<bool> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        let article_id = uuid::Uuid::parse_str(id).context("Invalid UUID format")?;
+
+        let result = client
+            .execute("DELETE FROM articles WHERE id = $1", &[&article_id])
+            .await
+            .context("Failed to delete article")?;
+
+        Ok(result > 0)
+    }
+
+    async fn find_by_category(
+        &self,
+        category: &str,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<Article>> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        let rows = client
+            .query(
+                r#"
+                SELECT id, url, title, body, author, published_at, category, content_hash, comments
+                FROM articles
+                WHERE category = $1
+                ORDER BY published_at DESC NULLS LAST
+                LIMIT $2 OFFSET $3
+                "#,
+                &[&category, &(limit as i64), &(offset as i64)],
+            )
+            .await
+            .context("Failed to query articles by category")?;
+
+        let mut articles = Vec::with_capacity(rows.len());
+        for row in rows {
+            let comments_json: serde_json::Value = row.get(8);
+            let comments: Vec<crate::parser::Comment> =
+                serde_json::from_value(comments_json).unwrap_or_default();
+
+            articles.push(Article {
+                id: row.get(0),
+                url: row.get(1),
+                title: row.get(2),
+                body: row.get(3),
+                author: row.get(4),
+                published_at: row.get(5),
+                category: row.get(6),
+                content_hash: row.get(7),
+                comments,
+            });
+        }
+
+        Ok(articles)
+    }
+
+    async fn count_by_category(&self, category: &str) -> Result<usize> {
+        let pool = self
+            .postgres
+            .as_ref()
+            .context("PostgreSQL not initialized")?;
+
+        let client = pool.get().await.context("Failed to get connection")?;
+
+        let row = client
+            .query_one(
+                "SELECT COUNT(*) FROM articles WHERE category = $1",
+                &[&category],
+            )
+            .await
+            .context("Failed to count articles by category")?;
+
+        let count: i64 = row.get(0);
+        Ok(count as usize)
+    }
+}
+
+impl CrawlMetadataRepository for Database {
+    fn is_url_crawled(&self, url: &str) -> Result<bool> {
+        Database::is_url_crawled(self, url)
+    }
+
+    fn is_content_duplicate(&self, hash: &str) -> Result<bool> {
+        Database::is_content_duplicate(self, hash)
+    }
+
+    fn mark_crawled(
+        &self,
+        id: &str,
+        url: &str,
+        content_hash: &str,
+        status: CrawlStatus,
+        error_message: Option<&str>,
+    ) -> Result<()> {
+        Database::mark_url_crawled(self, id, url, content_hash, status, error_message)
+    }
+
+    fn record_success(&self, article: &ParsedArticle) -> Result<()> {
+        Database::record_success(self, article)
+    }
+
+    fn record_failure(&self, url: &str, error: &str) -> Result<()> {
+        Database::record_failure(self, url, error)
+    }
+
+    fn get_record(&self, url: &str) -> Result<Option<CrawlRecord>> {
+        Database::get_crawl_record(self, url)
+    }
+
+    fn get_stats(&self) -> Result<CrawlStats> {
+        Database::get_stats(self)
+    }
+
+    fn filter_uncrawled(&self, urls: &[String]) -> Result<Vec<String>> {
+        Database::filter_uncrawled(self, urls)
+    }
+
+    fn batch_check_urls(&self, urls: &[String]) -> Result<Vec<(String, bool)>> {
+        Database::batch_check_urls(self, urls)
+    }
+}
+
+impl CheckpointRepository for Database {
+    fn save(&self, key: &str, value: &str) -> Result<()> {
+        Database::save_checkpoint(self, key, value)
+    }
+
+    fn load(&self, key: &str) -> Result<Option<String>> {
+        Database::load_checkpoint(self, key)
+    }
+
+    fn delete(&self, key: &str) -> Result<bool> {
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
+
+        let deleted = conn
+            .execute("DELETE FROM crawl_state WHERE key = ?1", params![key])
+            .context("Failed to delete checkpoint")?;
+
+        Ok(deleted > 0)
+    }
+
+    fn list_keys(&self) -> Result<Vec<String>> {
+        let conn = self.sqlite.as_ref().context("SQLite not initialized")?;
+
+        let mut stmt = conn
+            .prepare("SELECT key FROM crawl_state ORDER BY key")
+            .context("Failed to prepare query")?;
+
+        let keys: Vec<String> = stmt
+            .query_map([], |row| row.get(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(keys)
     }
 }
 

@@ -87,6 +87,9 @@ uuid = { version = "1.10", features = ["v4", "serde"] }
 thiserror = "2.0"
 anyhow = "1.0"
 
+# Async trait support
+async-trait = "0.1"
+
 # Regular expressions
 regex = "1.11"
 
