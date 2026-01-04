@@ -127,3 +127,45 @@ jobs:
 
       - name: Security audit
         run: cargo audit
+
+  web-security:
+    name: Web Security Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Generate npm audit report
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          echo "## npm Audit Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -s npm-audit-report.json ]; then
+            HIGH_VULNS=$(cat npm-audit-report.json | jq '.metadata.vulnerabilities.high // 0')
+            CRITICAL_VULNS=$(cat npm-audit-report.json | jq '.metadata.vulnerabilities.critical // 0')
+            echo "- High: $HIGH_VULNS" >> $GITHUB_STEP_SUMMARY
+            echo "- Critical: $CRITICAL_VULNS" >> $GITHUB_STEP_SUMMARY
+            if [ "$CRITICAL_VULNS" -gt "0" ]; then
+              echo "::error::Critical vulnerabilities found in npm dependencies"
+              exit 1
+            fi
+          else
+            echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          fi
