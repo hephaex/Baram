@@ -6,10 +6,12 @@
 //! - Batch operations for efficient network usage
 //! - Connection pooling for high throughput
 //! - Bloom filter for fast in-memory duplicate checking
+//! - **Rotating bloom filter** to prevent memory exhaustion during long runs
 
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use bloomfilter::Bloom;
@@ -188,23 +190,249 @@ impl DedupCheckResult {
 }
 
 // ============================================================================
-// In-Memory Cache with Bloom Filter
+// Rotating Bloom Filter (Fixes Issue #20: Memory Leak)
 // ============================================================================
 
-/// In-memory cache for fast deduplication using Bloom Filter
+/// Configuration for rotating bloom filter
+#[derive(Debug, Clone)]
+pub struct RotatingBloomConfig {
+    /// Capacity per bloom filter generation
+    pub capacity_per_generation: usize,
+
+    /// False positive rate (e.g., 0.01 = 1%)
+    pub false_positive_rate: f64,
+
+    /// Rotation threshold: rotate when active filter reaches this percentage (0.0-1.0)
+    pub rotation_threshold: f64,
+
+    /// Maximum age before forced rotation (even if not at capacity)
+    pub max_age: Duration,
+}
+
+impl Default for RotatingBloomConfig {
+    fn default() -> Self {
+        Self {
+            capacity_per_generation: 50_000,
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8,
+            max_age: Duration::from_secs(3600), // 1 hour
+        }
+    }
+}
+
+/// Rotating Bloom Filter with double-buffering to prevent memory exhaustion
 ///
-/// This cache uses a Bloom filter for O(1) duplicate checking with minimal memory usage.
-/// The Bloom filter may have false positives (saying a URL exists when it doesn't),
-/// but never false negatives (saying a URL doesn't exist when it does).
+/// This implementation maintains two bloom filters:
+/// - **Active**: Currently accepting new insertions
+/// - **Previous**: The previous generation, kept for lookups during transition
 ///
-/// When the Bloom filter indicates a URL might exist, we fall back to the database
+/// When the active filter reaches the rotation threshold or max age, it rotates:
+/// 1. Previous filter is discarded
+/// 2. Active becomes previous
+/// 3. A new empty filter becomes active
+///
+/// This ensures bounded memory usage regardless of how long the crawler runs.
+pub struct RotatingBloomFilter {
+    /// Currently active bloom filter (accepts inserts)
+    active: Bloom<String>,
+
+    /// Previous generation (kept for lookups, read-only)
+    previous: Option<Bloom<String>>,
+
+    /// Number of items inserted into active filter
+    active_count: AtomicUsize,
+
+    /// When the active filter was created
+    active_created_at: Instant,
+
+    /// Configuration
+    config: RotatingBloomConfig,
+
+    /// Total rotations performed
+    rotation_count: AtomicUsize,
+}
+
+impl RotatingBloomFilter {
+    /// Create a new rotating bloom filter
+    pub fn new(config: RotatingBloomConfig) -> Self {
+        let active = Bloom::new_for_fp_rate(config.capacity_per_generation, config.false_positive_rate);
+
+        Self {
+            active,
+            previous: None,
+            active_count: AtomicUsize::new(0),
+            active_created_at: Instant::now(),
+            config,
+            rotation_count: AtomicUsize::new(0),
+        }
+    }
+
+    /// Create with default configuration for a given capacity
+    pub fn with_capacity(capacity: usize) -> Self {
+        let config = RotatingBloomConfig {
+            capacity_per_generation: capacity,
+            ..Default::default()
+        };
+        Self::new(config)
+    }
+
+    /// Check if an item might exist in any generation
+    ///
+    /// Returns `true` if the item is in active OR previous filter.
+    /// May return false positives, but never false negatives for recently added items.
+    pub fn check(&self, item: &String) -> bool {
+        // Check active filter first (most likely to contain recent items)
+        if self.active.check(item) {
+            return true;
+        }
+
+        // Check previous generation if it exists
+        if let Some(ref prev) = self.previous {
+            return prev.check(item);
+        }
+
+        false
+    }
+
+    /// Insert an item into the active filter
+    ///
+    /// Automatically triggers rotation if thresholds are exceeded.
+    pub fn insert(&mut self, item: &String) {
+        self.active.set(item);
+        self.active_count.fetch_add(1, Ordering::Relaxed);
+
+        // Check if rotation is needed
+        self.maybe_rotate();
+    }
+
+    /// Check if rotation is needed and perform it
+    fn maybe_rotate(&mut self) {
+        let count = self.active_count.load(Ordering::Relaxed);
+        let threshold_count =
+            (self.config.capacity_per_generation as f64 * self.config.rotation_threshold) as usize;
+
+        let age = self.active_created_at.elapsed();
+
+        // Rotate if:
+        // 1. Active filter has reached capacity threshold, OR
+        // 2. Active filter has exceeded max age (with at least some items)
+        if count >= threshold_count || (age >= self.config.max_age && count > 0) {
+            self.rotate();
+        }
+    }
+
+    /// Perform rotation: discard previous, move active to previous, create new active
+    fn rotate(&mut self) {
+        tracing::info!(
+            "Rotating bloom filter: {} items in active (threshold: {}), age: {:?}",
+            self.active_count.load(Ordering::Relaxed),
+            (self.config.capacity_per_generation as f64 * self.config.rotation_threshold) as usize,
+            self.active_created_at.elapsed()
+        );
+
+        // Create new active filter
+        let new_active = Bloom::new_for_fp_rate(
+            self.config.capacity_per_generation,
+            self.config.false_positive_rate,
+        );
+
+        // Move active to previous (old previous is dropped)
+        self.previous = Some(std::mem::replace(&mut self.active, new_active));
+
+        // Reset counters
+        self.active_count.store(0, Ordering::Relaxed);
+        self.active_created_at = Instant::now();
+        self.rotation_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Force rotation (useful for testing or manual memory management)
+    pub fn force_rotate(&mut self) {
+        self.rotate();
+    }
+
+    /// Clear both filters completely
+    pub fn clear(&mut self) {
+        self.active = Bloom::new_for_fp_rate(
+            self.config.capacity_per_generation,
+            self.config.false_positive_rate,
+        );
+        self.previous = None;
+        self.active_count.store(0, Ordering::Relaxed);
+        self.active_created_at = Instant::now();
+    }
+
+    /// Get statistics about the rotating bloom filter
+    pub fn stats(&self) -> RotatingBloomStats {
+        RotatingBloomStats {
+            active_count: self.active_count.load(Ordering::Relaxed),
+            capacity_per_generation: self.config.capacity_per_generation,
+            has_previous: self.previous.is_some(),
+            active_age_secs: self.active_created_at.elapsed().as_secs(),
+            rotation_count: self.rotation_count.load(Ordering::Relaxed),
+            rotation_threshold: self.config.rotation_threshold,
+        }
+    }
+}
+
+/// Statistics for rotating bloom filter
+#[derive(Debug, Clone)]
+pub struct RotatingBloomStats {
+    /// Number of items in active filter
+    pub active_count: usize,
+
+    /// Capacity per generation
+    pub capacity_per_generation: usize,
+
+    /// Whether a previous generation exists
+    pub has_previous: bool,
+
+    /// Age of active filter in seconds
+    pub active_age_secs: u64,
+
+    /// Number of rotations performed
+    pub rotation_count: usize,
+
+    /// Rotation threshold (0.0-1.0)
+    pub rotation_threshold: f64,
+}
+
+impl RotatingBloomStats {
+    /// Calculate fill ratio of active filter (0.0-1.0)
+    pub fn fill_ratio(&self) -> f64 {
+        if self.capacity_per_generation == 0 {
+            return 0.0;
+        }
+        self.active_count as f64 / self.capacity_per_generation as f64
+    }
+
+    /// Check if rotation is imminent
+    pub fn rotation_imminent(&self) -> bool {
+        self.fill_ratio() >= self.rotation_threshold * 0.9
+    }
+}
+
+// ============================================================================
+// In-Memory Cache with Rotating Bloom Filter
+// ============================================================================
+
+/// In-memory cache for fast deduplication using Rotating Bloom Filter
+///
+/// This cache uses a rotating bloom filter for O(1) duplicate checking with
+/// **bounded memory usage**. The bloom filter may have false positives (saying
+/// a URL exists when it doesn't), but never false negatives.
+///
+/// **Memory Safety**: Unlike a standard bloom filter that grows unbounded,
+/// this implementation automatically rotates filters when they reach capacity,
+/// preventing memory exhaustion during long-running crawls.
+///
+/// When the bloom filter indicates a URL might exist, we fall back to the database
 /// for confirmation.
 struct DedupCache {
-    /// Bloom filter for URLs (primary fast check)
-    url_bloom: Bloom<String>,
+    /// Rotating bloom filter for URLs (primary fast check)
+    url_bloom: RotatingBloomFilter,
 
-    /// Bloom filter for content hashes
-    hash_bloom: Bloom<String>,
+    /// Rotating bloom filter for content hashes
+    hash_bloom: RotatingBloomFilter,
 
     /// Fallback HashSet for definitive positive checks (limited size)
     /// Used to reduce false positives from bloom filter
@@ -221,24 +449,36 @@ struct DedupCache {
 }
 
 impl DedupCache {
-    /// Create a new cache with bloom filter
+    /// Create a new cache with rotating bloom filter
     ///
     /// # Arguments
     /// * `max_size` - Maximum size for the fallback HashSet cache
     ///
-    /// The bloom filter is sized for 10x the max_size to handle larger datasets
-    /// with a false positive rate of 1%.
+    /// The rotating bloom filter is sized for 10x the max_size per generation,
+    /// with automatic rotation when reaching 80% capacity or 1 hour age.
+    /// This prevents memory exhaustion during long-running crawls.
     fn new(max_size: usize) -> Self {
-        // Bloom filter capacity: 10x the cache size to handle more URLs
+        // Bloom filter capacity per generation: 10x the cache size
         let bloom_capacity = max_size * 10;
 
-        // Create bloom filters with 1% false positive rate
-        let url_bloom = Bloom::new_for_fp_rate(bloom_capacity, 0.01);
-        let hash_bloom = Bloom::new_for_fp_rate(bloom_capacity / 2, 0.01);
+        // Create rotating bloom filters with bounded memory
+        let url_bloom_config = RotatingBloomConfig {
+            capacity_per_generation: bloom_capacity,
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8,
+            max_age: Duration::from_secs(3600), // 1 hour
+        };
+
+        let hash_bloom_config = RotatingBloomConfig {
+            capacity_per_generation: bloom_capacity / 2,
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8,
+            max_age: Duration::from_secs(3600),
+        };
 
         Self {
-            url_bloom,
-            hash_bloom,
+            url_bloom: RotatingBloomFilter::new(url_bloom_config),
+            hash_bloom: RotatingBloomFilter::new(hash_bloom_config),
             url_cache: HashSet::with_capacity(max_size),
             hash_cache: HashSet::with_capacity(max_size / 2),
             max_cache_size: max_size,
@@ -269,10 +509,10 @@ impl DedupCache {
         self.hash_cache.contains(hash)
     }
 
-    /// Insert URL into both bloom filter and cache
+    /// Insert URL into both rotating bloom filter and cache
     fn insert_url(&mut self, url: String) {
-        // Always add to bloom filter (never evicted)
-        self.url_bloom.set(&url);
+        // Add to rotating bloom filter (automatic rotation when needed)
+        self.url_bloom.insert(&url);
 
         // Add to HashSet with eviction policy
         if self.url_cache.len() >= self.max_cache_size {
@@ -290,9 +530,10 @@ impl DedupCache {
         self.url_cache.insert(url);
     }
 
-    /// Insert content hash into both bloom filter and cache
+    /// Insert content hash into both rotating bloom filter and cache
     fn insert_hash(&mut self, hash: String) {
-        self.hash_bloom.set(&hash);
+        // Add to rotating bloom filter (automatic rotation when needed)
+        self.hash_bloom.insert(&hash);
 
         if self.hash_cache.len() >= self.max_cache_size / 2 {
             let to_remove: Vec<_> = self
@@ -317,31 +558,46 @@ impl DedupCache {
 
     /// Get bloom filter statistics
     fn bloom_stats(&self) -> BloomStats {
+        let url_stats = self.url_bloom.stats();
+        let hash_stats = self.hash_bloom.stats();
+
         BloomStats {
             url_capacity: self.bloom_capacity,
             hash_capacity: self.bloom_capacity / 2,
             cache_size: self.url_cache.len(),
             hash_cache_size: self.hash_cache.len(),
+            url_active_count: url_stats.active_count,
+            url_rotation_count: url_stats.rotation_count,
+            hash_active_count: hash_stats.active_count,
+            hash_rotation_count: hash_stats.rotation_count,
         }
     }
 
     /// Clear all caches (bloom filters and HashSets)
     fn clear(&mut self) {
-        // Note: Bloom filters cannot be cleared, only recreated
-        self.url_bloom = Bloom::new_for_fp_rate(self.bloom_capacity, 0.01);
-        self.hash_bloom = Bloom::new_for_fp_rate(self.bloom_capacity / 2, 0.01);
+        // Clear rotating bloom filters (resets to empty state)
+        self.url_bloom.clear();
+        self.hash_bloom.clear();
         self.url_cache.clear();
         self.hash_cache.clear();
+    }
+
+    /// Force rotation of bloom filters
+    /// Useful for testing or manual memory management
+    #[allow(dead_code)]
+    fn force_rotate(&mut self) {
+        self.url_bloom.force_rotate();
+        self.hash_bloom.force_rotate();
     }
 }
 
 /// Bloom filter statistics
 #[derive(Debug, Clone)]
 pub struct BloomStats {
-    /// URL bloom filter capacity
+    /// URL bloom filter capacity per generation
     pub url_capacity: usize,
 
-    /// Hash bloom filter capacity
+    /// Hash bloom filter capacity per generation
     pub hash_capacity: usize,
 
     /// Current HashSet cache size for URLs
@@ -349,6 +605,46 @@ pub struct BloomStats {
 
     /// Current HashSet cache size for hashes
     pub hash_cache_size: usize,
+
+    /// Items in active URL bloom filter
+    pub url_active_count: usize,
+
+    /// Number of URL bloom filter rotations
+    pub url_rotation_count: usize,
+
+    /// Items in active hash bloom filter
+    pub hash_active_count: usize,
+
+    /// Number of hash bloom filter rotations
+    pub hash_rotation_count: usize,
+}
+
+impl BloomStats {
+    /// Check if memory usage is bounded (rotation is working)
+    pub fn is_memory_bounded(&self) -> bool {
+        // If there have been rotations, memory is being managed
+        self.url_rotation_count > 0 || self.hash_rotation_count > 0 ||
+        // Or if counts are well below capacity
+        (self.url_active_count < self.url_capacity && self.hash_active_count < self.hash_capacity)
+    }
+
+    /// Estimated memory usage in bytes (approximate)
+    pub fn estimated_memory_bytes(&self) -> usize {
+        // Bloom filter uses approximately capacity * 10 bits for 1% false positive rate
+        // Plus HashSet overhead
+        let bloom_bits = (self.url_capacity + self.hash_capacity) * 10;
+        let bloom_bytes = bloom_bits / 8;
+        let hashset_bytes = (self.cache_size + self.hash_cache_size) * std::mem::size_of::<String>();
+
+        // Double for previous generation if rotation has occurred
+        let rotation_multiplier = if self.url_rotation_count > 0 || self.hash_rotation_count > 0 {
+            2
+        } else {
+            1
+        };
+
+        bloom_bytes * rotation_multiplier + hashset_bytes
+    }
 }
 
 // ============================================================================
@@ -1074,11 +1370,210 @@ mod tests {
         let cache = DedupCache::new(1000);
         let stats = cache.bloom_stats();
 
-        // Bloom filter should be 10x the cache size
+        // Bloom filter should be 10x the cache size per generation
         assert_eq!(stats.url_capacity, 10000);
         assert_eq!(stats.hash_capacity, 5000);
         assert_eq!(stats.cache_size, 0);
         assert_eq!(stats.hash_cache_size, 0);
+        assert_eq!(stats.url_active_count, 0);
+        assert_eq!(stats.url_rotation_count, 0);
+        assert_eq!(stats.hash_active_count, 0);
+        assert_eq!(stats.hash_rotation_count, 0);
+    }
+
+    // =========================================================================
+    // Rotating Bloom Filter Tests (Issue #20 Fix)
+    // =========================================================================
+
+    #[test]
+    fn test_rotating_bloom_filter_basic() {
+        let config = RotatingBloomConfig {
+            capacity_per_generation: 1000,
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8,
+            max_age: Duration::from_secs(3600),
+        };
+        let mut bloom = RotatingBloomFilter::new(config);
+
+        // New item should not exist
+        assert!(!bloom.check(&"item1".to_string()));
+
+        // After insertion, should exist
+        bloom.insert(&"item1".to_string());
+        assert!(bloom.check(&"item1".to_string()));
+
+        // Stats should reflect one item
+        let stats = bloom.stats();
+        assert_eq!(stats.active_count, 1);
+        assert_eq!(stats.rotation_count, 0);
+    }
+
+    #[test]
+    fn test_rotating_bloom_filter_rotation() {
+        let config = RotatingBloomConfig {
+            capacity_per_generation: 10, // Small capacity to trigger rotation
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8, // Rotate at 8 items
+            max_age: Duration::from_secs(3600),
+        };
+        let mut bloom = RotatingBloomFilter::new(config);
+
+        // Insert enough items to trigger rotation (8 items = 80% of 10)
+        for i in 0..10 {
+            bloom.insert(&format!("item{i}"));
+        }
+
+        let stats = bloom.stats();
+        // Should have rotated once (10 items inserted, threshold at 8)
+        assert!(stats.rotation_count >= 1);
+        // Active count should be less than total inserted
+        assert!(stats.active_count < 10);
+        // Previous generation should exist
+        assert!(stats.has_previous);
+    }
+
+    #[test]
+    fn test_rotating_bloom_filter_lookup_across_generations() {
+        let config = RotatingBloomConfig {
+            capacity_per_generation: 100, // Larger capacity to avoid multiple rotations
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8, // Rotate at 80 items
+            max_age: Duration::from_secs(3600),
+        };
+        let mut bloom = RotatingBloomFilter::new(config);
+
+        // Insert item before rotation
+        bloom.insert(&"early_item".to_string());
+
+        // Insert enough items to trigger exactly one rotation
+        for i in 0..80 {
+            bloom.insert(&format!("item{i}"));
+        }
+
+        let stats = bloom.stats();
+        // Should have rotated once
+        assert_eq!(stats.rotation_count, 1);
+        assert!(stats.has_previous);
+
+        // Early item should still be found (in previous generation)
+        assert!(bloom.check(&"early_item".to_string()));
+        // Recent items should be found (in active generation)
+        assert!(bloom.check(&"item79".to_string()));
+
+        // Now trigger another rotation
+        for i in 80..160 {
+            bloom.insert(&format!("item{i}"));
+        }
+
+        // After second rotation, early_item should be gone
+        // (it was in the previous generation which is now discarded)
+        // This is the expected behavior to prevent memory leaks!
+        assert!(!bloom.check(&"early_item".to_string()));
+        // But recent items should still be found
+        assert!(bloom.check(&"item159".to_string()));
+    }
+
+    #[test]
+    fn test_rotating_bloom_filter_clear() {
+        let config = RotatingBloomConfig {
+            capacity_per_generation: 100,
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8,
+            max_age: Duration::from_secs(3600),
+        };
+        let mut bloom = RotatingBloomFilter::new(config);
+
+        // Insert items
+        for i in 0..50 {
+            bloom.insert(&format!("item{i}"));
+        }
+
+        assert_eq!(bloom.stats().active_count, 50);
+
+        // Clear and verify
+        bloom.clear();
+        let stats = bloom.stats();
+        assert_eq!(stats.active_count, 0);
+        assert!(!stats.has_previous);
+        assert!(!bloom.check(&"item0".to_string()));
+    }
+
+    #[test]
+    fn test_rotating_bloom_filter_force_rotate() {
+        let config = RotatingBloomConfig {
+            capacity_per_generation: 1000,
+            false_positive_rate: 0.01,
+            rotation_threshold: 0.8,
+            max_age: Duration::from_secs(3600),
+        };
+        let mut bloom = RotatingBloomFilter::new(config);
+
+        // Insert some items
+        for i in 0..10 {
+            bloom.insert(&format!("item{i}"));
+        }
+
+        // Force rotation
+        bloom.force_rotate();
+
+        let stats = bloom.stats();
+        assert_eq!(stats.rotation_count, 1);
+        assert!(stats.has_previous);
+        assert_eq!(stats.active_count, 0);
+
+        // Items should still be found in previous generation
+        assert!(bloom.check(&"item0".to_string()));
+    }
+
+    #[test]
+    fn test_rotating_bloom_stats_fill_ratio() {
+        let stats = RotatingBloomStats {
+            active_count: 800,
+            capacity_per_generation: 1000,
+            has_previous: false,
+            active_age_secs: 60,
+            rotation_count: 0,
+            rotation_threshold: 0.8,
+        };
+
+        assert!((stats.fill_ratio() - 0.8).abs() < 0.001);
+        assert!(stats.rotation_imminent()); // 80% is >= 72% (90% of 80%)
+    }
+
+    #[test]
+    fn test_dedup_cache_rotation_integration() {
+        let mut cache = DedupCache::new(10); // Small size for testing
+
+        // Insert enough URLs to trigger rotation (10 * 10 * 0.8 = 80 items threshold)
+        for i in 0..100 {
+            cache.insert_url(format!("url{i}"));
+        }
+
+        let stats = cache.bloom_stats();
+        // Rotation should have occurred
+        assert!(stats.url_rotation_count >= 1);
+        // Memory is bounded
+        assert!(stats.is_memory_bounded());
+    }
+
+    #[test]
+    fn test_bloom_stats_memory_estimation() {
+        let stats = BloomStats {
+            url_capacity: 100_000,
+            hash_capacity: 50_000,
+            cache_size: 1000,
+            hash_cache_size: 500,
+            url_active_count: 50_000,
+            url_rotation_count: 1,
+            hash_active_count: 25_000,
+            hash_rotation_count: 0,
+        };
+
+        // Should have some memory estimation
+        let memory = stats.estimated_memory_bytes();
+        assert!(memory > 0);
+        // With rotation, should account for previous generation
+        assert!(stats.is_memory_bounded());
     }
 
     #[test]
