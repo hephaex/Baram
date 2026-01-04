@@ -292,6 +292,14 @@ pub async fn distributed_crawler(params: DistributedCrawlerParams) -> Result<()>
         with_comments,
         once,
     } = params;
+
+    // Initialize Prometheus metrics for crawler
+    if let Err(e) = baram::metrics::init_metrics() {
+        tracing::warn!("Failed to initialize metrics (metrics will be disabled): {}", e);
+    } else {
+        tracing::info!("Prometheus metrics initialized for crawler");
+    }
+
     println!("Starting Distributed Crawler");
     println!("============================");
     println!("  Instance ID: {instance}");
@@ -431,6 +439,13 @@ pub async fn coordinator_server(params: CoordinatorParams) -> Result<()> {
         enable_cors,
         enable_logging,
     } = params;
+
+    // Initialize Prometheus metrics
+    if let Err(e) = baram::metrics::init_metrics() {
+        tracing::warn!("Failed to initialize metrics (metrics will be disabled): {}", e);
+    } else {
+        tracing::info!("Prometheus metrics initialized");
+    }
 
     println!("Starting Coordinator Server");
     println!("===========================");
