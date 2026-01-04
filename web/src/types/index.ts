@@ -63,6 +63,8 @@ export interface Triple {
 }
 
 export interface OntologyStats {
+  total_articles: number;
+  total_entities: number;
   total_triples: number;
   entity_types: Record<string, number>;
   relation_types: Record<string, number>;
