@@ -1,0 +1,126 @@
+# Baram Crawler Deployment
+# Kubernetes Deployment for crawler workers
+#
+# Apply with: kubectl apply -f k8s/crawler.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baram-crawler
+  labels:
+    app: baram
+    component: crawler
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: baram
+      component: crawler
+  template:
+    metadata:
+      labels:
+        app: baram
+        component: crawler
+    spec:
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+
+      containers:
+        - name: crawler
+          image: baram:latest
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - "crawl"
+            - "--coordinator"
+            - "http://baram-coordinator:8080"
+            - "--mode"
+            - "continuous"
+
+          # Environment variables
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: RUST_BACKTRACE
+              value: "1"
+            - name: COORDINATOR_URL
+              value: "http://baram-coordinator:8080"
+            # Pod name for instance identification
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          # Resource limits
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+          # Security context for the container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+          # Volume mounts
+          volumeMounts:
+            - name: data
+              mountPath: /app/output
+            - name: logs
+              mountPath: /app/logs
+            - name: checkpoints
+              mountPath: /app/checkpoints
+
+      # Graceful shutdown - allow current crawl to finish
+      terminationGracePeriodSeconds: 60
+
+      # Volumes
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: baram-data
+        - name: logs
+          emptyDir: {}
+        - name: checkpoints
+          persistentVolumeClaim:
+            claimName: baram-checkpoints
+
+---
+# Horizontal Pod Autoscaler for crawler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: baram-crawler
+  labels:
+    app: baram
+    component: crawler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: baram-crawler
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

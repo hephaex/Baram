@@ -24,6 +24,14 @@
 //! │  └──────────────────────────────┘  │
 //! │                                     │
 //! │  ┌──────────────────────────────┐  │
+//! │  │     Health & Probes          │  │
+//! │  │  GET  /health/live           │  │
+//! │  │  GET  /health/ready          │  │
+//! │  │  GET  /health/startup        │  │
+//! │  │  GET  /health                │  │
+//! │  └──────────────────────────────┘  │
+//! │                                     │
+//! │  ┌──────────────────────────────┐  │
 //! │  │        REST API              │  │
 //! │  │  GET  /api/health            │  │
 //! │  │  GET  /api/schedule/today    │  │
@@ -47,11 +55,13 @@
 pub mod api;
 pub mod client;
 pub mod config;
+pub mod health;
 pub mod registry;
 pub mod server;
 
 // Re-export main types
 pub use client::{ClientConfig, CoordinatorClient};
 pub use config::CoordinatorConfig;
+pub use health::{HealthChecker, HealthResponse, HealthStatus};
 pub use registry::{InstanceInfo, InstanceRegistry, InstanceStatus};
 pub use server::CoordinatorServer;

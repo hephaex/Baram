@@ -1,0 +1,168 @@
+# Baram Coordinator Deployment
+# Kubernetes Deployment with health probes configuration
+#
+# Apply with: kubectl apply -f k8s/deployment.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baram-coordinator
+  labels:
+    app: baram
+    component: coordinator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: baram
+      component: coordinator
+  template:
+    metadata:
+      labels:
+        app: baram
+        component: coordinator
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+
+      containers:
+        - name: coordinator
+          image: baram:latest
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - "coordinator"
+            - "--bind"
+            - "0.0.0.0:8080"
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          # Environment variables
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: RUST_BACKTRACE
+              value: "1"
+
+          # Resource limits
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          # Startup probe - wait for app to finish starting
+          # Prevents liveness/readiness from running too early
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30  # 5 + 5*30 = 155s max startup time
+            timeoutSeconds: 3
+
+          # Liveness probe - is the app alive?
+          # If this fails, Kubernetes will restart the container
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          # Readiness probe - is the app ready to serve traffic?
+          # If this fails, the pod is removed from service endpoints
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+            timeoutSeconds: 3
+
+          # Security context for the container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+          # Volume mounts
+          volumeMounts:
+            - name: data
+              mountPath: /app/output
+            - name: logs
+              mountPath: /app/logs
+            - name: checkpoints
+              mountPath: /app/checkpoints
+
+      # Graceful shutdown - wait for connections to drain
+      terminationGracePeriodSeconds: 30
+
+      # Volumes
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: checkpoints
+          emptyDir: {}
+
+---
+# Service for the Coordinator
+apiVersion: v1
+kind: Service
+metadata:
+  name: baram-coordinator
+  labels:
+    app: baram
+    component: coordinator
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: baram
+    component: coordinator
+
+---
+# ServiceMonitor for Prometheus Operator (optional)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: baram-coordinator
+  labels:
+    app: baram
+    component: coordinator
+spec:
+  selector:
+    matchLabels:
+      app: baram
+      component: coordinator
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
