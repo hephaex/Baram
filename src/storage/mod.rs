@@ -6,10 +6,12 @@
 //! - Async PostgreSQL deduplication for distributed crawling
 //! - Markdown files for article output
 //! - Checkpointing for resumable crawls
+//! - **Repository pattern** for database abstraction
 
 pub mod checkpoint;
 pub mod dedup;
 pub mod markdown;
+pub mod repository;
 
 pub use checkpoint::{
     AsyncCheckpointManager, CheckpointManager, CheckpointStats, ConcurrencyConfig,
@@ -23,6 +25,11 @@ pub use markdown::{
     ArticleStorage, ArticleWithCommentsData, ArticleWithCommentsWriter, BatchSaveResult,
     CommentRenderConfig, CommentRenderer, MarkdownWriter,
 };
+pub use repository::{
+    create_mock_repository, create_sqlite_repository, ArticleRepository, CrawlMetadataRepository,
+    CrawlRecord, CrawlStats, CrawlStatus, MockCrawlMetadataRepository, SharedCrawlMetadataRepository,
+    SqliteCrawlMetadataRepository,
+};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -35,44 +42,6 @@ use tokio_postgres::NoTls;
 use crate::config::DatabaseConfig;
 use crate::models::ParsedArticle;
 use crate::parser::Article;
-
-/// Crawl metadata record
-#[derive(Debug, Clone)]
-pub struct CrawlRecord {
-    pub id: String,
-    pub url: String,
-    pub content_hash: String,
-    pub crawled_at: DateTime<Utc>,
-    pub status: CrawlStatus,
-    pub error_message: Option<String>,
-}
-
-/// Crawl status
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CrawlStatus {
-    Success,
-    Failed,
-    Skipped,
-}
-
-impl CrawlStatus {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CrawlStatus::Success => "success",
-            CrawlStatus::Failed => "failed",
-            CrawlStatus::Skipped => "skipped",
-        }
-    }
-
-    fn from_str(s: &str) -> Self {
-        match s {
-            "success" => CrawlStatus::Success,
-            "failed" => CrawlStatus::Failed,
-            "skipped" => CrawlStatus::Skipped,
-            _ => CrawlStatus::Failed,
-        }
-    }
-}
 
 /// Database management wrapper
 pub struct Database {
@@ -423,7 +392,7 @@ impl Database {
                         crawled_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
                             .map(|dt| dt.with_timezone(&Utc))
                             .unwrap_or_else(|_| Utc::now()),
-                        status: CrawlStatus::from_str(&row.get::<_, String>(4)?),
+                        status: row.get::<_, String>(4)?.parse().unwrap_or(CrawlStatus::Failed),
                         error_message: row.get(5)?,
                     })
                 },
@@ -592,25 +561,6 @@ impl Database {
             .collect();
 
         Ok(crawled_urls)
-    }
-}
-
-/// Crawl statistics
-#[derive(Debug, Clone, Default)]
-pub struct CrawlStats {
-    pub total: usize,
-    pub success: usize,
-    pub failed: usize,
-    pub skipped: usize,
-}
-
-impl CrawlStats {
-    /// Success rate (0.0 - 1.0)
-    pub fn success_rate(&self) -> f64 {
-        if self.total == 0 {
-            return 1.0;
-        }
-        self.success as f64 / self.total as f64
     }
 }
 
