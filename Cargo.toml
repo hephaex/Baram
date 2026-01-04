@@ -96,6 +96,10 @@ sha2 = "0.10"
 # Bloom filter for URL deduplication
 bloomfilter = "1.0"
 
+# Redis caching
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+deadpool-redis = "0.18"
+
 # Additional utilities
 futures = "0.3"
 bytes = "1.8"
