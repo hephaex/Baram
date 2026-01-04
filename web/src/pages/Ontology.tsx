@@ -148,8 +148,8 @@ export function Ontology() {
     {
       selector: 'node',
       style: {
-        'background-color': (ele: any) =>
-          nodeColors[ele.data('type')] || nodeColors.default,
+        'background-color': (ele: cytoscape.NodeSingular) =>
+          nodeColors[ele.data('type') as string] || nodeColors.default,
         label: 'data(label)',
         'text-valign': 'bottom',
         'text-halign': 'center',
@@ -201,7 +201,7 @@ export function Ontology() {
 
   const handleRefresh = () => {
     if (cyRef.current) {
-      cyRef.current.layout({ name: 'cose', animate: true } as any).run();
+      cyRef.current.layout({ name: 'cose', animate: true } as cytoscape.LayoutOptions).run();
     }
   };
 
@@ -311,7 +311,7 @@ export function Ontology() {
           {/* Cytoscape Graph */}
           <CytoscapeComponent
             elements={elements}
-            stylesheet={cyStylesheet as any}
+            stylesheet={cyStylesheet as unknown as cytoscape.StylesheetCSS[]}
             style={{ width: '100%', height: '100%' }}
             layout={{ name: 'cose', animate: false }}
             cy={(cy: Core) => {
