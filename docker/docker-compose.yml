@@ -6,6 +6,18 @@ services:
     image: pgvector/pgvector:pg18
     container_name: baram-postgres
     restart: unless-stopped
+    # Security: Run as postgres user (UID 999)
+    user: "999:999"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - FOWNER
+      - DAC_READ_SEARCH
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-baram}
       POSTGRES_USER: ${POSTGRES_USER:-baram}
@@ -73,6 +85,12 @@ services:
     image: opensearchproject/opensearch:3.4.0
     container_name: baram-opensearch
     restart: unless-stopped
+    # Security: Run as opensearch user (UID 1000)
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       - cluster.name=baram-cluster
       - node.name=baram-node-1
@@ -123,6 +141,15 @@ services:
     image: redis:7-alpine
     container_name: baram-redis
     restart: unless-stopped
+    # Security: Run as redis user (UID 999 in alpine)
+    user: "999:999"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command:
       - "redis-server"
       - "--appendonly"
@@ -174,6 +201,12 @@ services:
     image: opensearchproject/opensearch-dashboards:3.4.0
     container_name: baram-dashboards
     restart: unless-stopped
+    # Security: Run as opensearch-dashboards user (UID 1000)
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles:
       - development
     environment:
@@ -202,6 +235,12 @@ services:
     image: dpage/pgadmin4:latest
     container_name: baram-pgadmin
     restart: unless-stopped
+    # Security: Run as pgadmin user (UID 5050)
+    user: "5050:5050"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles:
       - development
     environment:

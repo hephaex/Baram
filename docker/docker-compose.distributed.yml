@@ -21,6 +21,15 @@ services:
       dockerfile: Dockerfile
     container_name: baram-coordinator
     restart: unless-stopped
+    # Security: Run as baram user (UID 1001 defined in Dockerfile)
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command:
       - "coordinator"
       - "--port"
@@ -61,6 +70,15 @@ services:
       dockerfile: Dockerfile
     container_name: baram-crawler-main
     restart: unless-stopped
+    # Security: Run as baram user (UID 1001 defined in Dockerfile)
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command:
       - "distributed"
       - "--instance"
@@ -126,6 +144,15 @@ services:
       dockerfile: Dockerfile
     container_name: baram-crawler-sub1
     restart: unless-stopped
+    # Security: Run as baram user (UID 1001 defined in Dockerfile)
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command:
       - "distributed"
       - "--instance"
@@ -191,6 +218,15 @@ services:
       dockerfile: Dockerfile
     container_name: baram-crawler-sub2
     restart: unless-stopped
+    # Security: Run as baram user (UID 1001 defined in Dockerfile)
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command:
       - "distributed"
       - "--instance"

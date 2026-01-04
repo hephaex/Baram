@@ -21,6 +21,15 @@ services:
       dockerfile: Dockerfile.gpu
     container_name: baram-crawler-gpu
     restart: unless-stopped
+    # Security: Run as baram user (UID 1001 defined in Dockerfile.gpu)
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command: ["crawl", "--help"]  # TODO: Add proper crawl arguments when coordinator is implemented
     environment:
       RUST_LOG: ${CRAWLER_LOG_LEVEL:-info}
@@ -83,6 +92,15 @@ services:
       dockerfile: Dockerfile.gpu
     container_name: baram-embedding-gpu
     restart: unless-stopped
+    # Security: Run as baram user (UID 1001 defined in Dockerfile.gpu)
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
     command: ["embedding-server", "--port", "8090", "--use-gpu"]
     environment:
       RUST_LOG: ${EMBEDDING_LOG_LEVEL:-info}
