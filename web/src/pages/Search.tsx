@@ -93,8 +93,12 @@ export function Search() {
       <form onSubmit={handleSearch} className="mb-6">
         <div className="flex gap-2">
           <div className="flex-1 relative">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <label htmlFor="search-input" className="sr-only">
+              기사 검색
+            </label>
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
             <input
+              id="search-input"
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -105,18 +109,22 @@ export function Search() {
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-3 rounded-xl border transition ${
+            aria-label="검색 필터 토글"
+            aria-expanded={showFilters}
+            aria-controls="search-filters"
+            className={`px-4 py-3 rounded-xl border transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               showFilters
                 ? 'bg-blue-50 border-blue-500 text-blue-600'
                 : 'border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <Filter className="w-5 h-5" />
+            <Filter className="w-5 h-5" aria-hidden="true" />
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition"
+            aria-label={isLoading ? '검색 진행 중' : '검색 실행'}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             {isLoading ? '검색 중...' : '검색'}
           </button>
@@ -124,7 +132,7 @@ export function Search() {
 
         {/* Filters */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-xl">
+          <div id="search-filters" className="mt-4 p-4 bg-gray-50 rounded-xl" role="region" aria-label="검색 필터">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Category */}
               <div>
