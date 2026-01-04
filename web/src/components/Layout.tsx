@@ -30,7 +30,7 @@ export function Layout() {
       </a>
 
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 text-white" role="navigation" aria-label="메인 네비게이션">
+      <aside className="w-64 bg-gray-900 text-white" role="complementary" aria-label="사이드바">
         <div className="p-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <Database className="w-8 h-8 text-blue-400" aria-hidden="true" />
@@ -41,12 +41,13 @@ export function Layout() {
           </div>
         </div>
 
-        <nav className="p-4">
+        <nav className="p-4" role="navigation" aria-label="메인 네비게이션">
           <ul className="space-y-2" role="list">
             {navItems.map(({ to, icon: Icon, label }) => (
-              <li key={to}>
+              <li key={to} role="listitem">
                 <NavLink
                   to={to}
+                  aria-label={label}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${
                       isActive
@@ -55,8 +56,12 @@ export function Layout() {
                     }`
                   }
                 >
-                  <Icon className="w-5 h-5" aria-hidden="true" />
-                  {label}
+                  {({ isActive }) => (
+                    <>
+                      <Icon className="w-5 h-5" aria-hidden="true" />
+                      <span aria-current={isActive ? 'page' : undefined}>{label}</span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
@@ -65,7 +70,7 @@ export function Layout() {
       </aside>
 
       {/* Main content */}
-      <main id="main-content" className="flex-1 overflow-auto" role="main" tabIndex={-1}>
+      <main id="main-content" className="flex-1 overflow-auto" role="main" aria-label="메인 콘텐츠" tabIndex={-1}>
         <Outlet />
       </main>
     </div>
