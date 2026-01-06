@@ -5,6 +5,13 @@ services:
     image: vllm/vllm-openai:latest
     container_name: baram-vllm
     runtime: nvidia
+    # Security: Limit privilege escalation (Note: vLLM requires root for GPU access)
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_PTRACE  # Required for GPU debugging
     dns:
       - 8.8.8.8
       - 8.8.4.4
