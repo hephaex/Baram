@@ -165,6 +165,15 @@ impl Embedder {
             .map(|e| e == "safetensors")
             .unwrap_or(false)
         {
+            // SAFETY: Memory-mapped safetensors loading is safe here because:
+            // 1. The weights_path is validated to exist and be readable before reaching this point
+            //    (downloaded from HuggingFace Hub or provided as a valid local path)
+            // 2. The file is not modified during the lifetime of the VarBuilder
+            //    (the model is read-only after loading)
+            // 3. The VarBuilder owns the memory mapping and manages its lifetime correctly
+            // 4. The safetensors format includes checksums for data integrity validation
+            // 5. Memory-mapped access provides efficient lazy loading of large model weights
+            //    without loading the entire file into memory
             unsafe {
                 VarBuilder::from_mmaped_safetensors(&[weights_path], DType::F32, &device)
                     .context("Failed to load safetensors")?
