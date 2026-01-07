@@ -1,0 +1,50 @@
+# Dockerfile for Baram Web Dashboard
+# Multi-stage build for optimized production image
+
+# Stage 1: Build the application
+FROM node:20-alpine AS builder
+WORKDIR /build
+
+# Install dependencies first (better layer caching)
+COPY package*.json ./
+RUN npm ci --only=production=false
+
+# Copy source files and build
+COPY . .
+RUN npm run build
+
+# Stage 2: Production image with nginx
+FROM nginx:alpine AS production
+
+# Security: Create non-root user for nginx
+RUN addgroup -g 101 -S nginx-app && \
+    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx-app nginx-app && \
+    # Set up directories with correct permissions
+    mkdir -p /var/cache/nginx/client_temp && \
+    mkdir -p /var/cache/nginx/proxy_temp && \
+    mkdir -p /var/cache/nginx/fastcgi_temp && \
+    mkdir -p /var/cache/nginx/uwsgi_temp && \
+    mkdir -p /var/cache/nginx/scgi_temp && \
+    mkdir -p /var/run && \
+    chown -R nginx-app:nginx-app /var/cache/nginx && \
+    chown -R nginx-app:nginx-app /var/run && \
+    chown -R nginx-app:nginx-app /etc/nginx/conf.d
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built assets from builder stage
+COPY --from=builder /build/dist /usr/share/nginx/html
+RUN chown -R nginx-app:nginx-app /usr/share/nginx/html
+
+# Security: Run as non-root user
+USER nginx-app
+
+# Expose non-privileged port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

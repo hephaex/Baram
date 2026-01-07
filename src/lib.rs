@@ -30,10 +30,12 @@
 //! }
 //! ```
 
+pub mod cache;
 pub mod config;
 pub mod coordinator;
 pub mod crawler;
 pub mod embedding;
+pub mod error;
 pub mod llm;
 pub mod metrics;
 pub mod models;
@@ -47,6 +49,7 @@ pub mod utils;
 pub mod prelude {
     pub use crate::config::Config;
     pub use crate::crawler::Crawler;
+    pub use crate::error::{BaramErrorTrait, Error, ErrorCategory, Result};
     pub use crate::models::{CrawlState, CrawlStats, NewsCategory, ParsedArticle};
     pub use crate::parser::Article;
     pub use crate::storage::{ArticleStorage, Database, MarkdownWriter};

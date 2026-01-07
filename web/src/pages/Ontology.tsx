@@ -241,52 +241,63 @@ export function Ontology() {
         {/* Graph View */}
         <div className="flex-1 bg-white rounded-xl shadow-sm overflow-hidden relative">
           {/* Controls */}
-          <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <div className="absolute top-4 right-4 z-10 flex gap-2" role="toolbar" aria-label="그래프 컨트롤">
             <button
               onClick={handleRefresh}
-              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50"
-              title="레이아웃 재배치"
+              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="레이아웃 재배치"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-5 h-5" aria-hidden="true" />
             </button>
             <button
               onClick={handleZoomIn}
-              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="확대"
             >
-              <ZoomIn className="w-5 h-5" />
+              <ZoomIn className="w-5 h-5" aria-hidden="true" />
             </button>
             <button
               onClick={handleZoomOut}
-              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="축소"
             >
-              <ZoomOut className="w-5 h-5" />
+              <ZoomOut className="w-5 h-5" aria-hidden="true" />
             </button>
             <button
               onClick={handleFit}
-              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+              className="p-2 bg-white rounded-lg shadow hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="화면에 맞추기"
             >
-              <Maximize2 className="w-5 h-5" />
+              <Maximize2 className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
           {/* Search and Filter */}
-          <div className="absolute top-4 left-4 z-10 flex gap-2">
+          <div className="absolute top-4 left-4 z-10 flex gap-2" role="search" aria-label="온톨로지 검색">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <label htmlFor="ontology-search" className="sr-only">
+                엔티티 검색
+              </label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
               <input
+                id="ontology-search"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="엔티티 검색..."
-                className="pl-10 pr-4 py-2 w-48 rounded-lg border border-gray-200 focus:border-blue-500 outline-none text-sm"
+                className="pl-10 pr-4 py-2 w-48 rounded-lg border border-gray-200 focus:border-blue-500 outline-none text-sm focus:ring-2 focus:ring-blue-200"
               />
             </div>
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <label htmlFor="relation-filter" className="sr-only">
+                관계 유형 필터
+              </label>
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
               <select
+                id="relation-filter"
                 value={selectedRelationType}
                 onChange={(e) => setSelectedRelationType(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 outline-none text-sm appearance-none bg-white"
+                className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 outline-none text-sm appearance-none bg-white focus:ring-2 focus:ring-blue-200"
               >
                 <option value="all">모든 관계</option>
                 {Object.keys(data?.stats.relation_types || {}).map((type) => (
