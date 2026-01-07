@@ -17,6 +17,7 @@ use crate::scheduler::trigger::ScheduleTrigger;
 
 use super::api::create_router;
 use super::config::CoordinatorConfig;
+use super::health::create_health_router;
 use super::registry::InstanceRegistry;
 
 // ============================================================================
@@ -102,7 +103,16 @@ impl CoordinatorServer {
 
     /// Build the router with all routes
     pub fn build_router(&self) -> Router {
-        let mut router = create_router(self.state.clone());
+        // Create API router
+        let api_router = create_router(self.state.clone());
+
+        // Create health check router
+        let health_router = create_health_router(self.state.clone());
+
+        // Merge routers
+        let mut router = Router::new()
+            .merge(health_router)
+            .merge(api_router);
 
         // Add CORS layer if enabled
         if self.config.enable_cors {
