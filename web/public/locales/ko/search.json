@@ -1,0 +1,36 @@
+{
+  "title": "Search",
+  "subtitle": "수집된 기사를 검색합니다",
+  "input": {
+    "placeholder": "검색어를 입력하세요...",
+    "label": "기사 검색"
+  },
+  "filters": {
+    "toggle": "검색 필터 토글",
+    "title": "검색 필터",
+    "category": "카테고리",
+    "dateFrom": "시작일",
+    "dateTo": "종료일",
+    "all": "전체"
+  },
+  "categories": {
+    "all": "전체",
+    "it": "IT",
+    "economy": "경제",
+    "politics": "정치",
+    "society": "사회",
+    "culture": "문화",
+    "world": "세계",
+    "sports": "스포츠"
+  },
+  "results": {
+    "count": "\"{{query}}\"에 대한 {{count}}개의 결과",
+    "noResults": "검색 결과가 없습니다",
+    "enterQuery": "검색어를 입력하세요"
+  },
+  "aria": {
+    "filterToggle": "검색 필터 토글",
+    "searchExecute": "검색 실행",
+    "searchInProgress": "검색 진행 중"
+  }
+}

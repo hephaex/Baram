@@ -1,0 +1,98 @@
+cli:
+  app:
+    starting: "baram Naver 新闻爬虫启动中"
+    completed: "baram 已成功完成"
+
+  config:
+    not_found: "未找到配置文件"
+    using_defaults: "使用默认设置"
+
+  crawl:
+    starting: "开始 Naver 新闻爬取"
+    header: "========================"
+    single_url: "爬取单个URL: %{url}"
+    category: "爬取类别: %{name} (%{code})"
+    found_urls: "发现 %{count} 个文章URL"
+    new_articles: "要爬取的新文章: %{new_count} 个 (跳过: %{skipped_count} 个)"
+    progress: "[%{current}/%{total}] 正在爬取: %{url}..."
+    summary: "爬取摘要"
+    summary_header: "============="
+    total_processed: "总处理数: %{count}"
+    successful: "成功: %{count}"
+    failed: "失败: %{count}"
+    output_directory: "输出目录: %{path}"
+    database: "数据库: %{path}"
+    db_stats: "数据库统计"
+    db_stats_header: "--------------"
+    total_records: "总记录数: %{count}"
+    success: "成功: %{count}"
+    success_rate: "成功率: %{rate}%"
+
+  resume:
+    starting: "从检查点恢复爬取: %{path}"
+    checkpoint_stats: "检查点统计"
+    checkpoint_stats_header: "----------------"
+    total: "总计: %{count}"
+    last_category: "最后类别: %{category}"
+    last_page: "最后页面: %{page}"
+    continuing: "继续爬取,最多 %{max} 篇文章..."
+    output_directory: "输出目录: %{path}"
+
+  stats:
+    title: "爬取统计"
+    header: "================"
+    database: "数据库: %{path}"
+    not_found: "未找到数据库: %{path}"
+    run_crawl_first: "请先运行爬取以创建数据库。"
+    total_records: "总记录数: %{count}"
+    success: "成功: %{count} (%{percent}%)"
+    failed: "失败: %{count} (%{percent}%)"
+    skipped: "跳过: %{count} (%{percent}%)"
+
+  index:
+    starting: "开始索引命令"
+    input: "输入: %{input}"
+    batch_size: "批次大小: %{size}"
+    force: "强制重新索引: %{force}"
+
+  search:
+    starting: "开始搜索命令"
+    query: "查询: %{query}"
+    k_results: "结果数量: %{k}"
+    threshold: "阈值: %{threshold}"
+
+  ontology:
+    starting: "开始本体命令"
+    input: "输入: %{input}"
+    format: "格式: %{format}"
+    output: "输出: %{output}"
+    llm_enabled: "启用LLM: %{enabled}"
+
+  embedding_server:
+    starting: "启动嵌入服务器"
+    host: "主机: %{host}"
+    port: "端口: %{port}"
+    model: "模型: %{model}"
+    use_gpu: "使用GPU: %{use_gpu}"
+
+  distributed:
+    starting: "启动分布式爬虫"
+    instance: "实例: %{instance}"
+    coordinator: "协调器: %{coordinator}"
+    once: "运行一次: %{once}"
+
+  coordinator:
+    starting: "启动协调器服务器"
+    host: "主机: %{host}"
+    port: "端口: %{port}"
+    max_instances: "最大实例数: %{max}"
+
+  category:
+    politics: "政治"
+    economy: "经济"
+    society: "社会"
+    culture: "文化/生活"
+    world: "国际"
+    it: "IT/科学"
+    unknown: "未知类别: %{category}"
+    valid_categories: "有效类别: politics, economy, society, culture, world, it"

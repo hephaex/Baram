@@ -1,0 +1,86 @@
+errors:
+  # Fetch errors
+  fetch:
+    http_request_failed: "HTTP request failed"
+    rate_limit: "Rate limit exceeded"
+    server_error: "Server error"
+    timeout: "Request timeout"
+    max_retries_exceeded: "Maximum retry attempts exceeded"
+    decode_error: "Decoding error"
+    invalid_url: "Invalid URL"
+
+  # Parse errors
+  parse:
+    title_not_found: "Title not found in article"
+    content_not_found: "Content not found in article"
+    invalid_url: "Invalid URL"
+    id_extraction_failed: "Failed to extract article ID from URL"
+    article_not_found: "Article not found"
+    unknown_format: "Unknown or unsupported format"
+
+  # Crawler errors
+  crawler:
+    fetch_error: "Fetch error"
+    parse_error: "Parse error"
+    invalid_date: "Invalid date format"
+    no_articles_found: "No articles found"
+    rate_limited: "Rate limited"
+
+  # Ontology errors
+  ontology:
+    llm_response_parse_failed: "LLM response parse failed"
+    empty_llm_response: "Empty LLM response"
+    invalid_llm_json: "Invalid LLM JSON"
+    storage_directory_not_found: "Storage directory not found"
+    storage_directory_creation_failed: "Storage directory creation failed"
+    storage_save_failed: "Storage save failed"
+    storage_load_failed: "Storage load failed"
+    io_error: "I/O error"
+    invalid_config: "Invalid config"
+    missing_config: "Missing config"
+
+  # Scheduler errors
+  scheduler:
+    invalid_time: "Invalid time"
+    slot_not_found: "Slot not found"
+    invalid_slot: "Invalid slot"
+
+  # Database errors
+  database:
+    error: "Database error"
+    connection_failed: "Database connection failed"
+    query_failed: "Query failed"
+
+  # I/O errors
+  io:
+    error: "I/O error"
+    file_not_found: "File not found"
+    permission_denied: "Permission denied"
+
+  # JSON errors
+  json:
+    error: "JSON error"
+    parse_failed: "JSON parse failed"
+    serialize_failed: "JSON serialization failed"
+
+  # HTTP errors
+  http:
+    error: "HTTP error"
+    request_failed: "Request failed"
+    connection_failed: "Connection failed"
+
+  # Config errors
+  config:
+    error: "Config error"
+    invalid_format: "Invalid format"
+    missing_field: "Missing required field"
+
+  # Categories
+  category:
+    network: "Network error"
+    parsing: "Parsing error"
+    storage: "Storage error"
+    llm: "LLM error"
+    config: "Config error"
+    scheduler: "Scheduler error"
+    other: "Other error"

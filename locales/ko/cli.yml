@@ -1,0 +1,98 @@
+cli:
+  app:
+    starting: "baram 네이버 뉴스 크롤러 시작"
+    completed: "baram이 성공적으로 완료되었습니다"
+
+  config:
+    not_found: "설정 파일을 찾을 수 없습니다"
+    using_defaults: "기본 설정을 사용합니다"
+
+  crawl:
+    starting: "네이버 뉴스 크롤 시작"
+    header: "========================"
+    single_url: "단일 URL 크롤링: %{url}"
+    category: "카테고리 크롤링: %{name} (%{code})"
+    found_urls: "발견된 기사 URL: %{count}개"
+    new_articles: "크롤할 새 기사: %{new_count}개 (건너뜀: %{skipped_count}개)"
+    progress: "[%{current}/%{total}] 크롤링 중: %{url}..."
+    summary: "크롤 요약"
+    summary_header: "============="
+    total_processed: "총 처리됨: %{count}"
+    successful: "성공: %{count}"
+    failed: "실패: %{count}"
+    output_directory: "출력 디렉토리: %{path}"
+    database: "데이터베이스: %{path}"
+    db_stats: "데이터베이스 통계"
+    db_stats_header: "--------------"
+    total_records: "총 레코드: %{count}"
+    success: "성공: %{count}"
+    success_rate: "성공률: %{rate}%"
+
+  resume:
+    starting: "체크포인트에서 크롤 재개: %{path}"
+    checkpoint_stats: "체크포인트 통계"
+    checkpoint_stats_header: "----------------"
+    total: "전체: %{count}"
+    last_category: "마지막 카테고리: %{category}"
+    last_page: "마지막 페이지: %{page}"
+    continuing: "최대 %{max}개 기사로 크롤 계속..."
+    output_directory: "출력 디렉토리: %{path}"
+
+  stats:
+    title: "크롤 통계"
+    header: "================"
+    database: "데이터베이스: %{path}"
+    not_found: "데이터베이스를 찾을 수 없습니다: %{path}"
+    run_crawl_first: "먼저 크롤을 실행하여 데이터베이스를 생성하세요."
+    total_records: "총 레코드: %{count}"
+    success: "성공: %{count} (%{percent}%)"
+    failed: "실패: %{count} (%{percent}%)"
+    skipped: "건너뜀: %{count} (%{percent}%)"
+
+  index:
+    starting: "인덱싱 시작"
+    input: "입력: %{input}"
+    batch_size: "배치 크기: %{size}"
+    force: "강제 재인덱싱: %{force}"
+
+  search:
+    starting: "검색 시작"
+    query: "쿼리: %{query}"
+    k_results: "결과 수: %{k}"
+    threshold: "임계값: %{threshold}"
+
+  ontology:
+    starting: "온톨로지 추출 시작"
+    input: "입력: %{input}"
+    format: "형식: %{format}"
+    output: "출력: %{output}"
+    llm_enabled: "LLM 사용: %{enabled}"
+
+  embedding_server:
+    starting: "임베딩 서버 시작"
+    host: "호스트: %{host}"
+    port: "포트: %{port}"
+    model: "모델: %{model}"
+    use_gpu: "GPU 사용: %{use_gpu}"
+
+  distributed:
+    starting: "분산 크롤러 시작"
+    instance: "인스턴스: %{instance}"
+    coordinator: "코디네이터: %{coordinator}"
+    once: "일회 실행: %{once}"
+
+  coordinator:
+    starting: "코디네이터 서버 시작"
+    host: "호스트: %{host}"
+    port: "포트: %{port}"
+    max_instances: "최대 인스턴스: %{max}"
+
+  category:
+    politics: "정치"
+    economy: "경제"
+    society: "사회"
+    culture: "생활/문화"
+    world: "세계"
+    it: "IT/과학"
+    unknown: "알 수 없는 카테고리: %{category}"
+    valid_categories: "유효한 카테고리: politics, economy, society, culture, world, it"

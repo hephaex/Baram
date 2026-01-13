@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "Baram",
+    "subtitle": "新闻爬虫仪表板"
+  },
+  "nav": {
+    "dashboard": "仪表板",
+    "search": "搜索",
+    "ontology": "本体",
+    "settings": "设置",
+    "skipToMain": "跳转到主要内容"
+  },
+  "aria": {
+    "sidebar": "侧边栏",
+    "mainNav": "主导航",
+    "mainContent": "主要内容"
+  },
+  "button": {
+    "refresh": "刷新",
+    "retry": "重试",
+    "save": "保存",
+    "search": "搜索",
+    "start": "开始",
+    "stop": "停止"
+  },
+  "status": {
+    "loading": "加载中...",
+    "saving": "保存中...",
+    "searching": "搜索中...",
+    "running": "运行中",
+    "stopped": "已停止",
+    "healthy": "正常",
+    "unhealthy": "错误",
+    "unavailable": "不可用",
+    "unknown": "未知"
+  },
+  "error": {
+    "generic": "发生错误",
+    "loadFailed": "无法加载数据",
+    "serverUnavailable": "无法连接到服务器。",
+    "searchError": "搜索错误",
+    "dataLoadFailed": "数据加载失败"
+  },
+  "time": {
+    "days": "天",
+    "hours": "小时"
+  }
+}

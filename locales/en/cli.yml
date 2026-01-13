@@ -1,0 +1,98 @@
+cli:
+  app:
+    starting: "baram Naver News Crawler starting"
+    completed: "baram completed successfully"
+
+  config:
+    not_found: "Config file not found"
+    using_defaults: "using defaults"
+
+  crawl:
+    starting: "Starting Naver News Crawl"
+    header: "========================"
+    single_url: "Crawling single URL: %{url}"
+    category: "Crawling category: %{name} (%{code})"
+    found_urls: "Found %{count} article URLs"
+    new_articles: "New articles to crawl: %{new_count} (skipped: %{skipped_count})"
+    progress: "[%{current}/%{total}] Crawling: %{url}..."
+    summary: "Crawl Summary"
+    summary_header: "============="
+    total_processed: "Total processed: %{count}"
+    successful: "Successful: %{count}"
+    failed: "Failed: %{count}"
+    output_directory: "Output directory: %{path}"
+    database: "Database: %{path}"
+    db_stats: "Database Stats"
+    db_stats_header: "--------------"
+    total_records: "Total records: %{count}"
+    success: "Success: %{count}"
+    success_rate: "Success rate: %{rate}%"
+
+  resume:
+    starting: "Resuming crawl from checkpoint: %{path}"
+    checkpoint_stats: "Checkpoint Stats"
+    checkpoint_stats_header: "----------------"
+    total: "Total: %{count}"
+    last_category: "Last category: %{category}"
+    last_page: "Last page: %{page}"
+    continuing: "Continuing crawl with max %{max} articles..."
+    output_directory: "Output directory: %{path}"
+
+  stats:
+    title: "Crawl Statistics"
+    header: "================"
+    database: "Database: %{path}"
+    not_found: "Database not found: %{path}"
+    run_crawl_first: "Run a crawl first to create the database."
+    total_records: "Total records: %{count}"
+    success: "Success: %{count} (%{percent}%)"
+    failed: "Failed: %{count} (%{percent}%)"
+    skipped: "Skipped: %{count} (%{percent}%)"
+
+  index:
+    starting: "Starting index command"
+    input: "Input: %{input}"
+    batch_size: "Batch size: %{size}"
+    force: "Force reindex: %{force}"
+
+  search:
+    starting: "Starting search command"
+    query: "Query: %{query}"
+    k_results: "Number of results: %{k}"
+    threshold: "Threshold: %{threshold}"
+
+  ontology:
+    starting: "Starting ontology command"
+    input: "Input: %{input}"
+    format: "Format: %{format}"
+    output: "Output: %{output}"
+    llm_enabled: "LLM enabled: %{enabled}"
+
+  embedding_server:
+    starting: "Starting embedding server"
+    host: "Host: %{host}"
+    port: "Port: %{port}"
+    model: "Model: %{model}"
+    use_gpu: "Use GPU: %{use_gpu}"
+
+  distributed:
+    starting: "Starting distributed crawler"
+    instance: "Instance: %{instance}"
+    coordinator: "Coordinator: %{coordinator}"
+    once: "Run once: %{once}"
+
+  coordinator:
+    starting: "Starting coordinator server"
+    host: "Host: %{host}"
+    port: "Port: %{port}"
+    max_instances: "Max instances: %{max}"
+
+  category:
+    politics: "Politics"
+    economy: "Economy"
+    society: "Society"
+    culture: "Culture"
+    world: "World"
+    it: "IT/Science"
+    unknown: "Unknown category: %{category}"
+    valid_categories: "Valid: politics, economy, society, culture, world, it"

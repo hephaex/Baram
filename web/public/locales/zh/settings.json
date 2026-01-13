@@ -1,0 +1,25 @@
+{
+  "title": "设置",
+  "subtitle": "管理系统配置",
+  "crawler": {
+    "title": "爬虫控制",
+    "settings": "爬虫设置",
+    "requestsPerSecond": "每秒请求数",
+    "requestsPerSecondHint": "推荐: 5 (遵守Naver政策)",
+    "maxWorkers": "最大并发工作器",
+    "timeout": "超时 (秒)",
+    "maxRetries": "最大重试次数",
+    "commentsEnabled": "启用评论收集"
+  },
+  "llm": {
+    "title": "LLM设置",
+    "provider": "提供商",
+    "baseUrl": "基础URL",
+    "model": "模型",
+    "batchSize": "批量大小"
+  },
+  "save": {
+    "button": "保存设置",
+    "success": "设置已成功保存。"
+  }
+}

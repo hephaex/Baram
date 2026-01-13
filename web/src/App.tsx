@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { ErrorBoundary, PageLoadingFallback } from './components/ErrorBoundary';
+import './i18n/config';
 
 // Lazy load pages for code splitting
 const Dashboard = lazy(() =>

@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "Baram",
+    "subtitle": "News Crawler Dashboard"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "search": "Search",
+    "ontology": "Ontology",
+    "settings": "Settings",
+    "skipToMain": "Skip to main content"
+  },
+  "aria": {
+    "sidebar": "Sidebar",
+    "mainNav": "Main navigation",
+    "mainContent": "Main content"
+  },
+  "button": {
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "save": "Save",
+    "search": "Search",
+    "start": "Start",
+    "stop": "Stop"
+  },
+  "status": {
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "searching": "Searching...",
+    "running": "Running",
+    "stopped": "Stopped",
+    "healthy": "Healthy",
+    "unhealthy": "Unhealthy",
+    "unavailable": "Unavailable",
+    "unknown": "Unknown"
+  },
+  "error": {
+    "generic": "An error occurred",
+    "loadFailed": "Failed to load data",
+    "serverUnavailable": "Cannot connect to server.",
+    "searchError": "Search error",
+    "dataLoadFailed": "Data load failed"
+  },
+  "time": {
+    "days": "days",
+    "hours": "hours"
+  }
+}

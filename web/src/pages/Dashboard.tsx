@@ -4,6 +4,7 @@
  * Issue #35: useMemo performance optimization
  */
 import { useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Newspaper,
   TrendingUp,
@@ -37,19 +38,20 @@ import { useCrawlStats, useSystemStatus, useOntologyStats, useRefreshDashboard }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-const entityTypeLabels: Record<string, string> = {
-  '기관': 'Organization',
-  '장소': 'Location',
-  '인물': 'Person',
-  '비율': 'Percentage',
-  '금액': 'Money',
-};
-
 export function Dashboard() {
+  const { t } = useTranslation(['dashboard', 'common']);
   const { data: stats, isLoading: statsLoading, error: statsError } = useCrawlStats();
   const { data: status, isLoading: statusLoading, error: statusError } = useSystemStatus();
   const { data: ontologyStats, isLoading: ontologyLoading } = useOntologyStats();
   const { refresh } = useRefreshDashboard();
+
+  const entityTypeLabels: Record<string, string> = {
+    '기관': t('dashboard:entityTypes.Organization'),
+    '장소': t('dashboard:entityTypes.Location'),
+    '인물': t('dashboard:entityTypes.Person'),
+    '비율': t('dashboard:entityTypes.Percentage'),
+    '금액': t('dashboard:entityTypes.Money'),
+  };
 
   // Memoized entity type data transformation
   const entityTypeData = useMemo(() => {
@@ -78,8 +80,8 @@ export function Dashboard() {
   const formatUptime = useCallback((seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
-    return `${days}일 ${hours}시간`;
-  }, []);
+    return `${days}${t('common:time.days')} ${hours}${t('common:time.hours')}`;
+  }, [t]);
 
   const formatNumber = useCallback((num: number) => {
     if (num >= 1000000) {
@@ -99,8 +101,8 @@ export function Dashboard() {
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-500">크롤링 현황 및 시스템 상태</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('dashboard:title')}</h1>
+            <p className="text-gray-500">{t('dashboard:subtitle')}</p>
           </div>
         </div>
         <LoadingFallback />
@@ -113,21 +115,21 @@ export function Dashboard() {
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-500">크롤링 현황 및 시스템 상태</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('dashboard:title')}</h1>
+            <p className="text-gray-500">{t('dashboard:subtitle')}</p>
           </div>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-red-800 mb-2">데이터를 불러올 수 없습니다</h3>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">{t('common:error.loadFailed')}</h3>
           <p className="text-red-600 mb-4">
-            {(statsError as Error)?.message || (statusError as Error)?.message || '서버에 연결할 수 없습니다.'}
+            {(statsError as Error)?.message || (statusError as Error)?.message || t('common:error.serverUnavailable')}
           </p>
           <button
             onClick={refresh}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
-            다시 시도
+            {t('common:button.retry')}
           </button>
         </div>
       </div>

@@ -1,0 +1,36 @@
+{
+  "title": "搜索",
+  "subtitle": "搜索已收集的文章",
+  "input": {
+    "placeholder": "输入搜索查询...",
+    "label": "搜索文章"
+  },
+  "filters": {
+    "toggle": "切换搜索过滤器",
+    "title": "搜索过滤器",
+    "category": "类别",
+    "dateFrom": "开始日期",
+    "dateTo": "结束日期",
+    "all": "全部"
+  },
+  "categories": {
+    "all": "全部",
+    "it": "IT",
+    "economy": "经济",
+    "politics": "政治",
+    "society": "社会",
+    "culture": "文化",
+    "world": "国际",
+    "sports": "体育"
+  },
+  "results": {
+    "count": "\"{{query}}\" 的 {{count}} 个结果",
+    "noResults": "未找到结果",
+    "enterQuery": "输入搜索查询"
+  },
+  "aria": {
+    "filterToggle": "切换搜索过滤器",
+    "searchExecute": "执行搜索",
+    "searchInProgress": "搜索进行中"
+  }
+}

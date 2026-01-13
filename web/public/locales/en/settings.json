@@ -1,0 +1,25 @@
+{
+  "title": "Settings",
+  "subtitle": "Manage system configuration",
+  "crawler": {
+    "title": "Crawler Control",
+    "settings": "Crawler Settings",
+    "requestsPerSecond": "Requests per Second",
+    "requestsPerSecondHint": "Recommended: 5 (Naver policy compliance)",
+    "maxWorkers": "Max Concurrent Workers",
+    "timeout": "Timeout (seconds)",
+    "maxRetries": "Max Retries",
+    "commentsEnabled": "Enable Comments Collection"
+  },
+  "llm": {
+    "title": "LLM Settings",
+    "provider": "Provider",
+    "baseUrl": "Base URL",
+    "model": "Model",
+    "batchSize": "Batch Size"
+  },
+  "save": {
+    "button": "Save Settings",
+    "success": "Settings saved successfully."
+  }
+}

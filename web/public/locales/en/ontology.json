@@ -1,0 +1,73 @@
+{
+  "title": "Ontology",
+  "subtitle": "Knowledge graph extracted from {{count}} articles",
+  "loading": "Loading ontology data...",
+  "search": {
+    "placeholder": "Search entities...",
+    "label": "Search entities"
+  },
+  "filter": {
+    "label": "Filter relation types",
+    "allRelations": "All Relations"
+  },
+  "display": {
+    "showing": "Showing: {{count}} relations",
+    "items_50": "50 items",
+    "items_100": "100 items",
+    "items_200": "200 items",
+    "items_500": "500 items"
+  },
+  "controls": {
+    "relayout": "Re-layout",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "fitScreen": "Fit to Screen"
+  },
+  "legend": {
+    "title": "Legend"
+  },
+  "stats": {
+    "title": "Statistics",
+    "totalArticles": "Total Articles",
+    "totalEntities": "Total Entities",
+    "totalRelations": "Total Relations",
+    "entityTypes": "Entity Types",
+    "relationTypes": "Relation Types"
+  },
+  "selectedNode": {
+    "title": "Selected Node",
+    "source": "Source"
+  },
+  "recentTriples": {
+    "title": "Recent Extracted Relations"
+  },
+  "nodeTypes": {
+    "Person": "Person",
+    "Organization": "Organization",
+    "Location": "Location",
+    "Statement": "Statement",
+    "Event": "Event",
+    "Industry": "Industry",
+    "Money": "Money",
+    "Percentage": "Percentage",
+    "Other": "Other"
+  },
+  "relationTypes": {
+    "소속": "MemberOf",
+    "위치": "LocatedIn",
+    "대표": "Leads",
+    "근무": "WorksFor",
+    "발언": "Said",
+    "투자": "InvestedIn",
+    "설립": "Founded",
+    "반대": "Opposed",
+    "비판": "Criticized",
+    "지지": "Supported",
+    "인수": "Acquired",
+    "소유": "Owns"
+  },
+  "aria": {
+    "graphControls": "Graph controls",
+    "ontologySearch": "Ontology search"
+  }
+}

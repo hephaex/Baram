@@ -1,0 +1,60 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Crawling status and system health",
+  "stats": {
+    "totalArticles": "Total Articles",
+    "todayArticles": "Collected Today",
+    "extractedEntities": "Extracted Entities",
+    "extractedRelations": "Extracted Relations",
+    "diskUsage": "Disk Usage"
+  },
+  "charts": {
+    "dailyTrend": "Daily Collection Trend",
+    "hourlyTrend": "Hourly Collection Volume",
+    "entityTypes": "Entity Type Distribution",
+    "relationTypes": "Relation Type Distribution",
+    "noData": "No data",
+    "loadingData": "Loading data..."
+  },
+  "ontology": {
+    "title": "Ontology Extraction Summary",
+    "person": "Person",
+    "organization": "Organization",
+    "location": "Location",
+    "memberOf": "Member Relation",
+    "leads": "Leadership Relation",
+    "investment": "Investment Relation"
+  },
+  "system": {
+    "title": "System Status",
+    "database": "Database",
+    "llmServer": "LLM Server",
+    "crawler": "Crawler",
+    "uptime": "Uptime"
+  },
+  "entityTypes": {
+    "Person": "Person",
+    "Organization": "Organization",
+    "Location": "Location",
+    "Money": "Money",
+    "Percentage": "Percentage"
+  },
+  "relationTypes": {
+    "소속": "Member Of",
+    "위치": "Located In",
+    "대표": "Leads",
+    "근무": "Works For",
+    "발언": "Said",
+    "투자": "Invested In",
+    "설립": "Founded",
+    "반대": "Opposed",
+    "비판": "Criticized",
+    "지지": "Supported",
+    "인수": "Acquired",
+    "소유": "Owns"
+  },
+  "aria": {
+    "refreshDashboard": "Refresh dashboard data"
+  },
+  "types": "types"
+}

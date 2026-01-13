@@ -1,0 +1,73 @@
+{
+  "title": "Ontology",
+  "subtitle": "{{count}}개 기사에서 추출된 지식 그래프",
+  "loading": "온톨로지 데이터 로딩 중...",
+  "search": {
+    "placeholder": "엔티티 검색...",
+    "label": "엔티티 검색"
+  },
+  "filter": {
+    "label": "관계 유형 필터",
+    "allRelations": "모든 관계"
+  },
+  "display": {
+    "showing": "표시 중: {{count}}개 관계",
+    "items_50": "50개",
+    "items_100": "100개",
+    "items_200": "200개",
+    "items_500": "500개"
+  },
+  "controls": {
+    "relayout": "레이아웃 재배치",
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "fitScreen": "화면에 맞추기"
+  },
+  "legend": {
+    "title": "범례"
+  },
+  "stats": {
+    "title": "통계",
+    "totalArticles": "전체 기사",
+    "totalEntities": "전체 엔티티",
+    "totalRelations": "전체 관계",
+    "entityTypes": "엔티티 타입",
+    "relationTypes": "관계 타입"
+  },
+  "selectedNode": {
+    "title": "선택된 노드",
+    "source": "출처"
+  },
+  "recentTriples": {
+    "title": "최근 추출 관계"
+  },
+  "nodeTypes": {
+    "Person": "Person",
+    "Organization": "Organization",
+    "Location": "Location",
+    "Statement": "Statement",
+    "Event": "Event",
+    "Industry": "Industry",
+    "Money": "Money",
+    "Percentage": "Percentage",
+    "Other": "Other"
+  },
+  "relationTypes": {
+    "소속": "MemberOf",
+    "위치": "LocatedIn",
+    "대표": "Leads",
+    "근무": "WorksFor",
+    "발언": "Said",
+    "투자": "InvestedIn",
+    "설립": "Founded",
+    "반대": "Opposed",
+    "비판": "Criticized",
+    "지지": "Supported",
+    "인수": "Acquired",
+    "소유": "Owns"
+  },
+  "aria": {
+    "graphControls": "그래프 컨트롤",
+    "ontologySearch": "온톨로지 검색"
+  }
+}

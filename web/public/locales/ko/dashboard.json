@@ -1,0 +1,60 @@
+{
+  "title": "Dashboard",
+  "subtitle": "크롤링 현황 및 시스템 상태",
+  "stats": {
+    "totalArticles": "전체 기사",
+    "todayArticles": "오늘 수집",
+    "extractedEntities": "추출된 엔티티",
+    "extractedRelations": "추출된 관계",
+    "diskUsage": "디스크 사용량"
+  },
+  "charts": {
+    "dailyTrend": "일별 수집 추이",
+    "hourlyTrend": "시간대별 수집량",
+    "entityTypes": "엔티티 타입별 분포",
+    "relationTypes": "관계 타입별 분포",
+    "noData": "데이터 없음",
+    "loadingData": "데이터 로딩 중..."
+  },
+  "ontology": {
+    "title": "온톨로지 추출 요약",
+    "person": "인물",
+    "organization": "기관",
+    "location": "장소",
+    "memberOf": "소속 관계",
+    "leads": "대표 관계",
+    "investment": "투자 관계"
+  },
+  "system": {
+    "title": "시스템 상태",
+    "database": "Database",
+    "llmServer": "LLM Server",
+    "crawler": "Crawler",
+    "uptime": "Uptime"
+  },
+  "entityTypes": {
+    "Person": "인물",
+    "Organization": "기관",
+    "Location": "장소",
+    "Money": "금액",
+    "Percentage": "비율"
+  },
+  "relationTypes": {
+    "소속": "소속",
+    "위치": "위치",
+    "대표": "대표",
+    "근무": "근무",
+    "발언": "발언",
+    "투자": "투자",
+    "설립": "설립",
+    "반대": "반대",
+    "비판": "비판",
+    "지지": "지지",
+    "인수": "인수",
+    "소유": "소유"
+  },
+  "aria": {
+    "refreshDashboard": "대시보드 데이터 새로고침"
+  },
+  "types": "types"
+}

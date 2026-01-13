@@ -1,0 +1,86 @@
+errors:
+  # Fetch errors
+  fetch:
+    http_request_failed: "HTTP请求失败"
+    rate_limit: "超出速率限制"
+    server_error: "服务器错误"
+    timeout: "请求超时"
+    max_retries_exceeded: "超出最大重试次数"
+    decode_error: "解码错误"
+    invalid_url: "无效URL"
+
+  # Parse errors
+  parse:
+    title_not_found: "文章中未找到标题"
+    content_not_found: "文章中未找到内容"
+    invalid_url: "无效URL"
+    id_extraction_failed: "从URL提取文章ID失败"
+    article_not_found: "未找到文章"
+    unknown_format: "未知或不支持的格式"
+
+  # Crawler errors
+  crawler:
+    fetch_error: "获取错误"
+    parse_error: "解析错误"
+    invalid_date: "无效日期格式"
+    no_articles_found: "未找到文章"
+    rate_limited: "速率受限"
+
+  # Ontology errors
+  ontology:
+    llm_response_parse_failed: "LLM响应解析失败"
+    empty_llm_response: "空LLM响应"
+    invalid_llm_json: "无效LLM JSON"
+    storage_directory_not_found: "未找到存储目录"
+    storage_directory_creation_failed: "存储目录创建失败"
+    storage_save_failed: "存储保存失败"
+    storage_load_failed: "存储加载失败"
+    io_error: "I/O错误"
+    invalid_config: "无效配置"
+    missing_config: "缺少配置"
+
+  # Scheduler errors
+  scheduler:
+    invalid_time: "无效时间"
+    slot_not_found: "未找到时间槽"
+    invalid_slot: "无效时间槽"
+
+  # Database errors
+  database:
+    error: "数据库错误"
+    connection_failed: "数据库连接失败"
+    query_failed: "查询失败"
+
+  # I/O errors
+  io:
+    error: "I/O错误"
+    file_not_found: "未找到文件"
+    permission_denied: "权限被拒绝"
+
+  # JSON errors
+  json:
+    error: "JSON错误"
+    parse_failed: "JSON解析失败"
+    serialize_failed: "JSON序列化失败"
+
+  # HTTP errors
+  http:
+    error: "HTTP错误"
+    request_failed: "请求失败"
+    connection_failed: "连接失败"
+
+  # Config errors
+  config:
+    error: "配置错误"
+    invalid_format: "无效格式"
+    missing_field: "缺少必填字段"
+
+  # Categories
+  category:
+    network: "网络错误"
+    parsing: "解析错误"
+    storage: "存储错误"
+    llm: "LLM错误"
+    config: "配置错误"
+    scheduler: "调度器错误"
+    other: "其他错误"

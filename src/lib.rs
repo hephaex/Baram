@@ -30,15 +30,18 @@
 //! }
 //! ```
 
+pub mod analytics;
 pub mod cache;
 pub mod config;
 pub mod coordinator;
 pub mod crawler;
 pub mod embedding;
 pub mod error;
+pub mod i18n;
 pub mod llm;
 pub mod metrics;
 pub mod models;
+pub mod notifications;
 pub mod ontology;
 pub mod parser;
 pub mod scheduler;

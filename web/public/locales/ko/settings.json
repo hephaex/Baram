@@ -1,0 +1,25 @@
+{
+  "title": "Settings",
+  "subtitle": "시스템 설정을 관리합니다",
+  "crawler": {
+    "title": "크롤러 제어",
+    "settings": "크롤러 설정",
+    "requestsPerSecond": "초당 요청 수",
+    "requestsPerSecondHint": "권장: 5 (네이버 정책 준수)",
+    "maxWorkers": "동시 워커 수",
+    "timeout": "타임아웃 (초)",
+    "maxRetries": "최대 재시도 횟수",
+    "commentsEnabled": "댓글 수집 활성화"
+  },
+  "llm": {
+    "title": "LLM 설정",
+    "provider": "Provider",
+    "baseUrl": "Base URL",
+    "model": "Model",
+    "batchSize": "Batch Size"
+  },
+  "save": {
+    "button": "설정 저장",
+    "success": "설정이 저장되었습니다."
+  }
+}

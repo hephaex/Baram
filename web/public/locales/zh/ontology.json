@@ -1,0 +1,73 @@
+{
+  "title": "本体",
+  "subtitle": "从 {{count}} 篇文章中提取的知识图谱",
+  "loading": "加载本体数据中...",
+  "search": {
+    "placeholder": "搜索实体...",
+    "label": "搜索实体"
+  },
+  "filter": {
+    "label": "过滤关系类型",
+    "allRelations": "所有关系"
+  },
+  "display": {
+    "showing": "显示: {{count}} 个关系",
+    "items_50": "50项",
+    "items_100": "100项",
+    "items_200": "200项",
+    "items_500": "500项"
+  },
+  "controls": {
+    "relayout": "重新布局",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "fitScreen": "适应屏幕"
+  },
+  "legend": {
+    "title": "图例"
+  },
+  "stats": {
+    "title": "统计",
+    "totalArticles": "总文章数",
+    "totalEntities": "总实体数",
+    "totalRelations": "总关系数",
+    "entityTypes": "实体类型",
+    "relationTypes": "关系类型"
+  },
+  "selectedNode": {
+    "title": "选定节点",
+    "source": "来源"
+  },
+  "recentTriples": {
+    "title": "最近提取的关系"
+  },
+  "nodeTypes": {
+    "Person": "人物",
+    "Organization": "组织",
+    "Location": "地点",
+    "Statement": "声明",
+    "Event": "事件",
+    "Industry": "行业",
+    "Money": "金额",
+    "Percentage": "百分比",
+    "Other": "其他"
+  },
+  "relationTypes": {
+    "소속": "所属",
+    "위치": "位于",
+    "대표": "领导",
+    "근무": "工作于",
+    "발언": "说",
+    "투자": "投资于",
+    "설립": "创立",
+    "반대": "反对",
+    "비판": "批评",
+    "지지": "支持",
+    "인수": "收购",
+    "소유": "拥有"
+  },
+  "aria": {
+    "graphControls": "图形控制",
+    "ontologySearch": "本体搜索"
+  }
+}

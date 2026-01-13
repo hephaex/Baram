@@ -1,0 +1,36 @@
+{
+  "title": "Search",
+  "subtitle": "Search collected articles",
+  "input": {
+    "placeholder": "Enter search query...",
+    "label": "Search articles"
+  },
+  "filters": {
+    "toggle": "Toggle search filters",
+    "title": "Search filters",
+    "category": "Category",
+    "dateFrom": "From Date",
+    "dateTo": "To Date",
+    "all": "All"
+  },
+  "categories": {
+    "all": "All",
+    "it": "IT",
+    "economy": "Economy",
+    "politics": "Politics",
+    "society": "Society",
+    "culture": "Culture",
+    "world": "World",
+    "sports": "Sports"
+  },
+  "results": {
+    "count": "{{count}} results for \"{{query}}\"",
+    "noResults": "No results found",
+    "enterQuery": "Enter a search query"
+  },
+  "aria": {
+    "filterToggle": "Toggle search filters",
+    "searchExecute": "Execute search",
+    "searchInProgress": "Search in progress"
+  }
+}

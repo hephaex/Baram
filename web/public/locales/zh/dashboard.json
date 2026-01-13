@@ -1,0 +1,60 @@
+{
+  "title": "仪表板",
+  "subtitle": "爬虫状态和系统健康",
+  "stats": {
+    "totalArticles": "总文章数",
+    "todayArticles": "今日收集",
+    "extractedEntities": "提取的实体",
+    "extractedRelations": "提取的关系",
+    "diskUsage": "磁盘使用率"
+  },
+  "charts": {
+    "dailyTrend": "每日收集趋势",
+    "hourlyTrend": "每小时收集量",
+    "entityTypes": "实体类型分布",
+    "relationTypes": "关系类型分布",
+    "noData": "无数据",
+    "loadingData": "加载数据中..."
+  },
+  "ontology": {
+    "title": "本体提取摘要",
+    "person": "人物",
+    "organization": "组织",
+    "location": "地点",
+    "memberOf": "成员关系",
+    "leads": "领导关系",
+    "investment": "投资关系"
+  },
+  "system": {
+    "title": "系统状态",
+    "database": "数据库",
+    "llmServer": "LLM服务器",
+    "crawler": "爬虫",
+    "uptime": "运行时间"
+  },
+  "entityTypes": {
+    "Person": "人物",
+    "Organization": "组织",
+    "Location": "地点",
+    "Money": "金额",
+    "Percentage": "百分比"
+  },
+  "relationTypes": {
+    "소속": "所属",
+    "위치": "位置",
+    "대표": "代表",
+    "근무": "工作",
+    "발언": "发言",
+    "투자": "投资",
+    "설립": "成立",
+    "반대": "反对",
+    "비판": "批评",
+    "지지": "支持",
+    "인수": "收购",
+    "소유": "拥有"
+  },
+  "aria": {
+    "refreshDashboard": "刷新仪表板数据"
+  },
+  "types": "类型"
+}
