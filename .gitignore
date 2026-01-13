@@ -31,3 +31,9 @@ sprint_plan.md
 # Docker environment
 docker/.env
 docker/build.log
+
+# Crawler output and runtime files
+output/
+logs/
+checkpoints/
+.crawl.lock
