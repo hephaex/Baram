@@ -276,21 +276,27 @@ impl KeywordTrend {
             / counts.len() as f64;
         let std_dev = variance.sqrt();
 
+        // Collect timestamps and counts first to avoid borrow issues
+        let data_snapshot: Vec<_> = self.data
+            .iter()
+            .map(|(&ts, p)| (ts, p.count))
+            .collect();
+
         // Check each point
-        for (&timestamp, point) in &self.data {
+        for (timestamp, count) in data_snapshot {
             if let Some(expected) = self.moving_average(timestamp) {
-                let magnitude = point.count as f64 / expected;
+                let magnitude = count as f64 / expected;
 
                 if magnitude >= threshold {
                     let z_score = if std_dev > 0.0 {
-                        (point.count as f64 - mean) / std_dev
+                        (count as f64 - mean) / std_dev
                     } else {
                         0.0
                     };
 
                     spikes.push(Spike {
                         timestamp,
-                        count: point.count,
+                        count,
                         expected,
                         magnitude,
                         z_score,

@@ -4,6 +4,10 @@ use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use baram::config::Config;
+use baram::i18n;
+
+// Initialize rust-i18n for the binary crate
+rust_i18n::i18n!("locales", fallback = "en");
 
 mod commands;
 
@@ -230,18 +234,25 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Initialize i18n from environment variable (BARAM_LANG)
+    i18n::init_from_env();
+
     let cli = Cli::parse();
 
     // Initialize tracing/logging
     setup_tracing(&cli.log_format, cli.verbose)?;
 
-    tracing::info!("baram Naver News Crawler starting");
+    tracing::info!("{}", rust_i18n::t!("cli.app.starting"));
 
     // Load config
     let config = if cli.config.exists() {
         Config::from_file(&cli.config)?
     } else {
-        tracing::warn!(path = %cli.config.display(), "Config file not found, using defaults");
+        tracing::warn!(
+            path = %cli.config.display(),
+            "{}",
+            rust_i18n::t!("cli.config.not_found")
+        );
         Config::default()
     };
 
@@ -413,7 +424,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    tracing::info!("baram completed successfully");
+    tracing::info!("{}", rust_i18n::t!("cli.app.completed"));
     Ok(())
 }
 

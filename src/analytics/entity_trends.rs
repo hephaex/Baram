@@ -406,21 +406,22 @@ impl EntityNetwork {
         entity_name: &str,
         min_count: u64,
     ) -> EntityResult<Vec<(String, Cooccurrence)>> {
-        let entity = self.entities.get(entity_name)
+        let _entity = self.entities.get(entity_name)
             .ok_or_else(|| EntityError::EntityNotFound(entity_name.to_string()))?;
 
-        let entity_docs = entity.document_ids();
+        // Collect entity keys first to avoid borrow issues
+        let other_names: Vec<_> = self.entities
+            .keys()
+            .filter(|name| name.as_str() != entity_name)
+            .cloned()
+            .collect();
 
         let mut related = Vec::new();
 
-        for other_name in self.entities.keys() {
-            if other_name == entity_name {
-                continue;
-            }
-
-            if let Ok(cooccur) = self.cooccurrence(entity_name, other_name) {
+        for other_name in other_names {
+            if let Ok(cooccur) = self.cooccurrence(entity_name, &other_name) {
                 if cooccur.count >= min_count {
-                    related.push((other_name.clone(), cooccur));
+                    related.push((other_name, cooccur));
                 }
             }
         }

@@ -4,5 +4,5 @@
 pub mod keyword_trends;
 pub mod entity_trends;
 
-pub use keyword_trends::{KeywordTrend, KeywordTrendAnalyzer, TrendDirection, TimeSeriesPoint};
-pub use entity_trends::{EntityTrend, EntityTrendAnalyzer, EntityCooccurrence};
+pub use keyword_trends::{KeywordTrend, TrendAnalyzer, TrendDirection, DataPoint, Spike, TrendError};
+pub use entity_trends::{Entity, EntityNetwork, Cooccurrence, EntityType, EntityMention, EntityError};

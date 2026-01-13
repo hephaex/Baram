@@ -21,8 +21,7 @@
 
 use std::sync::OnceLock;
 
-// Initialize rust-i18n with locale directory
-rust_i18n::i18n!("locales", fallback = "en");
+// Note: rust_i18n::i18n! macro is declared in lib.rs (crate root)
 
 static CURRENT_LOCALE: OnceLock<String> = OnceLock::new();
 

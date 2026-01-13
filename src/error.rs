@@ -40,8 +40,14 @@ pub trait BaramErrorTrait: std::error::Error {
     /// Check if this error is recoverable (can be retried)
     fn is_recoverable(&self) -> bool;
 
-    /// Get Korean description for user-facing messages
-    fn korean_desc(&self) -> String;
+    /// Get localized description for user-facing messages
+    fn localized_desc(&self) -> String;
+
+    /// Get Korean description for user-facing messages (deprecated, use localized_desc)
+    #[deprecated(since = "0.1.6", note = "Use localized_desc() instead")]
+    fn korean_desc(&self) -> String {
+        self.localized_desc()
+    }
 
     /// Get the error category for handling strategies
     fn category(&self) -> ErrorCategory;
@@ -67,7 +73,21 @@ pub enum ErrorCategory {
 }
 
 impl ErrorCategory {
-    /// Get Korean description for the category
+    /// Get localized description for the category
+    pub fn localized_desc(&self) -> String {
+        match self {
+            Self::Network => crate::i18n::t!("errors.category.network").to_string(),
+            Self::Parsing => crate::i18n::t!("errors.category.parsing").to_string(),
+            Self::Storage => crate::i18n::t!("errors.category.storage").to_string(),
+            Self::Llm => crate::i18n::t!("errors.category.llm").to_string(),
+            Self::Config => crate::i18n::t!("errors.category.config").to_string(),
+            Self::Scheduler => crate::i18n::t!("errors.category.scheduler").to_string(),
+            Self::Other => crate::i18n::t!("errors.category.other").to_string(),
+        }
+    }
+
+    /// Get Korean description for the category (deprecated, use localized_desc)
+    #[deprecated(since = "0.1.6", note = "Use localized_desc() instead")]
     pub fn korean_desc(&self) -> &'static str {
         match self {
             Self::Network => "네트워크 오류",
@@ -154,18 +174,18 @@ impl BaramErrorTrait for Error {
         }
     }
 
-    fn korean_desc(&self) -> String {
+    fn localized_desc(&self) -> String {
         match self {
-            Self::Crawler(e) => e.korean_desc().to_string(),
-            Self::Fetch(e) => e.korean_desc().to_string(),
-            Self::Parse(e) => e.korean_desc().to_string(),
-            Self::Ontology(e) => e.korean_desc(),
-            Self::Scheduler(e) => e.korean_desc(),
-            Self::Database(e) => format!("데이터베이스 오류: {e}"),
-            Self::Io(e) => format!("입출력 오류: {e}"),
-            Self::Json(e) => format!("JSON 오류: {e}"),
-            Self::Http(e) => format!("HTTP 오류: {e}"),
-            Self::Config(msg) => format!("설정 오류: {msg}"),
+            Self::Crawler(e) => e.localized_desc(),
+            Self::Fetch(e) => e.localized_desc(),
+            Self::Parse(e) => e.localized_desc(),
+            Self::Ontology(e) => e.localized_desc(),
+            Self::Scheduler(e) => e.localized_desc(),
+            Self::Database(e) => format!("{}: {e}", crate::i18n::t!("errors.database.error").to_string()),
+            Self::Io(e) => format!("{}: {e}", crate::i18n::t!("errors.io.error").to_string()),
+            Self::Json(e) => format!("{}: {e}", crate::i18n::t!("errors.json.error").to_string()),
+            Self::Http(e) => format!("{}: {e}", crate::i18n::t!("errors.http.error").to_string()),
+            Self::Config(msg) => format!("{}: {msg}", crate::i18n::t!("errors.config.error").to_string()),
             Self::Other { context, .. } => context.clone(),
         }
     }

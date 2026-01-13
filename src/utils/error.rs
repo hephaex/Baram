@@ -97,7 +97,21 @@ impl FetchError {
         )
     }
 
-    /// Get Korean description for the error
+    /// Get localized description for the error
+    pub fn localized_desc(&self) -> String {
+        match self {
+            FetchError::Http(_) => crate::i18n::t!("errors.fetch.http_request_failed").to_string(),
+            FetchError::RateLimit => crate::i18n::t!("errors.fetch.rate_limit").to_string(),
+            FetchError::ServerError(_) => crate::i18n::t!("errors.fetch.server_error").to_string(),
+            FetchError::Timeout => crate::i18n::t!("errors.fetch.timeout").to_string(),
+            FetchError::MaxRetriesExceeded => crate::i18n::t!("errors.fetch.max_retries_exceeded").to_string(),
+            FetchError::Decode(_) => crate::i18n::t!("errors.fetch.decode_error").to_string(),
+            FetchError::InvalidUrl(_) => crate::i18n::t!("errors.fetch.invalid_url").to_string(),
+        }
+    }
+
+    /// Get Korean description for the error (deprecated, use localized_desc)
+    #[deprecated(since = "0.1.6", note = "Use localized_desc() instead")]
     pub fn korean_desc(&self) -> &'static str {
         match self {
             FetchError::Http(_) => "HTTP 요청 실패",
@@ -117,7 +131,20 @@ impl ParseError {
         matches!(self, ParseError::ArticleNotFound)
     }
 
-    /// Get Korean description for the error
+    /// Get localized description for the error
+    pub fn localized_desc(&self) -> String {
+        match self {
+            ParseError::TitleNotFound => crate::i18n::t!("errors.parse.title_not_found").to_string(),
+            ParseError::ContentNotFound => crate::i18n::t!("errors.parse.content_not_found").to_string(),
+            ParseError::InvalidUrl(_) => crate::i18n::t!("errors.parse.invalid_url").to_string(),
+            ParseError::IdExtractionFailed => crate::i18n::t!("errors.parse.id_extraction_failed").to_string(),
+            ParseError::ArticleNotFound => crate::i18n::t!("errors.parse.article_not_found").to_string(),
+            ParseError::UnknownFormat => crate::i18n::t!("errors.parse.unknown_format").to_string(),
+        }
+    }
+
+    /// Get Korean description for the error (deprecated, use localized_desc)
+    #[deprecated(since = "0.1.6", note = "Use localized_desc() instead")]
     pub fn korean_desc(&self) -> &'static str {
         match self {
             ParseError::TitleNotFound => "제목을 찾을 수 없음",
@@ -141,7 +168,19 @@ impl CrawlerError {
         }
     }
 
-    /// Get Korean description for the error
+    /// Get localized description for the error
+    pub fn localized_desc(&self) -> String {
+        match self {
+            CrawlerError::Fetch(e) => e.localized_desc(),
+            CrawlerError::Parse(e) => e.localized_desc(),
+            CrawlerError::InvalidDate(_) => crate::i18n::t!("errors.crawler.invalid_date").to_string(),
+            CrawlerError::NoArticlesFound => crate::i18n::t!("errors.crawler.no_articles_found").to_string(),
+            CrawlerError::RateLimited => crate::i18n::t!("errors.crawler.rate_limited").to_string(),
+        }
+    }
+
+    /// Get Korean description for the error (deprecated, use localized_desc)
+    #[deprecated(since = "0.1.6", note = "Use localized_desc() instead")]
     pub fn korean_desc(&self) -> &'static str {
         match self {
             CrawlerError::Fetch(e) => e.korean_desc(),

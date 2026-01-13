@@ -115,6 +115,11 @@ impl SchedulerError {
         }
     }
 
+    /// Get localized description for the error
+    pub fn localized_desc(&self) -> String {
+        self.korean_desc()
+    }
+
     /// Get Korean description for the error
     pub fn korean_desc(&self) -> String {
         match self {

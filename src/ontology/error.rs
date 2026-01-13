@@ -284,6 +284,11 @@ impl OntologyError {
         )
     }
 
+    /// Get localized description of error
+    pub fn localized_desc(&self) -> String {
+        self.korean_desc()
+    }
+
     /// Get Korean description of error
     pub fn korean_desc(&self) -> String {
         match self {

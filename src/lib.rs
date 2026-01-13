@@ -30,6 +30,9 @@
 //! }
 //! ```
 
+// Initialize rust-i18n at crate root level
+rust_i18n::i18n!("locales", fallback = "en");
+
 pub mod analytics;
 pub mod cache;
 pub mod config;
