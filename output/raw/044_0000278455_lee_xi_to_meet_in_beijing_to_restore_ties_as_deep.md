@@ -1,0 +1,38 @@
+---
+id: 044_0000278455
+title: "Lee, Xi to meet in Beijing to restore ties as deep fault lines persist"
+category: 
+publisher: 코리아헤럴드
+author: 
+		
+			Ji Da-gyum dagyumji@heraldcorp.com
+		
+	
+published_at: 2026-01-02 00:00
+crawled_at: 2026-01-02 07:45:58
+url: https://n.news.naver.com/mnews/article/044/0000278455
+oid: 044
+aid: 0000278455
+content_hash: 4ec261147c68e605c51933eaf9d9bd87315cf017d2aeae5ed5952727b126ccec
+---
+
+# Lee, Xi to meet in Beijing to restore ties as deep fault lines persist
+
+**코리아헤럴드** | 2026-01-02 00:00 | 
+
+---
+
+Summit to address China&#x27;s unofficial ban on Korean content, but no K-Pop concert during Lee’s visit
+
+National security adviser Wi Sung-lac explains President Lee Jae Myung&#x27;s plan to visit China during a press briefing held at Cheong Wa Dae in Seoul on Friday. (Yonhap)The leaders of South Korea and China will seek to restore their once-souring relationship at a summit in Beijing, even as a growing backlog of issues remains on the agenda, including China’s unilateral installation of structures in the West Sea and its long-running cultural ban.President Lee Jae Myung will embark on his four-day state visit to China on Sunday, marking the first such trip by a South Korean president since 2019 and the first state-level summit diplomacy schedule of 2026 for both Seoul and Beijing.Lee and Chinese President Xi Jinping are scheduled to take part in a slate of official engagements on Monday afternoon, beginning with a formal welcoming ceremony and followed by a summit meeting, according to Lee’s office, Cheong Wa Dae.The program will also include a signing ceremony for more than 10 memorandums of understanding across a range of sectors — including the economy and industry, climate and the environment, and transportation — as well as a state banquet.Cheong Wa Dae highlighted the salience of Lee’s trip to Beijing and Shanghai, which comes just two months after the leaders’ first summit, held on the margins of the 2025 APEC summit on Nov. 1 in Gyeongju.“Since the launch of the Lee Jae Myung administration, we will consolidate the momentum toward the full restoration of the South Korea–China strategic cooperative partnership through a sequence of engagements,” national security adviser Wi Sung-lac said at a press briefing Friday.However, Wi also noted that the Lee–Xi summit will cover a long list of sensitive issues, including China’s unilateral installation of structures in the Korea–China jointly administered zone in the West Sea and China’s unofficial ban on Korean cultural content.When it comes to the key expected outcome of Lee’s state visit, Wi said it would be “the stable management of sensitive pending issues between South Korea and China.”“Commensurate with the full restoration of South Korea–China relations, we will work to make the West Sea a sea of peace and shared prosperity, and we will also move to restore cultural exchanges — including content — gradually and in stages,” Wi said.
+
+Pro-China supporters hold China and South Korea flags near Gimhae International Airport on the day of a bilateral meeting between U.S. President Donald Trump and Chinese President Xi Jinping on trade tensions and bilateral relations, on the sidelines of the Asia-Pacific Economic Cooperation (APEC) Summit, in Busan, South Korea, on Oct.30, 2025. (File Photo - Reuters)K-pop concert off tableWhether China will lift an unofficial Hallyu ban on Korean content — imposed after South Korea’s 2016 deployment of the US THAAD missile defense system — has drawn renewed attention.“As for the issue of the so-called ‘Hallyu ban,’ China’s official position is that no such ban exists, while from our perspective the situation appears different and reflects other circumstances,” Wi said.“Even so, there is a shared understanding of the importance of cultural exchanges. We intend to expand areas of cultural common ground that both sides can accept in order to resolve the issue.”Wi further said that working-level consultations have been ongoing in the run-up to the Lee–Xi summit, and that the Lee administration will continue to explore solutions at the summit as well.However, Wi said it would be practically difficult to hold a large-scale K-pop concert in China during Lee’s state visit.“I think it would be difficult to actually hold a concert on this occasion. The preparation period is short, and there is a lot that would need to be coordinated,&quot; Wi said. &quot;We would like to hold consultations so that such an event can take place in the future.&quot;Wi also acknowledged differences between Seoul and Beijing over how to expand cultural exchanges.“We are much more open and outward-looking, while China, I think, holds more traditional views,” Wi told reporters. “For now, the realistic approach is to start with areas where both sides can form new common ground, then gradually expand that scope and deepen mutual understanding.&quot;
+
+Chinese President Xi Jinping and his wife Peng Liyuan enter the banquet hall together with the foreign leaders and their spouses attending a reception marking the 80th anniversary of the end of World War II at the Great Hall of the People in Beijing, capital of China, Sept. 3, 2025. (File Photo - Xinhua)Seoul seeks China’s role on NKOn the security front, denuclearization of the Korean Peninsula will be discussed.“We believe that peace and stability on the Korean Peninsula, as well as the issue of denuclearization, are core topics of the talks, and discussions will take place accordingly,” Wi said when asked whether Lee would ask Xi to serve as a mediator to resume dialogue with North Korea.“Given our expectation that China can play a constructive role, the discussions are likely to proceed in that direction,” Wi added.The Lee–Xi summit comes at a critical juncture as the Lee administration seeks to leverage US President Donald Trump’s planned visit to China in April to resurrect long-stalled nuclear negotiations with North Korea.Wi, however, declined to say whether a commitment to the denuclearization of the Korean Peninsula would be included in any joint statement that could be issued after the summit.“When we prepare for a summit, we do not always have a specific joint document in mind. Sometimes we do, and sometimes we do not,” Wi said. “At this point, no joint document is being prepared or discussed, which makes it difficult to say what would or would not be included.”
+
+South Korean President Lee Jae Myung delivers a New Year’s greeting at a New Year’s reception held at the Blue House’s State Guest House in Seoul on Friday. (Yonhap)Lee’s China itinerary in briefApart from the summit, Lee plans to attend a Korea–China business forum on Monday morning to meet with business leaders from both countries and discuss ways to forge new economic cooperation, drawing on complementary strengths in sectors such as manufacturing, consumer goods and services.On Tuesday, Lee will meet Zhao Leji, chairman of the Standing Committee of the National People’s Congress, and then hold talks and a luncheon with Premier Li Qiang.Lee will then travel to Shanghai for a dinner meeting with Chen Jining, the city’s Communist Party secretary.On Wednesday, Lee will attend a Korea–China venture and startup event in Shanghai bringing together young entrepreneurs from both countries in areas such as content, health care, infrastructure and energy.Lee is also schedueld to visit the site of the Provisional Government of the Republic of Korea in Shanghai before returning to Seoul.
+
+---
+
+*Crawled at: 2026-01-02 07:45:58*
+*Source: [원문 보기](https://n.news.naver.com/mnews/article/044/0000278455)*

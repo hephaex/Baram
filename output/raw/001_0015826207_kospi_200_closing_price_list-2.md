@@ -1,0 +1,30 @@
+---
+id: 001_0015826207
+title: "KOSPI 200 Closing Price List-2"
+category: 
+publisher: 연합뉴스
+author: 
+		
+			영문경제(2001013@yna.co.kr)
+		
+	
+published_at: 2026-01-02 00:00
+crawled_at: 2026-01-02 07:45:09
+url: https://n.news.naver.com/mnews/article/001/0015826207
+oid: 001
+aid: 0015826207
+content_hash: 2011e0602d0e86b54790f97b88f7cd3c8e75c475ac6babaead68f8e47f9bf33b
+---
+
+# KOSPI 200 Closing Price List-2
+
+**연합뉴스** | 2026-01-02 00:00 | 
+
+---
+
+KOSPI 200 Closing Price List-2Hyundai M&amp;F INS 30,550 DN 250Taihan Cable &amp; Solut ion23800 UP900 Daesang 20,600 DN 450ORION Holdings 19,960 DN 690KCC 393,000 DN 27,500SKBP 122,900 DN 1,700HYOSUNG HEAVY 1,845,000 UP 64,000YoulchonChem 25,550 DN 250LG Energy Solution 361,000 DN 7,500ORION 103,100 DN 2,600MIWON SC 137,800 DN 2,500HS HYOSUNG ADVANCED 179,100 DN 2,500KakaoBank 21,900 UP 300HANILCMT 17,200 DN 770WooriFinancialGroup 28,050 UP 50LG CNS 62,600 UP 1,200HANWHA SYSTEMS 55,300 UP 900APR 233,000 UP 2,000BGF Retail 104,200 DN 600SKCHEM 66,100 UP 600SKBS 48,000 DN 200HyundaiAutoever 331,500 DN 500HYOSUNG TNC 214,000 DN 8,500SamsungSecu 75,900 UP 500Hanchem 240,000 UP 12,500DWS 24,900 DN 150HL MANDO 65,400 UP 6,700SKTelecom 53,300 DN 200KEPCO 46,500 DN 700Hanmi Science 36,500 UP 250SamsungElecMech 270,000 UP 15,000Hanssem 45,200 DN 950F&amp;F 66,300 DN 2,200HDKSOE 393,500 DN 13,500HANALL BIOPHARMA 42,200 DN 1,550Kogas 38,400 DN 900SamsungF&amp;MIns 497,000 0HtlShilla 45,550 UP 950Hyundai Elevator 87,800 DN 500LOTTE SHOPPING 68,600 DN 3,900(MORE)
+
+---
+
+*Crawled at: 2026-01-02 07:45:09*
+*Source: [원문 보기](https://n.news.naver.com/mnews/article/001/0015826207)*

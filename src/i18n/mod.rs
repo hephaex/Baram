@@ -19,11 +19,11 @@
 //! let msg = t("cli.crawl.starting");
 //! ```
 
-use std::sync::OnceLock;
+use std::sync::RwLock;
 
 // Note: rust_i18n::i18n! macro is declared in lib.rs (crate root)
 
-static CURRENT_LOCALE: OnceLock<String> = OnceLock::new();
+static CURRENT_LOCALE: RwLock<Option<String>> = RwLock::new(None);
 
 /// Set the current locale for translations
 ///
@@ -41,14 +41,20 @@ static CURRENT_LOCALE: OnceLock<String> = OnceLock::new();
 pub fn set_locale(locale: &str) {
     let normalized = normalize_locale(locale);
     rust_i18n::set_locale(&normalized);
-    CURRENT_LOCALE.get_or_init(|| normalized.clone());
+    if let Ok(mut current) = CURRENT_LOCALE.write() {
+        *current = Some(normalized);
+    }
 }
 
 /// Get the current locale
 ///
 /// Returns the currently active locale or the default fallback.
-pub fn current_locale() -> &'static str {
-    CURRENT_LOCALE.get().map(|s| s.as_str()).unwrap_or("en")
+pub fn current_locale() -> String {
+    CURRENT_LOCALE
+        .read()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .unwrap_or_else(|| "en".to_string())
 }
 
 /// Initialize i18n from environment variables
@@ -135,5 +141,8 @@ mod tests {
 
         set_locale("en-US");
         assert_eq!(current_locale(), "en");
+
+        set_locale("zh-CN");
+        assert_eq!(current_locale(), "zh");
     }
 }

@@ -598,9 +598,26 @@ mod tests {
             ],
         );
 
+        // Add documents without Apple/iPhone to make PMI positive
+        // PMI is positive when entities co-occur MORE than expected by chance
+        network.record_document(
+            "doc3".to_string(),
+            vec![
+                ("Samsung".to_string(), EntityMention::new(now, "doc3".to_string())),
+            ],
+        );
+        network.record_document(
+            "doc4".to_string(),
+            vec![
+                ("Google".to_string(), EntityMention::new(now, "doc4".to_string())),
+            ],
+        );
+
         let cooccur = network.cooccurrence("Apple", "iPhone").unwrap();
         assert_eq!(cooccur.count, 2);
-        assert!(cooccur.pmi > 0.0);
+        // With 4 total docs, p_a = p_b = 0.5, p_ab = 0.5
+        // PMI = log2(0.5 / (0.5 * 0.5)) = log2(2) = 1.0
+        assert!(cooccur.pmi > 0.0, "PMI should be positive: {}", cooccur.pmi);
     }
 
     #[test]
