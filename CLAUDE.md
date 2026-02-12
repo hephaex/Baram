@@ -83,3 +83,6 @@ RUST_LOG=info  # or baram::crawler=debug
 - **3-tier dedup**: Bloom filter → HashSet cache → DB query
 - **Parallel parsing**: `tokio::task::spawn_blocking` + `buffer_unordered`
 - **Atomic checkpoint saves**: temp file + rename
+- **Concurrent LLM**: `futures::stream::buffer_unordered(max_concurrent)` for ontology
+- **Ontology checkpoint**: `./output/checkpoints/ontology_checkpoint.json` (resume on failure)
+- **Lock-free embedding**: Atomic stats enable `&self` for embed — no RwLock needed
