@@ -323,12 +323,12 @@ impl HallucinationVerifier {
     /// Quote content is trusted from LLM without strict verification
     pub fn for_said_relations() -> Self {
         Self {
-            fuzzy_threshold: 0.4,      // Very low - accept fuzzy speaker names
-            partial_threshold: 0.2,    // Very low - even 20% word match is OK
-            exact_match_boost: 1.0,    // No boost needed
-            fuzzy_match_penalty: 1.0,  // No penalty for fuzzy match
-            no_match_penalty: 0.8,     // Light penalty if not found
-            min_confidence: 0.1,       // Very low minimum - trust LLM output
+            fuzzy_threshold: 0.4,     // Very low - accept fuzzy speaker names
+            partial_threshold: 0.2,   // Very low - even 20% word match is OK
+            exact_match_boost: 1.0,   // No boost needed
+            fuzzy_match_penalty: 1.0, // No penalty for fuzzy match
+            no_match_penalty: 0.8,    // Light penalty if not found
+            min_confidence: 0.1,      // Very low minimum - trust LLM output
         }
     }
 
@@ -1662,30 +1662,65 @@ impl RelationExtractor {
 
                             // For MemberOf/WorksFor: if subject is org and object is person name, swap them
                             // This handles "국민의힘 김민수 의원" or "삼성전자 홍길동 사장" format where ORG comes before NAME
-                            let object_is_korean_name = object.chars().count() >= 2 && object.chars().count() <= 4
-                                && object.chars().all(|c| ('\u{AC00}'..='\u{D7AF}').contains(&c));
+                            let object_is_korean_name = object.chars().count() >= 2
+                                && object.chars().count() <= 4
+                                && object
+                                    .chars()
+                                    .all(|c| ('\u{AC00}'..='\u{D7AF}').contains(&c));
 
                             if *relation_type == RelationType::MemberOf {
-                                let parties = ["국민의힘", "더불어민주당", "민주당", "조국혁신당", "개혁신당", "정의당", "진보당", "새로운미래"];
+                                let parties = [
+                                    "국민의힘",
+                                    "더불어민주당",
+                                    "민주당",
+                                    "조국혁신당",
+                                    "개혁신당",
+                                    "정의당",
+                                    "진보당",
+                                    "새로운미래",
+                                ];
                                 if parties.contains(&subject) && object_is_korean_name {
                                     std::mem::swap(&mut subject, &mut object);
-                                    tracing::debug!("MemberOf: swapped subject/object for ORG-NAME pattern");
+                                    tracing::debug!(
+                                        "MemberOf: swapped subject/object for ORG-NAME pattern"
+                                    );
                                 }
                             } else if *relation_type == RelationType::WorksFor {
-                                let org_suffixes = ["전자", "그룹", "물산", "건설", "은행", "증권", "보험", "생명", "화학", "중공업", "에너지", "제약", "바이오"];
-                                let subject_is_org = org_suffixes.iter().any(|s| subject.ends_with(s));
+                                let org_suffixes = [
+                                    "전자",
+                                    "그룹",
+                                    "물산",
+                                    "건설",
+                                    "은행",
+                                    "증권",
+                                    "보험",
+                                    "생명",
+                                    "화학",
+                                    "중공업",
+                                    "에너지",
+                                    "제약",
+                                    "바이오",
+                                ];
+                                let subject_is_org =
+                                    org_suffixes.iter().any(|s| subject.ends_with(s));
                                 if subject_is_org && object_is_korean_name {
                                     std::mem::swap(&mut subject, &mut object);
-                                    tracing::debug!("WorksFor: swapped subject/object for ORG-NAME pattern");
+                                    tracing::debug!(
+                                        "WorksFor: swapped subject/object for ORG-NAME pattern"
+                                    );
                                 }
                             }
 
                             // Validate entities exist in our entity list (bidirectional partial matching)
                             let subject_valid = entity_texts.contains(subject)
-                                || entities.iter().any(|e| e.text.contains(subject) || subject.contains(&e.text));
+                                || entities
+                                    .iter()
+                                    .any(|e| e.text.contains(subject) || subject.contains(&e.text));
                             let object_valid = object.is_empty()
                                 || entity_texts.contains(object)
-                                || entities.iter().any(|e| e.text.contains(object) || object.contains(&e.text));
+                                || entities
+                                    .iter()
+                                    .any(|e| e.text.contains(object) || object.contains(&e.text));
 
                             // Debug logging for validation failures
                             if !subject.is_empty() && (!subject_valid || !object_valid) {
@@ -1975,7 +2010,10 @@ impl LlmSaidExtractor {
     }
 
     /// Extract Said relations from a parsed article
-    pub async fn extract_from_article(&self, article: &ParsedArticle) -> Result<Vec<ExtractedRelation>> {
+    pub async fn extract_from_article(
+        &self,
+        article: &ParsedArticle,
+    ) -> Result<Vec<ExtractedRelation>> {
         let full_text = format!("{}\n{}", article.title, article.content);
         self.extract(&full_text).await
     }

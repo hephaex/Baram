@@ -84,7 +84,8 @@ impl LlmConfig {
 
         Self {
             backend,
-            endpoint: std::env::var("LLM_ENDPOINT").unwrap_or_else(|_| default_endpoint.to_string()),
+            endpoint: std::env::var("LLM_ENDPOINT")
+                .unwrap_or_else(|_| default_endpoint.to_string()),
             model: std::env::var("LLM_MODEL").unwrap_or_else(|_| default_model.to_string()),
             timeout_secs: std::env::var("LLM_TIMEOUT")
                 .ok()
@@ -678,7 +679,8 @@ impl LlmClient {
         let speaker_re = regex::Regex::new(r#""speaker"\s*:\s*"([^"]+)""#).unwrap();
         let content_re = regex::Regex::new(r#""content"\s*:\s*"([^"]*(?:[^"\\]|\\.)*)""#).unwrap();
         let confidence_re = regex::Regex::new(r#""confidence"\s*:\s*([\d.]+)"#).unwrap();
-        let evidence_re = regex::Regex::new(r#""evidence"\s*:\s*"([^"]*(?:[^"\\]|\\.)*)""#).unwrap();
+        let evidence_re =
+            regex::Regex::new(r#""evidence"\s*:\s*"([^"]*(?:[^"\\]|\\.)*)""#).unwrap();
 
         for block in text.split(r#"{"#).skip(1) {
             let block = format!("{{{}", block);

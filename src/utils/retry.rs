@@ -59,8 +59,8 @@ impl RetryConfig {
         let delay_ms = if attempt == 0 {
             0
         } else {
-            let exponential = self.base_delay_ms as f64
-                * self.backoff_multiplier.powi((attempt - 1) as i32);
+            let exponential =
+                self.base_delay_ms as f64 * self.backoff_multiplier.powi((attempt - 1) as i32);
             (exponential as u64).min(self.max_delay_ms)
         };
 
@@ -263,7 +263,8 @@ mod tests {
                 }
                 Ok::<_, anyhow::Error>(42)
             }
-        }).await;
+        })
+        .await;
 
         assert_eq!(result.unwrap(), 42);
         assert_eq!(attempts.load(Ordering::SeqCst), 3);
@@ -272,12 +273,14 @@ mod tests {
     #[tokio::test]
     async fn test_retry_exhausted() {
         let config = RetryConfig::new(2);
-        let result: Result<(), anyhow::Error> = with_retry(&config, || async {
-            anyhow::bail!("Permanent failure")
-        }).await;
+        let result: Result<(), anyhow::Error> =
+            with_retry(&config, || async { anyhow::bail!("Permanent failure") }).await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Permanent failure"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Permanent failure"));
     }
 
     #[tokio::test]
@@ -289,7 +292,8 @@ mod tests {
             &config,
             || async { anyhow::bail!("validation error") },
             |e| !e.to_string().contains("validation"),
-        ).await;
+        )
+        .await;
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("validation"));

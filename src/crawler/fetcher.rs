@@ -432,7 +432,10 @@ impl NaverFetcher {
     /// Get a random user agent from the pool
     fn random_user_agent(&self) -> &'static str {
         let mut rng = rand::thread_rng();
-        USER_AGENTS.choose(&mut rng).copied().unwrap_or(DEFAULT_USER_AGENT)
+        USER_AGENTS
+            .choose(&mut rng)
+            .copied()
+            .unwrap_or(DEFAULT_USER_AGENT)
     }
 }
 

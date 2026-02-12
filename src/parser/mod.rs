@@ -55,8 +55,7 @@ fn author_selector() -> &'static Selector {
 fn date_selector() -> &'static Selector {
     static SELECTOR: OnceLock<Selector> = OnceLock::new();
     SELECTOR.get_or_init(|| {
-        Selector::parse(".date, .publish_date, time")
-            .expect("BUG: Invalid hardcoded date selector")
+        Selector::parse(".date, .publish_date, time").expect("BUG: Invalid hardcoded date selector")
     })
 }
 

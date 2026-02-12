@@ -41,7 +41,7 @@ async fn test_timeout_handling() {
     let fetcher = NaverFetcher::with_config_and_base_url(
         &mock_server.uri(),
         10,
-        1, // Only 1 retry
+        1,                          // Only 1 retry
         Duration::from_millis(100), // Short timeout
     )
     .unwrap();
@@ -51,10 +51,7 @@ async fn test_timeout_handling() {
     let result = fetcher.fetch_article(url, 105).await;
 
     // Should fail with timeout or max retries
-    assert!(
-        result.is_err(),
-        "Should fail on timeout"
-    );
+    assert!(result.is_err(), "Should fail on timeout");
 
     // Error should be timeout related
     match result {
@@ -185,13 +182,9 @@ async fn test_rate_limit_429() {
         .mount(&mock_server)
         .await;
 
-    let fetcher = NaverFetcher::with_config_and_base_url(
-        &mock_server.uri(),
-        10,
-        2,
-        Duration::from_secs(1),
-    )
-    .unwrap();
+    let fetcher =
+        NaverFetcher::with_config_and_base_url(&mock_server.uri(), 10, 2, Duration::from_secs(1))
+            .unwrap();
 
     let url = "/test";
     let result = fetcher.fetch_article(url, 100).await;
@@ -225,8 +218,7 @@ async fn test_malformed_html_parsing() {
 async fn test_empty_html_parsing() {
     let parser = ArticleParser::new();
 
-    let result =
-        parser.parse_with_fallback("", "https://n.news.naver.com/article/001/0014000001");
+    let result = parser.parse_with_fallback("", "https://n.news.naver.com/article/001/0014000001");
 
     // Should fail on empty content
     assert!(result.is_err());
@@ -307,7 +299,10 @@ async fn test_pipeline_partial_failures() {
 
     // Should have mix of success and failure
     assert_eq!(stats.total_jobs, 2);
-    assert!(stats.success_count + stats.skipped_count > 0, "Should have some successes");
+    assert!(
+        stats.success_count + stats.skipped_count > 0,
+        "Should have some successes"
+    );
     assert!(stats.failed_count > 0, "Should have some failures");
 }
 

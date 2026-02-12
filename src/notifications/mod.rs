@@ -267,11 +267,7 @@ mod tests {
             window_minutes: 60,
         };
 
-        let alert = Alert::new(
-            condition,
-            AlertSeverity::Warning,
-            "Test alert".to_string(),
-        );
+        let alert = Alert::new(condition, AlertSeverity::Warning, "Test alert".to_string());
 
         assert_eq!(alert.status, AlertStatus::Created);
         assert_eq!(alert.severity, AlertSeverity::Warning);
@@ -327,10 +323,7 @@ mod tests {
             .with_metadata("instance".to_string(), "main".to_string());
 
         assert_eq!(alert.metadata.get("source"), Some(&"crawler".to_string()));
-        assert_eq!(
-            alert.metadata.get("instance"),
-            Some(&"main".to_string())
-        );
+        assert_eq!(alert.metadata.get("instance"), Some(&"main".to_string()));
     }
 
     #[test]

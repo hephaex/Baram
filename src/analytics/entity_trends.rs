@@ -358,18 +358,19 @@ impl EntityNetwork {
         }
 
         // Get entities
-        let entity_a_obj = self.entities.get(a)
+        let entity_a_obj = self
+            .entities
+            .get(a)
             .ok_or_else(|| EntityError::EntityNotFound(a.to_string()))?;
-        let entity_b_obj = self.entities.get(b)
+        let entity_b_obj = self
+            .entities
+            .get(b)
             .ok_or_else(|| EntityError::EntityNotFound(b.to_string()))?;
 
         // Find documents containing both
         let docs_a = entity_a_obj.document_ids();
         let docs_b = entity_b_obj.document_ids();
-        let common_docs: Vec<String> = docs_a
-            .intersection(&docs_b)
-            .cloned()
-            .collect();
+        let common_docs: Vec<String> = docs_a.intersection(&docs_b).cloned().collect();
 
         if common_docs.is_empty() {
             return Err(EntityError::InsufficientCooccurrence(
@@ -406,11 +407,14 @@ impl EntityNetwork {
         entity_name: &str,
         min_count: u64,
     ) -> EntityResult<Vec<(String, Cooccurrence)>> {
-        let _entity = self.entities.get(entity_name)
+        let _entity = self
+            .entities
+            .get(entity_name)
             .ok_or_else(|| EntityError::EntityNotFound(entity_name.to_string()))?;
 
         // Collect entity keys first to avoid borrow issues
-        let other_names: Vec<_> = self.entities
+        let other_names: Vec<_> = self
+            .entities
             .keys()
             .filter(|name| name.as_str() != entity_name)
             .cloned()
@@ -476,7 +480,11 @@ impl EntityNetwork {
         }
 
         // Sort by PMI descending
-        matrix.sort_by(|a, b| b.pmi.partial_cmp(&a.pmi).unwrap_or(std::cmp::Ordering::Equal));
+        matrix.sort_by(|a, b| {
+            b.pmi
+                .partial_cmp(&a.pmi)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         matrix
     }
@@ -494,7 +502,8 @@ impl EntityNetwork {
         let cutoff = Utc::now() - chrono::Duration::days(window_days);
         let now = Utc::now();
 
-        let mut trending: Vec<_> = self.entities
+        let mut trending: Vec<_> = self
+            .entities
             .values()
             .map(|entity| {
                 let recent_count = entity.count_in_range(cutoff, now);
@@ -566,8 +575,14 @@ mod tests {
         let now = Utc::now();
 
         let mentions = vec![
-            ("Apple".to_string(), EntityMention::new(now, "doc1".to_string())),
-            ("Tim Cook".to_string(), EntityMention::new(now, "doc1".to_string())),
+            (
+                "Apple".to_string(),
+                EntityMention::new(now, "doc1".to_string()),
+            ),
+            (
+                "Tim Cook".to_string(),
+                EntityMention::new(now, "doc1".to_string()),
+            ),
         ];
 
         network.record_document("doc1".to_string(), mentions);
@@ -585,16 +600,28 @@ mod tests {
         network.record_document(
             "doc1".to_string(),
             vec![
-                ("Apple".to_string(), EntityMention::new(now, "doc1".to_string())),
-                ("iPhone".to_string(), EntityMention::new(now, "doc1".to_string())),
+                (
+                    "Apple".to_string(),
+                    EntityMention::new(now, "doc1".to_string()),
+                ),
+                (
+                    "iPhone".to_string(),
+                    EntityMention::new(now, "doc1".to_string()),
+                ),
             ],
         );
 
         network.record_document(
             "doc2".to_string(),
             vec![
-                ("Apple".to_string(), EntityMention::new(now, "doc2".to_string())),
-                ("iPhone".to_string(), EntityMention::new(now, "doc2".to_string())),
+                (
+                    "Apple".to_string(),
+                    EntityMention::new(now, "doc2".to_string()),
+                ),
+                (
+                    "iPhone".to_string(),
+                    EntityMention::new(now, "doc2".to_string()),
+                ),
             ],
         );
 
@@ -602,15 +629,17 @@ mod tests {
         // PMI is positive when entities co-occur MORE than expected by chance
         network.record_document(
             "doc3".to_string(),
-            vec![
-                ("Samsung".to_string(), EntityMention::new(now, "doc3".to_string())),
-            ],
+            vec![(
+                "Samsung".to_string(),
+                EntityMention::new(now, "doc3".to_string()),
+            )],
         );
         network.record_document(
             "doc4".to_string(),
-            vec![
-                ("Google".to_string(), EntityMention::new(now, "doc4".to_string())),
-            ],
+            vec![(
+                "Google".to_string(),
+                EntityMention::new(now, "doc4".to_string()),
+            )],
         );
 
         let cooccur = network.cooccurrence("Apple", "iPhone").unwrap();
@@ -643,10 +672,8 @@ mod tests {
 
     #[test]
     fn test_sentiment_tracking() {
-        let mention1 = EntityMention::new(Utc::now(), "doc1".to_string())
-            .with_sentiment(0.8);
-        let mention2 = EntityMention::new(Utc::now(), "doc2".to_string())
-            .with_sentiment(-0.2);
+        let mention1 = EntityMention::new(Utc::now(), "doc1".to_string()).with_sentiment(0.8);
+        let mention2 = EntityMention::new(Utc::now(), "doc2".to_string()).with_sentiment(-0.2);
 
         assert_eq!(mention1.sentiment, Some(0.8));
         assert_eq!(mention2.sentiment, Some(-0.2));

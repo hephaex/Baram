@@ -139,7 +139,10 @@ mod tests {
     fn test_delivery_status_success_with_message() {
         let status = DeliveryStatus::success_with_message("email", "Sent to admin@example.com");
         assert!(status.success);
-        assert_eq!(status.message, Some("Sent to admin@example.com".to_string()));
+        assert_eq!(
+            status.message,
+            Some("Sent to admin@example.com".to_string())
+        );
     }
 
     #[test]

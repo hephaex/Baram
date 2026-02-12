@@ -226,9 +226,7 @@ impl WebhookChannel {
                             .await
                             .unwrap_or_else(|_| "Unable to read response body".to_string());
 
-                        last_error = Some(ChannelError::Other(format!(
-                            "HTTP {status}: {body}"
-                        )));
+                        last_error = Some(ChannelError::Other(format!("HTTP {status}: {body}")));
 
                         // Don't retry on client errors (4xx)
                         if status.is_client_error() {

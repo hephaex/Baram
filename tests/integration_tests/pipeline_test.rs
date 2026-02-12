@@ -7,8 +7,8 @@
 //! 4. Article storage
 //! 5. Statistics tracking
 
-use baram::crawler::pipeline::{CrawlerPipeline, PipelineBuilder, PipelineConfig};
 use baram::crawler::fetcher::NaverFetcher;
+use baram::crawler::pipeline::{CrawlerPipeline, PipelineBuilder, PipelineConfig};
 use baram::parser::ArticleParser;
 use baram::storage::MarkdownWriter;
 use std::time::Duration;
@@ -17,8 +17,7 @@ use wiremock::matchers::{method, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::fixtures::{
-    expected_article_title, sample_article_url,
-    SAMPLE_ARTICLE_HTML, SAMPLE_ARTICLE_HTML_ALT,
+    expected_article_title, sample_article_url, SAMPLE_ARTICLE_HTML, SAMPLE_ARTICLE_HTML_ALT,
 };
 
 // ============================================================================
@@ -137,7 +136,8 @@ async fn test_pipeline_duplicate_detection() {
     let pipeline = CrawlerPipeline::new(config).await.unwrap();
 
     // Act: Submit same URL twice
-    let url = sample_article_url("0014000001").replace("https://n.news.naver.com", &mock_server.uri());
+    let url =
+        sample_article_url("0014000001").replace("https://n.news.naver.com", &mock_server.uri());
     let urls = vec![url.clone(), url.clone()];
 
     let stats = pipeline.run(urls).await.unwrap();
@@ -201,13 +201,9 @@ async fn test_fetcher_parser_integration() {
         .await;
 
     // Create fetcher with mock server
-    let fetcher = NaverFetcher::with_config_and_base_url(
-        &mock_server.uri(),
-        10,
-        1,
-        Duration::from_secs(5),
-    )
-    .unwrap();
+    let fetcher =
+        NaverFetcher::with_config_and_base_url(&mock_server.uri(), 10, 1, Duration::from_secs(5))
+            .unwrap();
 
     // Fetch article
     let url = "/mnews/article/001/0014000001?sid=105";

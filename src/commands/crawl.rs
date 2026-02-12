@@ -202,7 +202,11 @@ fn truncate_url(url: &str, max_len: usize) -> &str {
     }
 }
 
-pub async fn resume(checkpoint: PathBuf, max_articles: Option<usize>, output: PathBuf) -> Result<()> {
+pub async fn resume(
+    checkpoint: PathBuf,
+    max_articles: Option<usize>,
+    output: PathBuf,
+) -> Result<()> {
     println!("Resuming crawl from checkpoint: {}", checkpoint.display());
 
     // Load checkpoint database

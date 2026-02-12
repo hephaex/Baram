@@ -52,9 +52,9 @@ impl Default for CacheConfig {
         Self {
             url: "redis://localhost:6379".to_string(),
             pool_size: 10,
-            embedding_ttl: 86400,    // 24 hours
-            search_ttl: 300,         // 5 minutes
-            metadata_ttl: 3600,      // 1 hour
+            embedding_ttl: 86400, // 24 hours
+            search_ttl: 300,      // 5 minutes
+            metadata_ttl: 3600,   // 1 hour
             key_prefix: "baram".to_string(),
         }
     }
@@ -82,8 +82,7 @@ impl CacheConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(3600),
-            key_prefix: std::env::var("CACHE_KEY_PREFIX")
-                .unwrap_or_else(|_| "baram".to_string()),
+            key_prefix: std::env::var("CACHE_KEY_PREFIX").unwrap_or_else(|_| "baram".to_string()),
         })
     }
 }
@@ -173,10 +172,7 @@ impl Cache {
             .context("Failed to create Redis connection pool")?;
 
         // Test connection
-        let mut conn = pool
-            .get()
-            .await
-            .context("Failed to get Redis connection")?;
+        let mut conn = pool.get().await.context("Failed to get Redis connection")?;
 
         let _: String = redis::cmd("PING")
             .query_async(&mut *conn)
@@ -311,11 +307,7 @@ impl Cache {
     }
 
     /// Cache search results
-    pub async fn set_search(
-        &self,
-        query_hash: &str,
-        results: &CachedSearchResult,
-    ) -> Result<()> {
+    pub async fn set_search(&self, query_hash: &str, results: &CachedSearchResult) -> Result<()> {
         self.set(
             &self.search_key(query_hash),
             results,
@@ -357,10 +349,7 @@ impl Cache {
     async fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>> {
         let mut conn = self.pool.get().await.context("Failed to get connection")?;
 
-        let value: Option<Vec<u8>> = conn
-            .get(key)
-            .await
-            .context("Failed to get from cache")?;
+        let value: Option<Vec<u8>> = conn.get(key).await.context("Failed to get from cache")?;
 
         match value {
             Some(bytes) => {
@@ -402,10 +391,7 @@ impl Cache {
         let count = keys.len() as u64;
 
         // Delete all matching keys
-        let _: () = conn
-            .del(keys)
-            .await
-            .context("Failed to delete keys")?;
+        let _: () = conn.del(keys).await.context("Failed to delete keys")?;
 
         tracing::info!(pattern = %pattern, count = count, "Invalidated cache entries");
 
@@ -631,7 +617,10 @@ mod tests {
         let embedding = vec![0.1, 0.2, 0.3, 0.4];
 
         // Set embedding
-        cache.set_embedding(hash, &embedding, "test-model").await.unwrap();
+        cache
+            .set_embedding(hash, &embedding, "test-model")
+            .await
+            .unwrap();
 
         // Get embedding
         let cached = cache.get_embedding(hash).await.unwrap();

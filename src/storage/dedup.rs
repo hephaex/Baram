@@ -255,7 +255,8 @@ pub struct RotatingBloomFilter {
 impl RotatingBloomFilter {
     /// Create a new rotating bloom filter
     pub fn new(config: RotatingBloomConfig) -> Self {
-        let active = Bloom::new_for_fp_rate(config.capacity_per_generation, config.false_positive_rate);
+        let active =
+            Bloom::new_for_fp_rate(config.capacity_per_generation, config.false_positive_rate);
 
         Self {
             active,
@@ -634,7 +635,8 @@ impl BloomStats {
         // Plus HashSet overhead
         let bloom_bits = (self.url_capacity + self.hash_capacity) * 10;
         let bloom_bytes = bloom_bits / 8;
-        let hashset_bytes = (self.cache_size + self.hash_cache_size) * std::mem::size_of::<String>();
+        let hashset_bytes =
+            (self.cache_size + self.hash_cache_size) * std::mem::size_of::<String>();
 
         // Double for previous generation if rotation has occurred
         let rotation_multiplier = if self.url_rotation_count > 0 || self.hash_rotation_count > 0 {
@@ -767,10 +769,7 @@ impl AsyncDedupChecker {
 
         drop(cache);
 
-        tracing::info!(
-            "Loaded {} existing URLs into bloom filter",
-            count
-        );
+        tracing::info!("Loaded {} existing URLs into bloom filter", count);
 
         Ok(count)
     }
@@ -1226,7 +1225,10 @@ pub async fn create_shared_checker(config: DedupConfig) -> Result<SharedDedupChe
     // This is especially important for large databases (>10k URLs)
     match checker.load_existing_urls(None).await {
         Ok(count) => {
-            tracing::info!("Pre-loaded {} URLs into bloom filter for fast deduplication", count);
+            tracing::info!(
+                "Pre-loaded {} URLs into bloom filter for fast deduplication",
+                count
+            );
         }
         Err(e) => {
             tracing::warn!("Failed to pre-load URLs into bloom filter: {}", e);

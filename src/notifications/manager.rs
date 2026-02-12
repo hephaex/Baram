@@ -1,9 +1,9 @@
 //! Notification manager for alert orchestration
 
-use super::{Alert, AlertCondition, AlertSeverity, AlertStatus};
 use super::channels::Channel;
-use std::collections::HashMap;
+use super::{Alert, AlertCondition, AlertSeverity, AlertStatus};
 use chrono::{DateTime, Duration, Utc};
+use std::collections::HashMap;
 
 /// Notification manager that coordinates alerts and channels
 #[derive(Default)]
@@ -45,8 +45,8 @@ impl NotificationManager {
 
     /// Add a webhook channel with URL
     pub fn add_webhook_channel(&mut self, url: &str) -> Result<(), String> {
-        let channel = super::channels::webhook::WebhookChannel::from_url(url)
-            .map_err(|e| e.to_string())?;
+        let channel =
+            super::channels::webhook::WebhookChannel::from_url(url).map_err(|e| e.to_string())?;
         self.add_channel(Box::new(channel));
         Ok(())
     }
@@ -87,7 +87,9 @@ impl NotificationManager {
 
     /// Trigger an existing alert and send notifications
     pub async fn trigger_alert(&mut self, alert_id: &str) -> Result<(), String> {
-        let alert = self.alerts.get_mut(alert_id)
+        let alert = self
+            .alerts
+            .get_mut(alert_id)
             .ok_or_else(|| format!("Alert not found: {}", alert_id))?;
 
         alert.trigger();
@@ -125,7 +127,9 @@ impl NotificationManager {
 
     /// Acknowledge an alert
     pub fn acknowledge_alert(&mut self, alert_id: &str, by: String) -> Result<(), String> {
-        let alert = self.alerts.get_mut(alert_id)
+        let alert = self
+            .alerts
+            .get_mut(alert_id)
             .ok_or_else(|| format!("Alert not found: {}", alert_id))?;
 
         alert.acknowledge(by);
@@ -134,7 +138,9 @@ impl NotificationManager {
 
     /// Resolve an alert
     pub fn resolve_alert(&mut self, alert_id: &str) -> Result<(), String> {
-        let alert = self.alerts.get_mut(alert_id)
+        let alert = self
+            .alerts
+            .get_mut(alert_id)
             .ok_or_else(|| format!("Alert not found: {}", alert_id))?;
 
         alert.resolve();
@@ -163,11 +169,9 @@ impl NotificationManager {
     pub fn cleanup_old_alerts(&mut self, older_than_hours: i64) {
         let cutoff = Utc::now() - Duration::hours(older_than_hours);
 
-        self.alerts.retain(|_, alert| {
-            match alert.resolved_at {
-                Some(resolved) => resolved > cutoff,
-                None => true,
-            }
+        self.alerts.retain(|_, alert| match alert.resolved_at {
+            Some(resolved) => resolved > cutoff,
+            None => true,
         });
     }
 }
@@ -185,8 +189,7 @@ mod tests {
 
     #[test]
     fn test_alert_creation_and_dedup() {
-        let mut manager = NotificationManager::new()
-            .with_dedup_window(5);
+        let mut manager = NotificationManager::new().with_dedup_window(5);
 
         let condition = AlertCondition::KeywordSpike {
             keyword: "test".to_string(),
@@ -203,11 +206,8 @@ mod tests {
         assert!(alert1.is_some());
 
         // Duplicate should be deduplicated
-        let alert2 = manager.create_alert(
-            condition,
-            AlertSeverity::Warning,
-            "Test alert".to_string(),
-        );
+        let alert2 =
+            manager.create_alert(condition, AlertSeverity::Warning, "Test alert".to_string());
         assert!(alert2.is_none());
     }
 
@@ -220,16 +220,16 @@ mod tests {
             threshold_stddev: 2.0,
         };
 
-        let alert = manager.create_alert(
-            condition,
-            AlertSeverity::Info,
-            "Test".to_string(),
-        ).unwrap();
+        let alert = manager
+            .create_alert(condition, AlertSeverity::Info, "Test".to_string())
+            .unwrap();
 
         let alert_id = alert.id.clone();
 
         // Acknowledge
-        manager.acknowledge_alert(&alert_id, "admin".to_string()).unwrap();
+        manager
+            .acknowledge_alert(&alert_id, "admin".to_string())
+            .unwrap();
         assert_eq!(
             manager.get_alert(&alert_id).unwrap().status,
             AlertStatus::Acknowledged

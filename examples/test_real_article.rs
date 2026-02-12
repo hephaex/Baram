@@ -44,7 +44,10 @@ async fn main() -> Result<()> {
 
             for (i, rel) in relations.iter().enumerate() {
                 println!("{}. Speaker: {}", i + 1, rel.speaker);
-                println!("   Content: {}...", &rel.content.chars().take(50).collect::<String>());
+                println!(
+                    "   Content: {}...",
+                    &rel.content.chars().take(50).collect::<String>()
+                );
                 println!("   Confidence: {:.2}", rel.confidence);
                 println!();
             }

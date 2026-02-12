@@ -321,7 +321,10 @@ async fn test_health_check_all_active() {
 
     // Get health summary
     let all_instances = registry.get_all_instances().await;
-    let active_count = all_instances.iter().filter(|i| i.status.is_available()).count();
+    let active_count = all_instances
+        .iter()
+        .filter(|i| i.status.is_available())
+        .count();
     assert_eq!(active_count, 3, "All instances should be active");
 }
 

@@ -146,7 +146,13 @@ pub trait CrawlMetadataRepository: Send + Sync {
     /// Record a successful crawl
     fn record_success(&self, article: &ParsedArticle) -> Result<()> {
         let hash = article.content_hash.as_deref().unwrap_or("");
-        self.mark_url_crawled(&article.id(), &article.url, hash, CrawlStatus::Success, None)
+        self.mark_url_crawled(
+            &article.id(),
+            &article.url,
+            hash,
+            CrawlStatus::Success,
+            None,
+        )
     }
 
     /// Record a failed crawl
@@ -292,7 +298,9 @@ impl SqliteCrawlMetadataRepository {
             "SELECT url FROM crawl_metadata WHERE url IN ({placeholders}) AND status = 'success'"
         );
 
-        let mut stmt = conn.prepare(&query).context("Failed to prepare batch query")?;
+        let mut stmt = conn
+            .prepare(&query)
+            .context("Failed to prepare batch query")?;
 
         let params: Vec<&dyn rusqlite::ToSql> =
             urls.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
@@ -347,7 +355,10 @@ impl CrawlMetadataRepository for SqliteCrawlMetadataRepository {
         // Use URL hash as fallback ID if empty
         let effective_id = if id.is_empty() {
             let hash = Sha256::digest(url.as_bytes());
-            format!("fail_{hash:x}").chars().take(40).collect::<String>()
+            format!("fail_{hash:x}")
+                .chars()
+                .take(40)
+                .collect::<String>()
         } else {
             id.to_string()
         };
@@ -379,7 +390,10 @@ impl CrawlMetadataRepository for SqliteCrawlMetadataRepository {
                         crawled_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
                             .map(|dt| dt.with_timezone(&Utc))
                             .unwrap_or_else(|_| Utc::now()),
-                        status: row.get::<_, String>(4)?.parse().unwrap_or(CrawlStatus::Failed),
+                        status: row
+                            .get::<_, String>(4)?
+                            .parse()
+                            .unwrap_or(CrawlStatus::Failed),
                         error_message: row.get(5)?,
                     })
                 },
@@ -392,7 +406,8 @@ impl CrawlMetadataRepository for SqliteCrawlMetadataRepository {
 
     fn get_stats(&self) -> Result<CrawlStats> {
         let conn = self.conn.lock().unwrap();
-        let total: i64 = conn.query_row("SELECT COUNT(*) FROM crawl_metadata", [], |row| row.get(0))?;
+        let total: i64 =
+            conn.query_row("SELECT COUNT(*) FROM crawl_metadata", [], |row| row.get(0))?;
 
         let success: i64 = conn.query_row(
             "SELECT COUNT(*) FROM crawl_metadata WHERE status = 'success'",
@@ -562,7 +577,10 @@ impl CrawlMetadataRepository for MockCrawlMetadataRepository {
     ) -> Result<()> {
         let effective_id = if id.is_empty() {
             let hash = Sha256::digest(url.as_bytes());
-            format!("fail_{hash:x}").chars().take(40).collect::<String>()
+            format!("fail_{hash:x}")
+                .chars()
+                .take(40)
+                .collect::<String>()
         } else {
             id.to_string()
         };

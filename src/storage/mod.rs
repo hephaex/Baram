@@ -27,15 +27,15 @@ pub use markdown::{
 };
 pub use repository::{
     create_mock_repository, create_sqlite_repository, ArticleRepository, CrawlMetadataRepository,
-    CrawlRecord, CrawlStats, CrawlStatus, MockCrawlMetadataRepository, SharedCrawlMetadataRepository,
-    SqliteCrawlMetadataRepository,
+    CrawlRecord, CrawlStats, CrawlStatus, MockCrawlMetadataRepository,
+    SharedCrawlMetadataRepository, SqliteCrawlMetadataRepository,
 };
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{Config as PoolConfig, ManagerConfig, Pool, RecyclingMethod, Runtime};
-use sha2::{Digest, Sha256};
 use rusqlite::{params, Connection, OptionalExtension};
+use sha2::{Digest, Sha256};
 use std::path::Path;
 use tokio_postgres::NoTls;
 
@@ -70,8 +70,14 @@ impl Database {
 
         let conn = Connection::open(path).context("Failed to open SQLite database")?;
 
-        // Enable WAL mode for better concurrency
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")?;
+        // Enable WAL mode and tune for better performance
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL;
+             PRAGMA synchronous=NORMAL;
+             PRAGMA cache_size=-64000;
+             PRAGMA mmap_size=268435456;
+             PRAGMA temp_store=MEMORY;",
+        )?;
 
         self.create_sqlite_schema(&conn)?;
         self.sqlite = Some(conn);
@@ -340,7 +346,10 @@ impl Database {
         // Use URL hash as fallback ID if empty (for failures)
         let effective_id = if id.is_empty() {
             let hash = Sha256::digest(url.as_bytes());
-            format!("fail_{:x}", hash).chars().take(40).collect::<String>()
+            format!("fail_{:x}", hash)
+                .chars()
+                .take(40)
+                .collect::<String>()
         } else {
             id.to_string()
         };
@@ -392,7 +401,10 @@ impl Database {
                         crawled_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
                             .map(|dt| dt.with_timezone(&Utc))
                             .unwrap_or_else(|_| Utc::now()),
-                        status: row.get::<_, String>(4)?.parse().unwrap_or(CrawlStatus::Failed),
+                        status: row
+                            .get::<_, String>(4)?
+                            .parse()
+                            .unwrap_or(CrawlStatus::Failed),
                         error_message: row.get(5)?,
                     })
                 },
@@ -550,10 +562,13 @@ impl Database {
             "SELECT url FROM crawl_metadata WHERE url IN ({placeholders}) AND status = 'success'"
         );
 
-        let mut stmt = conn.prepare(&query).context("Failed to prepare batch query")?;
+        let mut stmt = conn
+            .prepare(&query)
+            .context("Failed to prepare batch query")?;
 
         // Bind all URL parameters
-        let params: Vec<&dyn rusqlite::ToSql> = urls.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        let params: Vec<&dyn rusqlite::ToSql> =
+            urls.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
 
         let crawled_urls: HashSet<String> = stmt
             .query_map(params.as_slice(), |row| row.get::<_, String>(0))?

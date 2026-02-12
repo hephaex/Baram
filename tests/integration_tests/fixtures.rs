@@ -100,9 +100,7 @@ pub const MALFORMED_HTML: &str = r#"
 
 /// Create a sample Naver News article URL
 pub fn sample_article_url(article_id: &str) -> String {
-    format!(
-        "https://n.news.naver.com/mnews/article/001/{article_id}?sid=105"
-    )
+    format!("https://n.news.naver.com/mnews/article/001/{article_id}?sid=105")
 }
 
 /// Create a sample comment API URL

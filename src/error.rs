@@ -181,11 +181,17 @@ impl BaramErrorTrait for Error {
             Self::Parse(e) => e.localized_desc(),
             Self::Ontology(e) => e.localized_desc(),
             Self::Scheduler(e) => e.localized_desc(),
-            Self::Database(e) => format!("{}: {e}", crate::i18n::t!("errors.database.error").to_string()),
+            Self::Database(e) => format!(
+                "{}: {e}",
+                crate::i18n::t!("errors.database.error").to_string()
+            ),
             Self::Io(e) => format!("{}: {e}", crate::i18n::t!("errors.io.error").to_string()),
             Self::Json(e) => format!("{}: {e}", crate::i18n::t!("errors.json.error").to_string()),
             Self::Http(e) => format!("{}: {e}", crate::i18n::t!("errors.http.error").to_string()),
-            Self::Config(msg) => format!("{}: {msg}", crate::i18n::t!("errors.config.error").to_string()),
+            Self::Config(msg) => format!(
+                "{}: {msg}",
+                crate::i18n::t!("errors.config.error").to_string()
+            ),
             Self::Other { context, .. } => context.clone(),
         }
     }
@@ -291,7 +297,9 @@ mod tests {
         let desc = fetch_err.korean_desc();
         // During tests, i18n may return the key if translations aren't loaded
         assert!(
-            desc == "요청 한도 초과" || desc == "Rate limit exceeded" || desc.contains("rate_limit"),
+            desc == "요청 한도 초과"
+                || desc == "Rate limit exceeded"
+                || desc.contains("rate_limit"),
             "Unexpected description: {}",
             desc
         );

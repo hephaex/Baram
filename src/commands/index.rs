@@ -33,7 +33,12 @@ fn extract_doc_id_from_filename(path: &std::path::Path) -> Option<String> {
     }
 }
 
-pub async fn index(input: String, batch_size: usize, force: bool, since: Option<String>) -> Result<()> {
+pub async fn index(
+    input: String,
+    batch_size: usize,
+    force: bool,
+    since: Option<String>,
+) -> Result<()> {
     use std::fs;
 
     println!("Indexing articles from: {input}");
@@ -63,21 +68,24 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
         anyhow::bail!("Input path does not exist: {input}");
     }
 
-    let checkpoint_name = format!("index_{}",
-        input_path.file_name()
+    let checkpoint_name = format!(
+        "index_{}",
+        input_path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
     );
 
     // Load checkpoint BEFORE file scanning (key optimization)
-    let mut checkpoint_state: IndexCheckpoint = checkpoint_mgr
-        .load(&checkpoint_name)?
-        .unwrap_or(IndexCheckpoint {
-            last_processed_batch: 0,
-            total_success: 0,
-            total_failed: 0,
-            processed_doc_ids: std::collections::HashSet::new(),
-        });
+    let mut checkpoint_state: IndexCheckpoint =
+        checkpoint_mgr
+            .load(&checkpoint_name)?
+            .unwrap_or(IndexCheckpoint {
+                last_processed_batch: 0,
+                total_success: 0,
+                total_failed: 0,
+                processed_doc_ids: std::collections::HashSet::new(),
+            });
 
     if !index_exists {
         println!("Creating index '{}'...", opensearch_config.index_name);
@@ -135,17 +143,16 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
         // Pre-filter by --since (file mtime)
         let time_filtered: Vec<_> = match &since_time {
             None => entries,
-            Some(since) => {
-                entries.into_iter()
-                    .filter(|e| {
-                        e.metadata()
-                            .ok()
-                            .and_then(|m| m.modified().ok())
-                            .map(|mtime| mtime >= *since)
-                            .unwrap_or(true)
-                    })
-                    .collect()
-            }
+            Some(since) => entries
+                .into_iter()
+                .filter(|e| {
+                    e.metadata()
+                        .ok()
+                        .and_then(|m| m.modified().ok())
+                        .map(|mtime| mtime >= *since)
+                        .unwrap_or(true)
+                })
+                .collect(),
         };
 
         let after_time_filter = time_filtered.len();
@@ -154,7 +161,8 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
         let unprocessed: Vec<_> = if checkpoint_state.processed_doc_ids.is_empty() {
             time_filtered
         } else {
-            time_filtered.into_iter()
+            time_filtered
+                .into_iter()
                 .filter(|entry| {
                     match extract_doc_id_from_filename(&entry.path()) {
                         Some(id) => !checkpoint_state.processed_doc_ids.contains(&id),
@@ -260,7 +268,8 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
 
         // Generate embeddings in batch (single API call for entire batch)
         let batch_with_embeddings: Vec<baram::embedding::IndexDocument> = if use_embeddings {
-            let texts: Vec<String> = batch.iter()
+            let texts: Vec<String> = batch
+                .iter()
                 .map(|doc| {
                     let text = format!("{} {}", doc.title, doc.content);
                     text.chars().take(2000).collect()
@@ -269,16 +278,18 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
 
             match with_retry(&retry_config, || async {
                 generate_embeddings_batch(&client, &embedding_server_url, &texts).await
-            }).await {
-                Ok(embeddings) => {
-                    batch.iter().zip(embeddings.into_iter())
-                        .map(|(doc, emb)| {
-                            let mut new_doc = doc.clone();
-                            new_doc.embedding = emb;
-                            new_doc
-                        })
-                        .collect()
-                }
+            })
+            .await
+            {
+                Ok(embeddings) => batch
+                    .iter()
+                    .zip(embeddings.into_iter())
+                    .map(|(doc, emb)| {
+                        let mut new_doc = doc.clone();
+                        new_doc.embedding = emb;
+                        new_doc
+                    })
+                    .collect(),
                 Err(e) => {
                     tracing::warn!(error = %e, "Batch embedding failed, using dummy embeddings");
                     batch.to_vec()
@@ -291,7 +302,8 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
         // Bulk index with retry
         let result = with_retry(&retry_config, || async {
             store.bulk_index(&batch_with_embeddings).await
-        }).await?;
+        })
+        .await?;
 
         total_success += result.success;
         total_failed += result.failed;
@@ -472,7 +484,13 @@ pub fn parse_markdown_to_document(
     let published_at_iso = published_at.and_then(|dt| {
         let dt = dt.trim();
         // Skip empty or invalid dates
-        if dt.is_empty() || !dt.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        if dt.is_empty()
+            || !dt
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_digit())
+                .unwrap_or(false)
+        {
             return None;
         }
         // Try to parse "YYYY-MM-DD HH:MM" format and convert to ISO 8601
@@ -509,9 +527,7 @@ mod tests {
 
     #[test]
     fn test_extract_doc_id_standard_filename() {
-        let path = std::path::PathBuf::from(
-            "001_0015812889_강남구_국민권익위_청렴도_평가서.md"
-        );
+        let path = std::path::PathBuf::from("001_0015812889_강남구_국민권익위_청렴도_평가서.md");
         assert_eq!(
             extract_doc_id_from_filename(&path),
             Some("001_0015812889".to_string())
@@ -541,9 +557,7 @@ mod tests {
 
     #[test]
     fn test_extract_doc_id_three_digit_oid() {
-        let path = std::path::PathBuf::from(
-            "661_0000071158_강득구_지방선거_이후_합당이.md"
-        );
+        let path = std::path::PathBuf::from("661_0000071158_강득구_지방선거_이후_합당이.md");
         assert_eq!(
             extract_doc_id_from_filename(&path),
             Some("661_0000071158".to_string())

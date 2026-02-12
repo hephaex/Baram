@@ -30,13 +30,7 @@
 //!   periodSeconds: 10
 //! ```
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
-    Json, Router,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -237,7 +231,10 @@ async fn readiness_probe(State(state): State<AppState>) -> impl IntoResponse {
     checks.push(ComponentHealth {
         name: "registry".to_string(),
         status: HealthStatus::Healthy,
-        message: Some(format!("{} instances registered", registry_stats.total_instances)),
+        message: Some(format!(
+            "{} instances registered",
+            registry_stats.total_instances
+        )),
         latency_ms: Some(registry_latency),
     });
 

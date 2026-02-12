@@ -104,7 +104,9 @@ impl FetchError {
             FetchError::RateLimit => crate::i18n::t!("errors.fetch.rate_limit").to_string(),
             FetchError::ServerError(_) => crate::i18n::t!("errors.fetch.server_error").to_string(),
             FetchError::Timeout => crate::i18n::t!("errors.fetch.timeout").to_string(),
-            FetchError::MaxRetriesExceeded => crate::i18n::t!("errors.fetch.max_retries_exceeded").to_string(),
+            FetchError::MaxRetriesExceeded => {
+                crate::i18n::t!("errors.fetch.max_retries_exceeded").to_string()
+            }
             FetchError::Decode(_) => crate::i18n::t!("errors.fetch.decode_error").to_string(),
             FetchError::InvalidUrl(_) => crate::i18n::t!("errors.fetch.invalid_url").to_string(),
         }
@@ -134,11 +136,19 @@ impl ParseError {
     /// Get localized description for the error
     pub fn localized_desc(&self) -> String {
         match self {
-            ParseError::TitleNotFound => crate::i18n::t!("errors.parse.title_not_found").to_string(),
-            ParseError::ContentNotFound => crate::i18n::t!("errors.parse.content_not_found").to_string(),
+            ParseError::TitleNotFound => {
+                crate::i18n::t!("errors.parse.title_not_found").to_string()
+            }
+            ParseError::ContentNotFound => {
+                crate::i18n::t!("errors.parse.content_not_found").to_string()
+            }
             ParseError::InvalidUrl(_) => crate::i18n::t!("errors.parse.invalid_url").to_string(),
-            ParseError::IdExtractionFailed => crate::i18n::t!("errors.parse.id_extraction_failed").to_string(),
-            ParseError::ArticleNotFound => crate::i18n::t!("errors.parse.article_not_found").to_string(),
+            ParseError::IdExtractionFailed => {
+                crate::i18n::t!("errors.parse.id_extraction_failed").to_string()
+            }
+            ParseError::ArticleNotFound => {
+                crate::i18n::t!("errors.parse.article_not_found").to_string()
+            }
             ParseError::UnknownFormat => crate::i18n::t!("errors.parse.unknown_format").to_string(),
         }
     }
@@ -173,8 +183,12 @@ impl CrawlerError {
         match self {
             CrawlerError::Fetch(e) => e.localized_desc(),
             CrawlerError::Parse(e) => e.localized_desc(),
-            CrawlerError::InvalidDate(_) => crate::i18n::t!("errors.crawler.invalid_date").to_string(),
-            CrawlerError::NoArticlesFound => crate::i18n::t!("errors.crawler.no_articles_found").to_string(),
+            CrawlerError::InvalidDate(_) => {
+                crate::i18n::t!("errors.crawler.invalid_date").to_string()
+            }
+            CrawlerError::NoArticlesFound => {
+                crate::i18n::t!("errors.crawler.no_articles_found").to_string()
+            }
             CrawlerError::RateLimited => crate::i18n::t!("errors.crawler.rate_limited").to_string(),
         }
     }
@@ -218,8 +232,14 @@ mod tests {
 
     #[test]
     fn test_parse_error_korean_desc() {
-        assert_eq!(ParseError::TitleNotFound.korean_desc(), "제목을 찾을 수 없음");
-        assert_eq!(ParseError::ArticleNotFound.korean_desc(), "기사를 찾을 수 없음");
+        assert_eq!(
+            ParseError::TitleNotFound.korean_desc(),
+            "제목을 찾을 수 없음"
+        );
+        assert_eq!(
+            ParseError::ArticleNotFound.korean_desc(),
+            "기사를 찾을 수 없음"
+        );
     }
 
     #[test]
@@ -234,6 +254,9 @@ mod tests {
     #[test]
     fn test_crawler_error_korean_desc() {
         assert_eq!(CrawlerError::RateLimited.korean_desc(), "요청 한도 초과");
-        assert_eq!(CrawlerError::NoArticlesFound.korean_desc(), "기사를 찾을 수 없음");
+        assert_eq!(
+            CrawlerError::NoArticlesFound.korean_desc(),
+            "기사를 찾을 수 없음"
+        );
     }
 }

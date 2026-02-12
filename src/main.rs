@@ -114,6 +114,10 @@ enum Commands {
         /// Use LLM for Said relation extraction (requires Ollama)
         #[arg(long, default_value = "false")]
         llm: bool,
+
+        /// Maximum concurrent LLM requests
+        #[arg(long, default_value = "4")]
+        max_concurrent: usize,
     },
 
     /// Resume crawling from checkpoint
@@ -324,15 +328,17 @@ async fn main() -> Result<()> {
             format,
             output,
             llm,
+            max_concurrent,
         } => {
             tracing::info!(
                 input = %input,
                 format = %format,
                 output = ?output,
                 llm = llm,
+                max_concurrent = max_concurrent,
                 "Starting ontology command"
             );
-            commands::ontology(input, format, output, llm).await?;
+            commands::ontology(input, format, output, llm, max_concurrent).await?;
         }
 
         Commands::Resume {

@@ -7,7 +7,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -23,7 +22,7 @@ use baram::scheduler::rotation::CrawlerInstance;
 
 /// Shared state for embedding server
 struct EmbeddingServerState {
-    embedder: RwLock<Embedder>,
+    embedder: Embedder,
     model_name: String,
     ready: std::sync::atomic::AtomicBool,
 }
@@ -114,7 +113,7 @@ pub async fn embedding_server(
 
     // Create shared state
     let state = Arc::new(EmbeddingServerState {
-        embedder: RwLock::new(embedder),
+        embedder,
         model_name: model,
         ready: std::sync::atomic::AtomicBool::new(true),
     });
@@ -195,9 +194,7 @@ async fn embed_handler(
         ));
     }
 
-    let mut embedder = state.embedder.write().await;
-
-    match embedder.embed(&request.text) {
+    match state.embedder.embed(&request.text) {
         Ok(embedding) => {
             let dimension = embedding.len();
             Ok(Json(EmbedResponse {
@@ -240,9 +237,7 @@ async fn batch_embed_handler(
         ));
     }
 
-    let mut embedder = state.embedder.write().await;
-
-    match embedder.embed_batch(&request.texts) {
+    match state.embedder.embed_batch(&request.texts) {
         Ok(embeddings) => {
             let count = embeddings.len();
             let dimension = embeddings.first().map(|e| e.len()).unwrap_or(0);
@@ -295,7 +290,10 @@ pub async fn distributed_crawler(params: DistributedCrawlerParams) -> Result<()>
 
     // Initialize Prometheus metrics for crawler
     if let Err(e) = baram::metrics::init_metrics() {
-        tracing::warn!("Failed to initialize metrics (metrics will be disabled): {}", e);
+        tracing::warn!(
+            "Failed to initialize metrics (metrics will be disabled): {}",
+            e
+        );
     } else {
         tracing::info!("Prometheus metrics initialized for crawler");
     }
@@ -313,9 +311,8 @@ pub async fn distributed_crawler(params: DistributedCrawlerParams) -> Result<()>
     println!();
 
     // Parse instance ID
-    let instance_id = CrawlerInstance::from_id(&instance).map_err(|_| {
-        anyhow::anyhow!("Invalid instance ID: {instance}. Valid: main, sub1, sub2")
-    })?;
+    let instance_id = CrawlerInstance::from_id(&instance)
+        .map_err(|_| anyhow::anyhow!("Invalid instance ID: {instance}. Valid: main, sub1, sub2"))?;
 
     // Create instance config
     let config = InstanceConfig::builder()
@@ -442,7 +439,10 @@ pub async fn coordinator_server(params: CoordinatorParams) -> Result<()> {
 
     // Initialize Prometheus metrics
     if let Err(e) = baram::metrics::init_metrics() {
-        tracing::warn!("Failed to initialize metrics (metrics will be disabled): {}", e);
+        tracing::warn!(
+            "Failed to initialize metrics (metrics will be disabled): {}",
+            e
+        );
     } else {
         tracing::info!("Prometheus metrics initialized");
     }

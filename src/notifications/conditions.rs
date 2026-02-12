@@ -179,17 +179,13 @@ impl AlertCondition {
                 category,
                 threshold_stddev,
             } => {
-                format!(
-                    "Article volume in '{category}' exceeds {threshold_stddev}σ from mean"
-                )
+                format!("Article volume in '{category}' exceeds {threshold_stddev}σ from mean")
             }
             Self::ErrorRateThreshold {
                 threshold_percent,
                 window_minutes,
             } => {
-                format!(
-                    "Error rate >{threshold_percent}% in {window_minutes}min window"
-                )
+                format!("Error rate >{threshold_percent}% in {window_minutes}min window")
             }
             Self::ThroughputDrop {
                 threshold_per_minute,
@@ -206,9 +202,7 @@ impl AlertCondition {
                 format!("Source '{source}' failed {failure_count} consecutive times")
             }
             Self::Custom {
-                name,
-                description,
-                ..
+                name, description, ..
             } => {
                 format!("{name}: {description}")
             }
@@ -223,42 +217,32 @@ impl AlertCondition {
                 threshold,
                 window_minutes,
             } => {
-                format!(
-                    "키워드 '{keyword}'가 {window_minutes}분 내 {threshold}회 이상 출현"
-                )
+                format!("키워드 '{keyword}'가 {window_minutes}분 내 {threshold}회 이상 출현")
             }
             Self::EntitySurge {
                 entity,
                 threshold,
                 window_minutes,
             } => {
-                format!(
-                    "개체명 '{entity}'가 {window_minutes}분 내 {threshold}회 이상 언급"
-                )
+                format!("개체명 '{entity}'가 {window_minutes}분 내 {threshold}회 이상 언급")
             }
             Self::VolumeAnomaly {
                 category,
                 threshold_stddev,
             } => {
-                format!(
-                    "'{category}' 카테고리 기사량이 평균에서 {threshold_stddev} 표준편차 초과"
-                )
+                format!("'{category}' 카테고리 기사량이 평균에서 {threshold_stddev} 표준편차 초과")
             }
             Self::ErrorRateThreshold {
                 threshold_percent,
                 window_minutes,
             } => {
-                format!(
-                    "{window_minutes}분 내 오류율 {threshold_percent}% 초과"
-                )
+                format!("{window_minutes}분 내 오류율 {threshold_percent}% 초과")
             }
             Self::ThroughputDrop {
                 threshold_per_minute,
                 window_minutes,
             } => {
-                format!(
-                    "{window_minutes}분 내 처리량이 분당 {threshold_per_minute}건 미만"
-                )
+                format!("{window_minutes}분 내 처리량이 분당 {threshold_per_minute}건 미만")
             }
             Self::SourceFailure {
                 source,
@@ -286,21 +270,11 @@ impl AlertCondition {
     /// Get the time window in minutes (if applicable)
     pub fn window_minutes(&self) -> Option<u32> {
         match self {
-            Self::KeywordSpike {
-                window_minutes, ..
-            }
-            | Self::EntitySurge {
-                window_minutes, ..
-            }
-            | Self::ErrorRateThreshold {
-                window_minutes, ..
-            }
-            | Self::ThroughputDrop {
-                window_minutes, ..
-            } => Some(*window_minutes),
-            Self::VolumeAnomaly { .. }
-            | Self::SourceFailure { .. }
-            | Self::Custom { .. } => None,
+            Self::KeywordSpike { window_minutes, .. }
+            | Self::EntitySurge { window_minutes, .. }
+            | Self::ErrorRateThreshold { window_minutes, .. }
+            | Self::ThroughputDrop { window_minutes, .. } => Some(*window_minutes),
+            Self::VolumeAnomaly { .. } | Self::SourceFailure { .. } | Self::Custom { .. } => None,
         }
     }
 

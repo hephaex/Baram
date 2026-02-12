@@ -12,6 +12,7 @@ use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config as BertConfig};
 use hf_hub::{api::sync::ApiBuilder, Cache, Repo, RepoType};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use tokenizers::Tokenizer;
 
 /// Embedding model configuration
@@ -50,19 +51,50 @@ impl Default for EmbeddingConfig {
 }
 
 /// Embedding generation statistics
-#[derive(Debug, Clone, Default)]
+#[derive(Debug)]
 pub struct EmbeddingStats {
     /// Total texts embedded
-    pub texts_embedded: usize,
+    pub texts_embedded: AtomicUsize,
 
     /// Total batches processed
-    pub batches_processed: usize,
+    pub batches_processed: AtomicUsize,
 
-    /// Average embedding time (ms)
-    pub avg_time_ms: f64,
+    /// Average embedding time (ms) - stored as f64 bits
+    avg_time_ms: AtomicU64,
 
     /// Device used (cpu/cuda)
     pub device: String,
+}
+
+impl EmbeddingStats {
+    /// Create new statistics with device name
+    pub fn new(device: String) -> Self {
+        Self {
+            texts_embedded: AtomicUsize::new(0),
+            batches_processed: AtomicUsize::new(0),
+            avg_time_ms: AtomicU64::new(0),
+            device,
+        }
+    }
+
+    /// Get average embedding time in milliseconds
+    pub fn avg_time_ms(&self) -> f64 {
+        f64::from_bits(self.avg_time_ms.load(Ordering::Relaxed))
+    }
+
+    /// Update average time with new measurement
+    fn update_avg_time(&self, new_time_ms: f64, new_texts_count: usize, prev_texts_count: usize) {
+        let current_avg = self.avg_time_ms();
+        let total_time = current_avg * prev_texts_count as f64 + new_time_ms;
+        let new_avg = total_time / (prev_texts_count + new_texts_count) as f64;
+        self.avg_time_ms.store(new_avg.to_bits(), Ordering::Relaxed);
+    }
+}
+
+impl Default for EmbeddingStats {
+    fn default() -> Self {
+        Self::new(String::new())
+    }
 }
 
 /// Vector embedding generator
@@ -198,21 +230,18 @@ impl Embedder {
             tokenizer,
             device,
             config,
-            stats: EmbeddingStats {
-                device: device_name,
-                ..Default::default()
-            },
+            stats: EmbeddingStats::new(device_name),
         })
     }
 
     /// Generate embedding for a single text
-    pub fn embed(&mut self, text: &str) -> Result<Vec<f32>> {
+    pub fn embed(&self, text: &str) -> Result<Vec<f32>> {
         let embeddings = self.embed_batch(&[text.to_string()])?;
         Ok(embeddings.into_iter().next().unwrap_or_default())
     }
 
     /// Generate embeddings for multiple texts (batched)
-    pub fn embed_batch(&mut self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
+    pub fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
         let start_time = std::time::Instant::now();
 
         let mut all_embeddings = Vec::with_capacity(texts.len());
@@ -221,16 +250,18 @@ impl Embedder {
         for batch in texts.chunks(self.config.batch_size) {
             let batch_embeddings = self.embed_batch_internal(batch)?;
             all_embeddings.extend(batch_embeddings);
-            self.stats.batches_processed += 1;
+            self.stats.batches_processed.fetch_add(1, Ordering::Relaxed);
         }
 
-        // Update statistics
+        // Update statistics atomically
         let elapsed_ms = start_time.elapsed().as_millis() as f64;
-        self.stats.texts_embedded += texts.len();
+        let prev_texts_count = self
+            .stats
+            .texts_embedded
+            .fetch_add(texts.len(), Ordering::Relaxed);
 
-        let total_time =
-            self.stats.avg_time_ms * (self.stats.texts_embedded - texts.len()) as f64 + elapsed_ms;
-        self.stats.avg_time_ms = total_time / self.stats.texts_embedded as f64;
+        self.stats
+            .update_avg_time(elapsed_ms, texts.len(), prev_texts_count);
 
         Ok(all_embeddings)
     }
@@ -345,10 +376,9 @@ impl Embedder {
 
     /// Reset statistics
     pub fn reset_stats(&mut self) {
-        self.stats = EmbeddingStats {
-            device: self.stats.device.clone(),
-            ..Default::default()
-        };
+        self.stats.texts_embedded.store(0, Ordering::Relaxed);
+        self.stats.batches_processed.store(0, Ordering::Relaxed);
+        self.stats.avg_time_ms.store(0, Ordering::Relaxed);
     }
 
     /// Check if using GPU
@@ -444,8 +474,31 @@ mod tests {
     #[test]
     fn test_embedding_stats_default() {
         let stats = EmbeddingStats::default();
-        assert_eq!(stats.texts_embedded, 0);
-        assert_eq!(stats.batches_processed, 0);
+        assert_eq!(stats.texts_embedded.load(Ordering::Relaxed), 0);
+        assert_eq!(stats.batches_processed.load(Ordering::Relaxed), 0);
+        assert_eq!(stats.avg_time_ms(), 0.0);
+    }
+
+    #[test]
+    fn test_embedding_stats_update() {
+        let stats = EmbeddingStats::new("cpu".to_string());
+
+        // Simulate first batch: 5 texts taking 100ms total
+        let prev_count = stats.texts_embedded.fetch_add(5, Ordering::Relaxed);
+        stats.update_avg_time(100.0, 5, prev_count);
+
+        assert_eq!(stats.texts_embedded.load(Ordering::Relaxed), 5);
+        // Average = 100ms total / 5 texts = 20ms per text
+        assert!((stats.avg_time_ms() - 20.0).abs() < 0.01);
+
+        // Simulate second batch: 10 texts taking 200ms total
+        let prev_count = stats.texts_embedded.fetch_add(10, Ordering::Relaxed);
+        stats.update_avg_time(200.0, 10, prev_count);
+
+        assert_eq!(stats.texts_embedded.load(Ordering::Relaxed), 15);
+        // Previous total: 20 * 5 = 100, New total: 100 + 200 = 300
+        // New average: 300 / 15 = 20ms per text
+        assert!((stats.avg_time_ms() - 20.0).abs() < 0.01);
     }
 
     // Integration tests require model download

@@ -202,11 +202,7 @@ impl KeywordTrend {
     /// * `start` - Start of time range (inclusive)
     /// * `end` - End of time range (inclusive)
     #[must_use]
-    pub fn data_range(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<&DataPoint> {
+    pub fn data_range(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> Vec<&DataPoint> {
         self.data
             .range(start..=end)
             .map(|(_, point)| point)
@@ -272,15 +268,12 @@ impl KeywordTrend {
         // Calculate mean and standard deviation for z-scores
         let counts: Vec<f64> = self.data.values().map(|p| p.count as f64).collect();
         let mean = counts.iter().sum::<f64>() / counts.len() as f64;
-        let variance = counts.iter().map(|&x| (x - mean).powi(2)).sum::<f64>()
-            / counts.len() as f64;
+        let variance =
+            counts.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / counts.len() as f64;
         let std_dev = variance.sqrt();
 
         // Collect timestamps and counts first to avoid borrow issues
-        let data_snapshot: Vec<_> = self.data
-            .iter()
-            .map(|(&ts, p)| (ts, p.count))
-            .collect();
+        let data_snapshot: Vec<_> = self.data.iter().map(|(&ts, p)| (ts, p.count)).collect();
 
         // Check each point
         for (timestamp, count) in data_snapshot {
@@ -317,7 +310,10 @@ impl KeywordTrend {
     ///
     /// # Returns
     /// `(direction, velocity)` where velocity is normalized rate of change
-    pub fn trend_direction(&self, recent_points: Option<usize>) -> TrendResult<(TrendDirection, f64)> {
+    pub fn trend_direction(
+        &self,
+        recent_points: Option<usize>,
+    ) -> TrendResult<(TrendDirection, f64)> {
         let n = recent_points.unwrap_or(self.window_size);
 
         if self.data.len() < 2 {
@@ -368,18 +364,18 @@ impl KeywordTrend {
     ///
     /// # Returns
     /// Percentage change from start to end
-    pub fn percent_change(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> TrendResult<f64> {
+    pub fn percent_change(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> TrendResult<f64> {
         if start >= end {
             return Err(TrendError::InvalidTimeRange(start, end));
         }
 
-        let start_point = self.data.get(&start)
+        let start_point = self
+            .data
+            .get(&start)
             .ok_or_else(|| TrendError::KeywordNotFound(format!("No data at {start}")))?;
-        let end_point = self.data.get(&end)
+        let end_point = self
+            .data
+            .get(&end)
             .ok_or_else(|| TrendError::KeywordNotFound(format!("No data at {end}")))?;
 
         if start_point.count == 0 {
@@ -387,7 +383,8 @@ impl KeywordTrend {
         }
 
         let change = ((end_point.count as f64 - start_point.count as f64)
-            / start_point.count as f64) * 100.0;
+            / start_point.count as f64)
+            * 100.0;
 
         Ok(change)
     }
@@ -451,7 +448,9 @@ impl TrendAnalyzer {
     pub fn add_observation(&mut self, keyword: &str, timestamp: DateTime<Utc>, count: u64) {
         self.trends
             .entry(keyword.to_string())
-            .or_insert_with(|| KeywordTrend::new(keyword.to_string(), Some(self.default_window_size)))
+            .or_insert_with(|| {
+                KeywordTrend::new(keyword.to_string(), Some(self.default_window_size))
+            })
             .add_point(timestamp, count);
     }
 
@@ -480,11 +479,17 @@ impl TrendAnalyzer {
     ///
     /// # Returns
     /// Keywords sorted by velocity (descending)
-    pub fn top_trending(&mut self, limit: usize, recent_points: Option<usize>) -> Vec<(String, f64)> {
-        let mut velocities: Vec<_> = self.trends
+    pub fn top_trending(
+        &mut self,
+        limit: usize,
+        recent_points: Option<usize>,
+    ) -> Vec<(String, f64)> {
+        let mut velocities: Vec<_> = self
+            .trends
             .iter_mut()
             .filter_map(|(keyword, trend)| {
-                trend.trend_direction(recent_points)
+                trend
+                    .trend_direction(recent_points)
                     .ok()
                     .map(|(_, velocity)| (keyword.clone(), velocity))
             })
@@ -571,7 +576,10 @@ mod tests {
 
         let (direction, velocity) = trend.trend_direction(None).unwrap();
         assert!(velocity > 0.0);
-        assert!(matches!(direction, TrendDirection::Rising | TrendDirection::SlightlyRising));
+        assert!(matches!(
+            direction,
+            TrendDirection::Rising | TrendDirection::SlightlyRising
+        ));
     }
 
     #[test]

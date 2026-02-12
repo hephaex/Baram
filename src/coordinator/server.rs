@@ -110,9 +110,7 @@ impl CoordinatorServer {
         let health_router = create_health_router(self.state.clone());
 
         // Merge routers
-        let mut router = Router::new()
-            .merge(health_router)
-            .merge(api_router);
+        let mut router = Router::new().merge(health_router).merge(api_router);
 
         // Add CORS layer if enabled
         if self.config.enable_cors {

@@ -188,8 +188,12 @@ pub fn init_metrics() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Store metrics - these should always succeed since we just created them
-    COORDINATOR_METRICS.set(coordinator).map_err(|_| "Coordinator metrics already initialized")?;
-    CRAWLER_METRICS.set(crawler).map_err(|_| "Crawler metrics already initialized")?;
+    COORDINATOR_METRICS
+        .set(coordinator)
+        .map_err(|_| "Coordinator metrics already initialized")?;
+    CRAWLER_METRICS
+        .set(crawler)
+        .map_err(|_| "Crawler metrics already initialized")?;
 
     tracing::info!("Prometheus metrics initialized successfully");
     Ok(())
