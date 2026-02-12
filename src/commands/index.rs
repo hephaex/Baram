@@ -185,12 +185,34 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
             );
         }
 
-        for entry in unprocessed {
-            let path = entry.path();
-            match parse_markdown_to_document(&path) {
-                Ok(doc) => documents.push(doc),
-                Err(e) => {
-                    tracing::warn!(path = %path.display(), error = %e, "Failed to parse markdown");
+        // Parallel file parsing with buffer_unordered
+        {
+            use futures::stream::{self, StreamExt};
+            let paths: Vec<PathBuf> = unprocessed.iter().map(|e| e.path()).collect();
+            let concurrency = std::thread::available_parallelism()
+                .map(|n| n.get().min(8))
+                .unwrap_or(4);
+
+            let results: Vec<_> = stream::iter(paths)
+                .map(|path| {
+                    tokio::task::spawn_blocking(move || {
+                        let res = parse_markdown_to_document(&path);
+                        (path, res)
+                    })
+                })
+                .buffer_unordered(concurrency)
+                .collect()
+                .await;
+
+            for result in results {
+                match result {
+                    Ok((_, Ok(doc))) => documents.push(doc),
+                    Ok((path, Err(e))) => {
+                        tracing::warn!(path = %path.display(), error = %e, "Failed to parse markdown");
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Parse task panicked");
+                    }
                 }
             }
         }
@@ -236,26 +258,32 @@ pub async fn index(input: String, batch_size: usize, force: bool, since: Option<
         );
         std::io::Write::flush(&mut std::io::stdout())?;
 
-        // Generate embeddings if server is available
+        // Generate embeddings in batch (single API call for entire batch)
         let batch_with_embeddings: Vec<baram::embedding::IndexDocument> = if use_embeddings {
-            let mut updated_batch = Vec::with_capacity(batch.len());
-            for doc in batch {
-                let text = format!("{} {}", doc.title, doc.content);
-                match with_retry(&retry_config, || async {
-                    generate_embedding(&client, &embedding_server_url, &text).await
-                }).await {
-                    Ok(embedding) => {
-                        let mut new_doc = doc.clone();
-                        new_doc.embedding = embedding;
-                        updated_batch.push(new_doc);
-                    }
-                    Err(e) => {
-                        tracing::warn!(doc_id = %doc.id, error = %e, "Failed to generate embedding after retries");
-                        updated_batch.push(doc.clone());
-                    }
+            let texts: Vec<String> = batch.iter()
+                .map(|doc| {
+                    let text = format!("{} {}", doc.title, doc.content);
+                    text.chars().take(2000).collect()
+                })
+                .collect();
+
+            match with_retry(&retry_config, || async {
+                generate_embeddings_batch(&client, &embedding_server_url, &texts).await
+            }).await {
+                Ok(embeddings) => {
+                    batch.iter().zip(embeddings.into_iter())
+                        .map(|(doc, emb)| {
+                            let mut new_doc = doc.clone();
+                            new_doc.embedding = emb;
+                            new_doc
+                        })
+                        .collect()
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Batch embedding failed, using dummy embeddings");
+                    batch.to_vec()
                 }
             }
-            updated_batch
         } else {
             batch.to_vec()
         };
@@ -328,40 +356,35 @@ async fn check_embedding_server(url: &str) -> bool {
     }
 }
 
-/// Generate embedding for text using embedding server
-async fn generate_embedding(
+/// Generate embeddings for a batch of texts using the batch API endpoint
+async fn generate_embeddings_batch(
     client: &reqwest::Client,
     server_url: &str,
-    text: &str,
-) -> Result<Vec<f32>> {
+    texts: &[String],
+) -> Result<Vec<Vec<f32>>> {
     #[derive(Serialize)]
-    struct EmbedRequest<'a> {
-        text: &'a str,
+    struct BatchEmbedRequest<'a> {
+        texts: &'a [String],
     }
 
     #[derive(Deserialize)]
-    struct EmbedResponse {
-        embedding: Vec<f32>,
+    struct BatchEmbedResponse {
+        embeddings: Vec<Vec<f32>>,
     }
 
-    // Truncate text to avoid token limit issues
-    let truncated_text: String = text.chars().take(2000).collect();
-
     let response = client
-        .post(format!("{server_url}/embed"))
-        .json(&EmbedRequest {
-            text: &truncated_text,
-        })
+        .post(format!("{server_url}/embed/batch"))
+        .json(&BatchEmbedRequest { texts })
         .send()
         .await
-        .context("Failed to send embedding request")?;
+        .context("Failed to send batch embedding request")?;
 
-    let embed_response: EmbedResponse = response
+    let batch_response: BatchEmbedResponse = response
         .json()
         .await
-        .context("Failed to parse embedding response")?;
+        .context("Failed to parse batch embedding response")?;
 
-    Ok(embed_response.embedding)
+    Ok(batch_response.embeddings)
 }
 
 pub fn parse_markdown_to_document(
