@@ -285,15 +285,18 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph Phase1["Phase 1: Crawling"]
+    subgraph Phase1["Phase 1: Crawling (30분 주기)"]
         naver["Naver News API"]
         crawler["Crawler"]
         raw["Raw Markdown Files"]
+        dedup["3-Tier Dedup"]
     end
 
-    subgraph Phase2["Phase 2: Indexing"]
-        parser["Parser"]
-        sqlite["SQLite DB"]
+    subgraph Phase2["Phase 2: Indexing (2시간 주기)"]
+        checkpoint["Checkpoint Pre-filter"]
+        parallel_parse["Parallel Parser (8 workers)"]
+        batch_embed["Batch Embedding (/embed/batch)"]
+        opensearch["OpenSearch (kNN)"]
     end
 
     subgraph Phase3["Phase 3: Ontology"]
@@ -303,19 +306,42 @@ flowchart TB
 
     subgraph Phase4["Phase 4: Serving"]
         api["REST API"]
-        search["Search"]
+        search["Vector Search"]
     end
 
     naver --> crawler
-    crawler --> raw
-    raw --> parser
-    parser --> sqlite
-    sqlite --> llm
+    crawler --> dedup
+    dedup --> raw
+    raw --> checkpoint
+    checkpoint -->|새 파일만| parallel_parse
+    parallel_parse --> batch_embed
+    batch_embed --> opensearch
+    opensearch --> llm
     llm --> ontology
-    sqlite --> api
+    opensearch --> api
     ontology --> api
     api --> search
 ```
+
+## 자동화 (Systemd)
+
+| 서비스 | 주기 | 설명 |
+|--------|------|------|
+| `baram-crawl.timer` | 30분 | 6개 카테고리 크롤링 (flock) |
+| `baram-index.timer` | 2시간 | 증분 인덱싱 (flock) |
+| `baram-embedding.service` | 상시 | 임베딩 서버 (384-dim MiniLM) |
+
+## 인덱싱 최적화
+
+```
+기존: 전체 파일 스캔 → 전부 파싱 → 체크포인트 필터 → 순차 임베딩 (6-7시간)
+현재: 체크포인트 로드 → 파일명 ID 사전필터 → 병렬 파싱 → 배치 임베딩 (수 분)
+```
+
+- **사전 필터링**: `extract_doc_id_from_filename()`으로 파일 읽기 없이 ID 추출
+- **병렬 파싱**: `tokio::spawn_blocking` + `buffer_unordered` (최대 8 코어)
+- **배치 임베딩**: `/embed/batch` 엔드포인트 (50건/요청, 기존 대비 50x 호출 감소)
+- **--since 옵션**: 파일 mtime 기반 시간 필터링
 
 ## 설정 구조
 
