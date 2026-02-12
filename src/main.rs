@@ -77,6 +77,10 @@ enum Commands {
         /// Force reindex existing documents
         #[arg(long, default_value = "false")]
         force: bool,
+
+        /// Only index files modified after this datetime (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+        #[arg(long)]
+        since: Option<String>,
     },
 
     /// Search articles using vector similarity
@@ -289,14 +293,16 @@ async fn main() -> Result<()> {
             input,
             batch_size,
             force,
+            since,
         } => {
             tracing::info!(
                 input = %input,
                 batch_size = %batch_size,
                 force = %force,
+                since = ?since,
                 "Starting index command"
             );
-            commands::index(input, batch_size, force).await?;
+            commands::index(input, batch_size, force, since).await?;
         }
 
         Commands::Search {

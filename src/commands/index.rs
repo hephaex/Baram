@@ -1,13 +1,39 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use baram::config::OpenSearchConfig;
 use baram::embedding::VectorStore;
 use baram::storage::checkpoint::CheckpointManager;
 use baram::utils::retry::{with_retry, RetryConfig};
 
-pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> {
+#[derive(Serialize, Deserialize, Clone)]
+struct IndexCheckpoint {
+    last_processed_batch: usize,
+    total_success: usize,
+    total_failed: usize,
+    processed_doc_ids: std::collections::HashSet<String>,
+}
+
+/// Extract document ID ({oid}_{aid}) from markdown filename.
+///
+/// Filename format: {oid}_{aid}_{sanitized_title}.md
+/// Both oid and aid are purely numeric.
+fn extract_doc_id_from_filename(path: &std::path::Path) -> Option<String> {
+    let stem = path.file_stem()?.to_str()?;
+    let mut parts = stem.splitn(3, '_');
+    let oid = parts.next()?;
+    let aid = parts.next()?;
+
+    if oid.chars().all(|c| c.is_ascii_digit()) && aid.chars().all(|c| c.is_ascii_digit()) {
+        Some(format!("{oid}_{aid}"))
+    } else {
+        None
+    }
+}
+
+pub async fn index(input: String, batch_size: usize, force: bool, since: Option<String>) -> Result<()> {
     use std::fs;
 
     println!("Indexing articles from: {input}");
@@ -31,9 +57,30 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
 
     // Create index if it doesn't exist
     let index_exists = store.index_exists().await?;
+
+    let input_path = PathBuf::from(&input);
+    if !input_path.exists() {
+        anyhow::bail!("Input path does not exist: {input}");
+    }
+
+    let checkpoint_name = format!("index_{}",
+        input_path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+    );
+
+    // Load checkpoint BEFORE file scanning (key optimization)
+    let mut checkpoint_state: IndexCheckpoint = checkpoint_mgr
+        .load(&checkpoint_name)?
+        .unwrap_or(IndexCheckpoint {
+            last_processed_batch: 0,
+            total_success: 0,
+            total_failed: 0,
+            processed_doc_ids: std::collections::HashSet::new(),
+        });
+
     if !index_exists {
         println!("Creating index '{}'...", opensearch_config.index_name);
-        // Use 384 dimensions for multilingual MiniLM
         store
             .create_index(384)
             .await
@@ -43,17 +90,38 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
         println!("Force reindex: deleting existing index...");
         store.delete_index().await?;
         store.create_index(384).await?;
-        println!("Index recreated.");
+        // Clear checkpoint for force reindex
+        checkpoint_mgr.delete(&checkpoint_name)?;
+        checkpoint_state = IndexCheckpoint {
+            last_processed_batch: 0,
+            total_success: 0,
+            total_failed: 0,
+            processed_doc_ids: std::collections::HashSet::new(),
+        };
+        println!("Index recreated, checkpoint cleared.");
     } else {
         println!("Index '{}' already exists.", opensearch_config.index_name);
     }
 
-    // Collect markdown files from input directory
-    let input_path = PathBuf::from(&input);
-    if !input_path.exists() {
-        anyhow::bail!("Input path does not exist: {input}");
-    }
+    // Parse --since filter
+    let since_time: Option<SystemTime> = if let Some(since_str) = &since {
+        let naive = if since_str.contains('T') {
+            chrono::NaiveDateTime::parse_from_str(since_str, "%Y-%m-%dT%H:%M:%S")
+                .context("Invalid --since format. Expected YYYY-MM-DDTHH:MM:SS")?
+        } else {
+            chrono::NaiveDate::parse_from_str(since_str, "%Y-%m-%d")
+                .context("Invalid --since format. Expected YYYY-MM-DD")?
+                .and_hms_opt(0, 0, 0)
+                .unwrap()
+        };
+        let dt: chrono::DateTime<chrono::Utc> =
+            chrono::DateTime::from_naive_utc_and_offset(naive, chrono::Utc);
+        Some(dt.into())
+    } else {
+        None
+    };
 
+    // Collect markdown files with pre-filtering
     let mut documents: Vec<baram::embedding::IndexDocument> = Vec::new();
 
     if input_path.is_dir() {
@@ -62,9 +130,62 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
             .filter(|e| e.path().extension().map(|ext| ext == "md").unwrap_or(false))
             .collect();
 
-        println!("Found {} markdown files", entries.len());
+        let total_files = entries.len();
 
-        for entry in entries {
+        // Pre-filter by --since (file mtime)
+        let time_filtered: Vec<_> = match &since_time {
+            None => entries,
+            Some(since) => {
+                entries.into_iter()
+                    .filter(|e| {
+                        e.metadata()
+                            .ok()
+                            .and_then(|m| m.modified().ok())
+                            .map(|mtime| mtime >= *since)
+                            .unwrap_or(true)
+                    })
+                    .collect()
+            }
+        };
+
+        let after_time_filter = time_filtered.len();
+
+        // Pre-filter by checkpoint: extract ID from filename, skip already indexed
+        let unprocessed: Vec<_> = if checkpoint_state.processed_doc_ids.is_empty() {
+            time_filtered
+        } else {
+            time_filtered.into_iter()
+                .filter(|entry| {
+                    match extract_doc_id_from_filename(&entry.path()) {
+                        Some(id) => !checkpoint_state.processed_doc_ids.contains(&id),
+                        None => true, // can't extract ID → parse it anyway
+                    }
+                })
+                .collect()
+        };
+
+        let skipped_by_checkpoint = after_time_filter - unprocessed.len();
+
+        println!(
+            "Found {} markdown files ({} new, {} already indexed{})",
+            total_files,
+            unprocessed.len(),
+            skipped_by_checkpoint,
+            if since.is_some() {
+                format!(", {} filtered by --since", total_files - after_time_filter)
+            } else {
+                String::new()
+            }
+        );
+
+        if checkpoint_state.last_processed_batch > 0 {
+            println!(
+                "Resuming from checkpoint: {} documents previously indexed",
+                checkpoint_state.processed_doc_ids.len()
+            );
+        }
+
+        for entry in unprocessed {
             let path = entry.path();
             match parse_markdown_to_document(&path) {
                 Ok(doc) => documents.push(doc),
@@ -79,7 +200,7 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
     }
 
     if documents.is_empty() {
-        println!("No documents to index.");
+        println!("No new documents to index.");
         return Ok(());
     }
 
@@ -98,52 +219,6 @@ pub async fn index(input: String, batch_size: usize, force: bool) -> Result<()> 
         println!("Embedding server available at {embedding_server_url}");
     } else {
         println!("Warning: Embedding server not available, using dummy embeddings");
-    }
-
-    // Define checkpoint state
-    #[derive(Serialize, Deserialize, Clone)]
-    struct IndexCheckpoint {
-        last_processed_batch: usize,
-        total_success: usize,
-        total_failed: usize,
-        processed_doc_ids: std::collections::HashSet<String>,
-    }
-
-    // Try to resume from checkpoint
-    let checkpoint_name = format!("index_{}",
-        input_path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-    );
-
-    let mut checkpoint_state: IndexCheckpoint = checkpoint_mgr
-        .load(&checkpoint_name)?
-        .unwrap_or(IndexCheckpoint {
-            last_processed_batch: 0,
-            total_success: 0,
-            total_failed: 0,
-            processed_doc_ids: std::collections::HashSet::new(),
-        });
-
-    // Filter out already processed documents
-    let remaining_docs: Vec<_> = documents
-        .into_iter()
-        .filter(|doc| !checkpoint_state.processed_doc_ids.contains(&doc.id))
-        .collect();
-
-    if checkpoint_state.last_processed_batch > 0 {
-        println!(
-            "Resuming from checkpoint: batch {}, {} documents already processed",
-            checkpoint_state.last_processed_batch,
-            checkpoint_state.processed_doc_ids.len()
-        );
-    }
-
-    let documents = remaining_docs;
-    if documents.is_empty() {
-        println!("All documents already indexed.");
-        checkpoint_mgr.delete(&checkpoint_name)?;
-        return Ok(());
     }
 
     // Index in batches
@@ -403,4 +478,52 @@ pub fn parse_markdown_to_document(
         chunk_index: None,
         chunk_text: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_doc_id_standard_filename() {
+        let path = std::path::PathBuf::from(
+            "001_0015812889_강남구_국민권익위_청렴도_평가서.md"
+        );
+        assert_eq!(
+            extract_doc_id_from_filename(&path),
+            Some("001_0015812889".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_doc_id_no_title() {
+        let path = std::path::PathBuf::from("422_0000832799.md");
+        assert_eq!(
+            extract_doc_id_from_filename(&path),
+            Some("422_0000832799".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_doc_id_invalid_format() {
+        let path = std::path::PathBuf::from("unknown.md");
+        assert_eq!(extract_doc_id_from_filename(&path), None);
+    }
+
+    #[test]
+    fn test_extract_doc_id_non_numeric_oid() {
+        let path = std::path::PathBuf::from("abc_0015812889_title.md");
+        assert_eq!(extract_doc_id_from_filename(&path), None);
+    }
+
+    #[test]
+    fn test_extract_doc_id_three_digit_oid() {
+        let path = std::path::PathBuf::from(
+            "661_0000071158_강득구_지방선거_이후_합당이.md"
+        );
+        assert_eq!(
+            extract_doc_id_from_filename(&path),
+            Some("661_0000071158".to_string())
+        );
+    }
 }
