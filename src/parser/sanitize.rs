@@ -103,17 +103,11 @@ pub fn remove_control_chars(text: &str) -> String {
         .collect()
 }
 
-/// Decode common HTML entities to plain text
+/// Decode HTML entities to plain text
 ///
-/// Decodes:
-/// - &nbsp; -> space
-/// - &amp; -> &
-/// - &lt; -> <
-/// - &gt; -> >
-/// - &quot; -> "
-/// - &#39; -> '
-/// - &#x27; -> '
-/// - &#xa0; -> space (non-breaking space)
+/// Uses the `html_escape` crate to decode all standard HTML entities,
+/// including named entities (&amp;, &lt;, etc.) and numeric entities
+/// (&#x27;, &#x3D;, &#39;, &#160;, etc.).
 ///
 /// # Examples
 ///
@@ -123,18 +117,15 @@ pub fn remove_control_chars(text: &str) -> String {
 /// let text = "&lt;div&gt;Hello &amp; World&lt;/div&gt;";
 /// let decoded = decode_html_entities(text);
 /// assert_eq!(decoded, "<div>Hello & World</div>");
+///
+/// let text2 = "&#x27;hello&#x27; &#x3D; world";
+/// let decoded2 = decode_html_entities(text2);
+/// assert_eq!(decoded2, "'hello' = world");
 /// ```
 pub fn decode_html_entities(text: &str) -> String {
-    text.replace("&nbsp;", " ")
-        .replace("&#xa0;", " ")
-        .replace("&#160;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&#x27;", "'")
-        .replace("&apos;", "'")
+    let decoded = html_escape::decode_html_entities(text);
+    // Convert non-breaking spaces (decoded from &nbsp;/&#xa0;/&#160;) to regular spaces
+    decoded.replace('\u{a0}', " ")
 }
 
 /// Normalize multiple spaces/tabs to single space

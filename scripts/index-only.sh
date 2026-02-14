@@ -21,10 +21,13 @@ echo $$ >&200
 
 cd "$PROJECT_DIR"
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting index..." >> "$LOG_FILE"
+SINCE_DATE=$(date -d '2 days ago' +%Y-%m-%d)
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting index (--since $SINCE_DATE)..." >> "$LOG_FILE"
 
 ./target/release/baram index \
     --input ./output/raw \
-    --batch-size 50 >> "$LOG_FILE" 2>&1
+    --batch-size 50 \
+    --since "$SINCE_DATE" >> "$LOG_FILE" 2>&1
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Index complete" >> "$LOG_FILE"

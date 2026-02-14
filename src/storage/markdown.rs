@@ -87,6 +87,8 @@ impl<'a> MarkdownWriter<'a> {
     /// ```
     pub fn new(output_dir: &Path) -> Result<Self> {
         let mut handlebars = Handlebars::new();
+        // Disable HTML escaping — output is Markdown, not HTML
+        handlebars.register_escape_fn(handlebars::no_escape);
 
         // Register default template
         handlebars
@@ -109,6 +111,8 @@ impl<'a> MarkdownWriter<'a> {
     /// * `template_path` - Path to custom Handlebars template
     pub fn with_template(output_dir: &Path, template_path: &Path) -> Result<Self> {
         let mut handlebars = Handlebars::new();
+        // Disable HTML escaping — output is Markdown, not HTML
+        handlebars.register_escape_fn(handlebars::no_escape);
 
         // Register custom template
         handlebars
@@ -675,6 +679,8 @@ impl<'a> ArticleWithCommentsWriter<'a> {
     /// Create with custom comment render config
     pub fn with_config(output_dir: &Path, comment_config: CommentRenderConfig) -> Result<Self> {
         let mut handlebars = Handlebars::new();
+        // Disable HTML escaping — output is Markdown, not HTML
+        handlebars.register_escape_fn(handlebars::no_escape);
 
         // Register default template
         handlebars
