@@ -52,13 +52,23 @@
 - [x] CLAUDE.md 자율 운영 모드 규칙 (STOP 조건, 자동 허가)
 - [x] 재인덱싱 완료 확인 (125,002건, 카테고리 분포 정상)
 
+### 2026-02-20: Phase 1 — Hybrid Search (진행 중)
+- [x] OpenSearch hybrid-pipeline 생성 (min_max normalization, BM25:0.3 + kNN:0.7)
+- [x] `search_hybrid()` native hybrid query 구현 (script_score → OpenSearch hybrid query type)
+- [x] `execute_search_with_pipeline()` 추가 (opensearch-rs low-level transport)
+- [x] CLI `--mode hybrid|keyword|vector` 파라미터 추가
+- [x] `get_query_embedding()` — 임베딩 서버 연결
+- [x] 코드 중복 제거: `parse_search_hits()`, `prepare_search_query()` 분리
+- [x] HTTP 에러 처리 일관성 수정 (`execute_search()`)
+- [x] UTF-8 경계 안전 문자열 자르기 수정
+- [ ] `src/commands/serve.rs` — `/api/search?mode=hybrid` 파라미터
+
 ---
 
 ## 진행 중
 
-### 에이전트 시스템 커밋 대기
-- 5개 에이전트 파일 + CLAUDE.md + execution-log.md 미커밋 상태
-- 다음 세션에서 커밋 후 Phase 1 시작
+### Phase 1: Hybrid Search — API 엔드포인트 남은 작업
+- serve.rs에 `/api/search?mode=hybrid` 파라미터 추가 필요
 
 ---
 

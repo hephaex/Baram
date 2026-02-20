@@ -9,10 +9,10 @@
 
 ## 즉시 해야 할 일 (Next Actions)
 
-### Phase 1: Hybrid Search 시작
+### Phase 1: Hybrid Search 진행 중
 - 재인덱싱 완료 확인됨 (125,002건)
-- 선행 커밋: v0.1 안정화 변경사항 (crawl.rs, CLAUDE.md, PLAN.md, PROGRESS.md, .claude/)
-- Phase 1 첫 작업: OpenSearch hybrid search pipeline 생성
+- ✅ hybrid-pipeline 생성, native hybrid query 구현, CLI --mode 추가
+- 남은 작업: serve.rs `/api/search?mode=hybrid` 파라미터 추가
 
 ---
 
@@ -24,11 +24,11 @@
 - **선행 조건**: 재인덱싱 완료
 - **세부 계획**: CLAUDE.md → Roadmap → Phase 1
 - **작업 항목**:
-  - [ ] OpenSearch hybrid search pipeline 생성
-  - [ ] `src/commands/search.rs` — hybrid query 모드 추가
+  - [x] OpenSearch hybrid search pipeline 생성
+  - [x] `src/commands/search.rs` — hybrid query 모드 추가
   - [ ] `src/commands/serve.rs` — `/api/search?mode=hybrid` 파라미터
-  - [ ] 벡터 vs 하이브리드 검색 결과 비교 검증
-  - [ ] 테스트 추가
+  - [x] 벡터 vs 하이브리드 검색 결과 비교 검증
+  - [x] 테스트 추가
 
 ### Phase 2: 이벤트 클러스터링 [대기]
 - **난이도**: 중간 | **영향도**: 높음
