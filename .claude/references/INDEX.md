@@ -11,6 +11,7 @@
 | `rag-vector-search-best-practices.md` | Phase 1, 4 | Hybrid Search, BM25+kNN, Semantic Chunking, Cross-Encoder Reranking |
 | `event-detection-clustering.md` | Phase 2, 5 | LLM 클러스터링, Temporal KG, ECS-KG, Narrative Graph, GORAG |
 | `news-crawling-architecture.md` | 전체 | StormCrawler, news-please, Nutch, Scrapy, 아키텍처 비교 |
+| `opensearch-hybrid-search.md` | Phase 1 | OpenSearch hybrid query, normalization-processor, search_pipeline, opensearch-rs 구현 |
 
 ## 키워드 → 파일 매핑
 
@@ -21,6 +22,8 @@
 - **Temporal KG, 시간축, 타임라인** → `event-detection-clustering.md`
 - **크롤링, 아키텍처, StormCrawler** → `news-crawling-architecture.md`
 - **GORAG, S2W, 국내 사례** → `event-detection-clustering.md`
+- **OpenSearch hybrid query, normalization-processor, search_pipeline, hybrid-pipeline** → `opensearch-hybrid-search.md`
+- **opensearch-rs search_pipeline 구현, cosineSimilarity 오류, OpenSearch 3.x** → `opensearch-hybrid-search.md`
 
 ## 새 자료 추가 규칙
 

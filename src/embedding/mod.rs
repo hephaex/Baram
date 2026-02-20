@@ -19,7 +19,12 @@ pub use vectorize::{
 
 use anyhow::{Context, Result};
 use opensearch::{
-    http::transport::{SingleNodeConnectionPool, TransportBuilder},
+    http::{
+        headers::HeaderMap,
+        request::JsonBody,
+        transport::{SingleNodeConnectionPool, TransportBuilder},
+        Method,
+    },
     BulkOperation, BulkParts, DeleteByQueryParts, IndexParts, OpenSearch, SearchParts,
 };
 use serde::{Deserialize, Serialize};
@@ -529,79 +534,81 @@ impl VectorStore {
         self.execute_search(json!({ "query": query }), config).await
     }
 
-    /// Hybrid search combining k-NN and BM25
+    /// Hybrid search combining k-NN and BM25 using OpenSearch native hybrid query.
+    ///
+    /// Uses the `hybrid-pipeline` search pipeline for score normalization
+    /// (min_max normalization + arithmetic_mean combination with configurable weights).
     pub async fn search_hybrid(
         &self,
         query_text: &str,
         query_vector: &[f32],
         config: &SearchConfig,
     ) -> Result<Vec<SearchResult>> {
-        // Build hybrid query using script_score
-        let knn_weight = 1.0 - config.bm25_weight;
+        // BM25 sub-query
+        let mut bm25_query = json!({
+            "bool": {
+                "should": [
+                    { "match": { "title": { "query": query_text, "boost": 2.0 } } },
+                    { "match": { "content": { "query": query_text } } }
+                ],
+                "minimum_should_match": 1
+            }
+        });
+
+        // kNN sub-query
+        let mut knn_query = json!({
+            "knn": {
+                "embedding": {
+                    "vector": query_vector,
+                    "k": config.k
+                }
+            }
+        });
+
+        // Category filter (apply to both sub-queries)
+        if let Some(category) = &config.category {
+            bm25_query["bool"]["filter"] = json!([{ "term": { "category": category } }]);
+            knn_query["knn"]["embedding"]["filter"] = json!({ "term": { "category": category } });
+        }
+
+        // Date range filter (BM25 only — kNN filter supports term/bool, not range)
+        if config.date_from.is_some() || config.date_to.is_some() {
+            let mut range = json!({});
+            if let Some(from) = &config.date_from {
+                range["gte"] = json!(from);
+            }
+            if let Some(to) = &config.date_to {
+                range["lte"] = json!(to);
+            }
+            if bm25_query["bool"]["filter"].is_null() {
+                bm25_query["bool"]["filter"] = json!([]);
+            }
+            if let Some(arr) = bm25_query["bool"]["filter"].as_array_mut() {
+                arr.push(json!({ "range": { "published_at": range } }));
+            }
+        }
 
         let query = json!({
             "query": {
-                "script_score": {
-                    "query": {
-                        "bool": {
-                            "should": [
-                                {
-                                    "match": {
-                                        "title": {
-                                            "query": query_text,
-                                            "boost": 2.0
-                                        }
-                                    }
-                                },
-                                {
-                                    "match": {
-                                        "content": {
-                                            "query": query_text
-                                        }
-                                    }
-                                }
-                            ],
-                            "minimum_should_match": 0
-                        }
-                    },
-                    "script": {
-                        "source": format!(
-                            "_score * {} + (1 + cosineSimilarity(params.query_vector, 'embedding')) * {}",
-                            config.bm25_weight, knn_weight
-                        ),
-                        "params": {
-                            "query_vector": query_vector
-                        }
-                    }
+                "hybrid": {
+                    "queries": [bm25_query, knn_query]
                 }
             },
             "size": config.k
         });
 
-        self.execute_search(query, config).await
+        self.execute_search_with_pipeline(query, config, "hybrid-pipeline")
+            .await
     }
 
-    /// Execute search query and parse results
-    async fn execute_search(
-        &self,
-        mut query: Value,
-        config: &SearchConfig,
-    ) -> Result<Vec<SearchResult>> {
-        // Set size
+    /// Prepare query with common search options (source fields, highlights, min_score)
+    fn prepare_search_query(query: &mut Value, config: &SearchConfig) {
         query["size"] = json!(config.k);
 
-        // Add source fields
         query["_source"] = json!([
-            "id",
-            "title",
-            "content",
-            "category",
-            "publisher",
-            "url",
-            "published_at"
+            "id", "title", "content", "category", "publisher", "url", "published_at"
         ]);
 
-        // Add highlighting if requested
         if config.include_highlights {
             query["highlight"] = json!({
                 "fields": {
@@ -613,22 +620,13 @@ impl VectorStore {
             });
         }
 
-        // Add min_score if specified
         if let Some(min_score) = config.min_score {
             query["min_score"] = json!(min_score);
         }
+    }
 
-        let response = self
-            .client
-            .search(SearchParts::Index(&[&self.index_name]))
-            .body(query)
-            .send()
-            .await
-            .context("Failed to execute search")?;
-
-        let response_body: Value = response.json().await?;
-
-        // Parse results
+    /// Parse search hits from OpenSearch response body
+    fn parse_search_hits(response_body: &Value) -> Vec<SearchResult> {
         let mut results = Vec::new();
 
         if let Some(hits) = response_body["hits"]["hits"].as_array() {
@@ -674,7 +672,96 @@ impl VectorStore {
             }
         }
 
-        Ok(results)
+        results
+    }
+
+    /// Execute search query and parse results
+    async fn execute_search(
+        &self,
+        mut query: Value,
+        config: &SearchConfig,
+    ) -> Result<Vec<SearchResult>> {
+        Self::prepare_search_query(&mut query, config);
+
+        let response = self
+            .client
+            .search(SearchParts::Index(&[&self.index_name]))
+            .body(query)
+            .send()
+            .await
+            .context("Failed to execute search")?;
+
+        let status = response.status_code();
+        let response_body: Value = response.json().await?;
+
+        if !status.is_success() {
+            let error_msg = response_body["error"]
+                .as_object()
+                .and_then(|e| e.get("reason"))
+                .and_then(|r| r.as_str())
+                .unwrap_or("Unknown error");
+            anyhow::bail!("Search failed ({}): {}", status.as_u16(), error_msg);
+        }
+
+        Ok(Self::parse_search_hits(&response_body))
+    }
+
+    /// Execute search query with a search pipeline and parse results.
+    ///
+    /// The opensearch-rs crate (2.3) does not expose a `search_pipeline` query
+    /// parameter, so we call the low-level transport directly.
+    async fn execute_search_with_pipeline(
+        &self,
+        mut query: Value,
+        config: &SearchConfig,
+        pipeline: &str,
+    ) -> Result<Vec<SearchResult>> {
+        Self::prepare_search_query(&mut query, config);
+
+        let path = format!("/{}/_search", self.index_name);
+
+        #[derive(Serialize)]
+        struct PipelineQueryParams<'a> {
+            search_pipeline: &'a str,
+        }
+        let params = PipelineQueryParams {
+            search_pipeline: pipeline,
+        };
+
+        let body: JsonBody<Value> = query.into();
+        let response = self
+            .client
+            .send(
+                Method::Post,
+                &path,
+                HeaderMap::new(),
+                Some(&params),
+                Some(body),
+                None,
+            )
+            .await
+            .context("Failed to execute hybrid search with pipeline")?;
+
+        let status = response.status_code();
+        let response_body: Value = response
+            .json()
+            .await
+            .context("Failed to parse hybrid search response")?;
+
+        if !status.is_success() {
+            let error_msg = response_body["error"]
+                .as_object()
+                .and_then(|e| e.get("reason"))
+                .and_then(|r| r.as_str())
+                .unwrap_or("Unknown error");
+            anyhow::bail!(
+                "Hybrid search failed ({}): {}",
+                status.as_u16(),
+                error_msg
+            );
+        }
+
+        Ok(Self::parse_search_hits(&response_body))
     }
 
     /// Delete documents by query

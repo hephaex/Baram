@@ -95,6 +95,10 @@ enum Commands {
         /// Minimum similarity threshold
         #[arg(long)]
         threshold: Option<f32>,
+
+        /// Search mode: hybrid (BM25+kNN), keyword/bm25 (text only), vector/knn (embedding only)
+        #[arg(short, long, default_value = "hybrid")]
+        mode: String,
     },
 
     /// Extract ontology from articles
@@ -313,14 +317,16 @@ async fn main() -> Result<()> {
             query,
             k,
             threshold,
+            mode,
         } => {
             tracing::info!(
                 query = %query,
                 k = %k,
                 threshold = ?threshold,
+                mode = %mode,
                 "Starting search command"
             );
-            commands::search(query, k, threshold).await?;
+            commands::search(query, k, threshold, &mode).await?;
         }
 
         Commands::Ontology {
