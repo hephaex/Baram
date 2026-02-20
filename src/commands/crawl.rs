@@ -49,7 +49,7 @@ pub async fn crawl(
     if let Some(url) = url {
         // Single URL crawl
         println!("Crawling single URL: {url}");
-        crawl_single_url(&crawler, &parser, &storage, &db, &url, &mut state).await?;
+        crawl_single_url(&crawler, &parser, &storage, &db, &url, &mut state, None).await?;
     } else {
         // Category crawl
         let categories = if let Some(cat) = category {
@@ -105,7 +105,7 @@ pub async fn crawl(
                 );
                 std::io::Write::flush(&mut std::io::stdout())?;
 
-                match crawl_single_url(&crawler, &parser, &storage, &db, url, &mut state).await {
+                match crawl_single_url(&crawler, &parser, &storage, &db, url, &mut state, Some(&cat)).await {
                     Ok(_) => {}
                     Err(e) => {
                         tracing::warn!(url = %url, error = %e, "Failed to crawl article");
@@ -152,12 +152,20 @@ async fn crawl_single_url(
     db: &Database,
     url: &str,
     state: &mut CrawlState,
+    category: Option<&NewsCategory>,
 ) -> Result<()> {
     // Fetch HTML
     let html = crawler.fetch_text(url).await?;
 
     // Parse article
-    let article = parser.parse_with_fallback(&html, url)?;
+    let mut article = parser.parse_with_fallback(&html, url)?;
+
+    // Assign category from crawl context if available and not already set
+    if article.category.is_empty() {
+        if let Some(cat) = category {
+            article.category = cat.as_str().to_string();
+        }
+    }
 
     // Check for duplicate content
     if let Some(hash) = &article.content_hash {
