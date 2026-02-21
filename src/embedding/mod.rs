@@ -817,6 +817,34 @@ impl VectorStore {
         Ok(())
     }
 
+    /// Execute a raw search query and return the full JSON response.
+    ///
+    /// This is useful for custom queries (e.g., clustering) that need access
+    /// to fields not included in the standard `SearchResult` struct.
+    pub async fn raw_search(&self, query: &Value) -> Result<Value> {
+        let response = self
+            .client
+            .search(SearchParts::Index(&[&self.index_name]))
+            .body(query.clone())
+            .send()
+            .await
+            .context("Failed to execute raw search")?;
+
+        let status = response.status_code();
+        let response_body: Value = response.json().await?;
+
+        if !status.is_success() {
+            let error_msg = response_body["error"]
+                .as_object()
+                .and_then(|e| e.get("reason"))
+                .and_then(|r| r.as_str())
+                .unwrap_or("Unknown error");
+            anyhow::bail!("Raw search failed ({}): {}", status.as_u16(), error_msg);
+        }
+
+        Ok(response_body)
+    }
+
     /// Get index name
     pub fn index_name(&self) -> &str {
         &self.index_name

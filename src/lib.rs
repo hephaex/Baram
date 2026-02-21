@@ -35,6 +35,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 pub mod analytics;
 pub mod cache;
+pub mod clustering;
 pub mod config;
 pub mod coordinator;
 pub mod crawler;

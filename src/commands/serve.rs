@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use axum::{
-    extract::{Query, State},
+    extract::{Path as AxumPath, Query, State},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
@@ -268,6 +268,7 @@ struct ApiServerState {
     store: baram::embedding::VectorStore,
     embedding_server_url: String,
     http_client: reqwest::Client,
+    clusters_dir: String,
 }
 
 /// Query parameters for the search endpoint
@@ -542,6 +543,145 @@ async fn api_health_handler(
     })
 }
 
+/// Query parameters for the events endpoint
+#[derive(Debug, Deserialize)]
+struct EventsQuery {
+    /// Filter by category
+    category: Option<String>,
+
+    /// Number of events to return (default: 50)
+    #[serde(default = "default_events_limit")]
+    limit: usize,
+
+    /// Offset for pagination
+    #[serde(default)]
+    offset: usize,
+}
+
+fn default_events_limit() -> usize {
+    50
+}
+
+/// GET /api/events — List event clusters
+async fn api_events_handler(
+    State(state): State<Arc<ApiServerState>>,
+    Query(params): Query<EventsQuery>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ApiErrorResponse>)> {
+    let clusters_file = std::path::Path::new(&state.clusters_dir).join("clusters.json");
+
+    if !clusters_file.exists() {
+        return Ok(Json(serde_json::json!({
+            "total": 0,
+            "events": [],
+            "message": "No clusters found. Run 'baram cluster' first to generate event clusters."
+        })));
+    }
+
+    let content = tokio::fs::read_to_string(&clusters_file).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to read clusters file");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiErrorResponse {
+                error: format!("Failed to read clusters: {e}"),
+                code: 500,
+            }),
+        )
+    })?;
+
+    let output: baram::clustering::ClusterOutput =
+        serde_json::from_str(&content).map_err(|e| {
+            tracing::error!(error = %e, "Failed to parse clusters file");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiErrorResponse {
+                    error: format!("Failed to parse clusters: {e}"),
+                    code: 500,
+                }),
+            )
+        })?;
+
+    // Filter by category if specified
+    let filtered_events: Vec<&baram::clustering::EventCluster> = output
+        .events
+        .iter()
+        .filter(|e| {
+            params
+                .category
+                .as_ref()
+                .map_or(true, |cat| e.category == *cat)
+        })
+        .collect();
+
+    let total = filtered_events.len();
+    let limit = params.limit.min(200);
+    let offset = params.offset.min(total);
+    let page: Vec<&baram::clustering::EventCluster> =
+        filtered_events.into_iter().skip(offset).take(limit).collect();
+
+    Ok(Json(serde_json::json!({
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "metadata": output.metadata,
+        "events": page,
+    })))
+}
+
+/// GET /api/events/:event_id — Get a single event cluster by ID
+async fn api_event_detail_handler(
+    State(state): State<Arc<ApiServerState>>,
+    AxumPath(event_id): AxumPath<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ApiErrorResponse>)> {
+    let clusters_file = std::path::Path::new(&state.clusters_dir).join("clusters.json");
+
+    if !clusters_file.exists() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiErrorResponse {
+                error: "No clusters found. Run 'baram cluster' first.".to_string(),
+                code: 404,
+            }),
+        ));
+    }
+
+    let content = tokio::fs::read_to_string(&clusters_file).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiErrorResponse {
+                error: format!("Failed to read clusters: {e}"),
+                code: 500,
+            }),
+        )
+    })?;
+
+    let output: baram::clustering::ClusterOutput =
+        serde_json::from_str(&content).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiErrorResponse {
+                    error: format!("Failed to parse clusters: {e}"),
+                    code: 500,
+                }),
+            )
+        })?;
+
+    let event = output
+        .events
+        .into_iter()
+        .find(|e| e.event_id == event_id);
+
+    match event {
+        Some(e) => Ok(Json(serde_json::json!(e))),
+        None => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiErrorResponse {
+                error: format!("Event '{event_id}' not found"),
+                code: 404,
+            }),
+        )),
+    }
+}
+
 /// GET / — API root with endpoint listing
 async fn api_root_handler() -> Json<serde_json::Value> {
     Json(serde_json::json!({
@@ -550,6 +690,8 @@ async fn api_root_handler() -> Json<serde_json::Value> {
         "endpoints": {
             "health": "GET /api/health",
             "search": "GET /api/search?q=<query>&mode=hybrid|keyword|vector&k=10&category=...&date_from=...&date_to=...",
+            "events": "GET /api/events?category=...&limit=50&offset=0",
+            "event_detail": "GET /api/events/:event_id"
         }
     }))
 }
@@ -597,16 +739,22 @@ pub async fn api_server(host: String, port: u16) -> Result<()> {
         .build()
         .context("Failed to create HTTP client")?;
 
+    let clusters_dir = std::env::var("BARAM_CLUSTERS_DIR")
+        .unwrap_or_else(|_| "./output/clusters".to_string());
+
     let state = Arc::new(ApiServerState {
         store,
         embedding_server_url: embedding_server_url.clone(),
         http_client,
+        clusters_dir: clusters_dir.clone(),
     });
 
     let app = Router::new()
         .route("/", get(api_root_handler))
         .route("/api/health", get(api_health_handler))
         .route("/api/search", get(api_search_handler))
+        .route("/api/events", get(api_events_handler))
+        .route("/api/events/{event_id}", get(api_event_detail_handler))
         .layer(TraceLayer::new_for_http())
         .layer(
             CorsLayer::new()
@@ -645,6 +793,12 @@ pub async fn api_server(host: String, port: u16) -> Result<()> {
     println!("    &category=politics    Filter by category");
     println!("    &date_from=2026-01-01 Filter by start date");
     println!("    &date_to=2026-02-21   Filter by end date");
+    println!("  GET  /api/events    - List event clusters");
+    println!("    ?category=politics    Filter by category");
+    println!("    &limit=50             Number of events (max: 200)");
+    println!("    &offset=0             Pagination offset");
+    println!("  GET  /api/events/:id - Get event details");
+    println!("  Clusters dir: {clusters_dir}");
     println!();
 
     axum::serve(listener, app).await.context("API server error")?;
@@ -1002,5 +1156,33 @@ mod tests {
                 "Mode '{mode}' should be valid"
             );
         }
+    }
+
+    #[test]
+    fn test_default_events_limit() {
+        assert_eq!(default_events_limit(), 50);
+    }
+
+    #[test]
+    fn test_events_query_deserialization() {
+        let json = serde_json::json!({
+            "category": "politics",
+            "limit": 20,
+            "offset": 5
+        });
+
+        let query: EventsQuery = serde_json::from_value(json).expect("should deserialize");
+        assert_eq!(query.category.as_deref(), Some("politics"));
+        assert_eq!(query.limit, 20);
+        assert_eq!(query.offset, 5);
+    }
+
+    #[test]
+    fn test_events_query_defaults() {
+        let json = serde_json::json!({});
+        let query: EventsQuery = serde_json::from_value(json).expect("should deserialize");
+        assert!(query.category.is_none());
+        assert_eq!(query.limit, 50);
+        assert_eq!(query.offset, 0);
     }
 }

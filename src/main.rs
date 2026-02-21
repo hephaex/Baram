@@ -146,6 +146,37 @@ enum Commands {
         database: PathBuf,
     },
 
+    /// Cluster articles into events using embedding similarity
+    Cluster {
+        /// Filter by category (politics, economy, society, culture, world, it)
+        #[arg(short = 'C', long)]
+        category: Option<String>,
+
+        /// Only cluster articles published after this date (YYYY-MM-DD)
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Cosine similarity threshold for clustering (0.0-1.0, default: 0.75)
+        #[arg(short, long, default_value = "0.75")]
+        threshold: f64,
+
+        /// Minimum number of articles to form a cluster
+        #[arg(long, default_value = "2")]
+        min_size: usize,
+
+        /// Maximum number of articles to process (0 = unlimited)
+        #[arg(long, default_value = "0")]
+        max_articles: usize,
+
+        /// Output directory for cluster JSON files
+        #[arg(short, long, default_value = "./output/clusters")]
+        output: String,
+
+        /// Generate event summaries using vLLM
+        #[arg(long, default_value = "false")]
+        summarize: bool,
+    },
+
     /// Start REST API server with hybrid search
     Serve {
         /// Port to listen on
@@ -373,6 +404,27 @@ async fn main() -> Result<()> {
 
         Commands::Stats { database } => {
             commands::stats(database)?;
+        }
+
+        Commands::Cluster {
+            category,
+            since,
+            threshold,
+            min_size,
+            max_articles,
+            output,
+            summarize,
+        } => {
+            tracing::info!(
+                category = ?category,
+                since = ?since,
+                threshold = %threshold,
+                min_size = %min_size,
+                summarize = %summarize,
+                "Starting event clustering"
+            );
+            commands::cluster(category, since, threshold, min_size, max_articles, output, summarize)
+                .await?;
         }
 
         Commands::Serve { port, host } => {
