@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::StatusCode,
     routing::{get, post},
     Json, Router,
@@ -257,6 +257,399 @@ async fn batch_embed_handler(
             ))
         }
     }
+}
+
+// ============================================================================
+// REST API Server Implementation
+// ============================================================================
+
+/// Shared state for the API server
+struct ApiServerState {
+    store: baram::embedding::VectorStore,
+    embedding_server_url: String,
+    http_client: reqwest::Client,
+}
+
+/// Query parameters for the search endpoint
+#[derive(Debug, Deserialize)]
+struct SearchQuery {
+    /// Search query text
+    q: String,
+
+    /// Search mode: hybrid (default), keyword/bm25, vector/knn
+    #[serde(default = "default_search_mode")]
+    mode: String,
+
+    /// Number of results to return
+    #[serde(default = "default_k")]
+    k: usize,
+
+    /// Minimum score threshold
+    threshold: Option<f32>,
+
+    /// Filter by category
+    category: Option<String>,
+
+    /// Filter by date range start (ISO 8601)
+    date_from: Option<String>,
+
+    /// Filter by date range end (ISO 8601)
+    date_to: Option<String>,
+}
+
+fn default_search_mode() -> String {
+    "hybrid".to_string()
+}
+
+fn default_k() -> usize {
+    10
+}
+
+/// API search response
+#[derive(Debug, Serialize)]
+struct ApiSearchResponse {
+    query: String,
+    mode: String,
+    total: usize,
+    results: Vec<baram::embedding::SearchResult>,
+}
+
+/// API health response
+#[derive(Debug, Serialize)]
+struct ApiHealthResponse {
+    status: String,
+    service: String,
+    version: String,
+    opensearch_connected: bool,
+    document_count: Option<usize>,
+}
+
+/// API error response
+#[derive(Debug, Serialize)]
+struct ApiErrorResponse {
+    error: String,
+    code: u16,
+}
+
+/// Fetch a query embedding from the embedding server
+async fn fetch_query_embedding(
+    client: &reqwest::Client,
+    embedding_url: &str,
+    text: &str,
+) -> Result<Vec<f32>, (StatusCode, Json<ApiErrorResponse>)> {
+    let resp = client
+        .post(format!("{embedding_url}/embed"))
+        .json(&serde_json::json!({ "text": text }))
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to connect to embedding server at {}", embedding_url);
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ApiErrorResponse {
+                    error: format!(
+                        "Embedding server unavailable at {embedding_url}: {e}. \
+                         Start it with: baram embedding-server"
+                    ),
+                    code: 503,
+                }),
+            )
+        })?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        tracing::error!(status = %status, body = %body, "Embedding server error");
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(ApiErrorResponse {
+                error: format!("Embedding server error ({status}): {body}"),
+                code: 502,
+            }),
+        ));
+    }
+
+    let resp_json: serde_json::Value = resp.json().await.map_err(|e| {
+        (
+            StatusCode::BAD_GATEWAY,
+            Json(ApiErrorResponse {
+                error: format!("Failed to parse embedding response: {e}"),
+                code: 502,
+            }),
+        )
+    })?;
+
+    let embedding: Vec<f32> = resp_json["embedding"]
+        .as_array()
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(ApiErrorResponse {
+                    error: "No 'embedding' field in embedding server response".to_string(),
+                    code: 502,
+                }),
+            )
+        })?
+        .iter()
+        .filter_map(|v| v.as_f64().map(|f| f as f32))
+        .collect();
+
+    if embedding.is_empty() {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(ApiErrorResponse {
+                error: "Embedding server returned empty vector".to_string(),
+                code: 502,
+            }),
+        ));
+    }
+
+    Ok(embedding)
+}
+
+/// GET /api/search — Search articles with hybrid/keyword/vector modes
+async fn api_search_handler(
+    State(state): State<Arc<ApiServerState>>,
+    Query(params): Query<SearchQuery>,
+) -> Result<Json<ApiSearchResponse>, (StatusCode, Json<ApiErrorResponse>)> {
+    if params.q.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiErrorResponse {
+                error: "Query parameter 'q' cannot be empty".to_string(),
+                code: 400,
+            }),
+        ));
+    }
+
+    let k = params.k.min(100); // Cap at 100 results
+
+    let search_config = baram::embedding::SearchConfig {
+        k,
+        min_score: params.threshold,
+        category: params.category.clone(),
+        date_from: params.date_from.clone(),
+        date_to: params.date_to.clone(),
+        include_highlights: true,
+        ..Default::default()
+    };
+
+    let mode = params.mode.as_str();
+    let results = match mode {
+        "keyword" | "bm25" => {
+            tracing::info!(query = %params.q, mode = "bm25", k = k, "API: BM25 search");
+            state
+                .store
+                .search_bm25(&params.q, &search_config)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "BM25 search failed");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiErrorResponse {
+                            error: format!("Search failed: {e}"),
+                            code: 500,
+                        }),
+                    )
+                })?
+        }
+        "vector" | "knn" => {
+            tracing::info!(query = %params.q, mode = "knn", k = k, "API: kNN vector search");
+            let query_vector =
+                fetch_query_embedding(&state.http_client, &state.embedding_server_url, &params.q)
+                    .await?;
+            state
+                .store
+                .search_knn(&query_vector, &search_config)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "kNN search failed");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiErrorResponse {
+                            error: format!("Search failed: {e}"),
+                            code: 500,
+                        }),
+                    )
+                })?
+        }
+        "hybrid" => {
+            tracing::info!(query = %params.q, mode = "hybrid", k = k, "API: Hybrid search");
+            let query_vector =
+                fetch_query_embedding(&state.http_client, &state.embedding_server_url, &params.q)
+                    .await?;
+            state
+                .store
+                .search_hybrid(&params.q, &query_vector, &search_config)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Hybrid search failed");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiErrorResponse {
+                            error: format!("Search failed: {e}"),
+                            code: 500,
+                        }),
+                    )
+                })?
+        }
+        other => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiErrorResponse {
+                    error: format!(
+                        "Unknown search mode: '{other}'. Valid: hybrid, keyword, bm25, vector, knn"
+                    ),
+                    code: 400,
+                }),
+            ));
+        }
+    };
+
+    let total = results.len();
+    tracing::info!(query = %params.q, mode = mode, total = total, "Search completed");
+
+    Ok(Json(ApiSearchResponse {
+        query: params.q,
+        mode: mode.to_string(),
+        total,
+        results,
+    }))
+}
+
+/// GET /api/health — Health check with OpenSearch connectivity
+async fn api_health_handler(
+    State(state): State<Arc<ApiServerState>>,
+) -> Json<ApiHealthResponse> {
+    let (connected, count) = match state.store.count().await {
+        Ok(c) => (true, Some(c)),
+        Err(e) => {
+            tracing::warn!(error = %e, "OpenSearch health check failed");
+            (false, None)
+        }
+    };
+
+    Json(ApiHealthResponse {
+        status: if connected {
+            "healthy".to_string()
+        } else {
+            "degraded".to_string()
+        },
+        service: "baram API Server".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        opensearch_connected: connected,
+        document_count: count,
+    })
+}
+
+/// GET / — API root with endpoint listing
+async fn api_root_handler() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "service": "baram API Server",
+        "version": env!("CARGO_PKG_VERSION"),
+        "endpoints": {
+            "health": "GET /api/health",
+            "search": "GET /api/search?q=<query>&mode=hybrid|keyword|vector&k=10&category=...&date_from=...&date_to=...",
+        }
+    }))
+}
+
+/// Start the REST API server (`baram serve`)
+pub async fn api_server(host: String, port: u16) -> Result<()> {
+    tracing::info!(host = %host, port = %port, "Starting Baram API server");
+
+    let opensearch_url = std::env::var("OPENSEARCH_URL")
+        .unwrap_or_else(|_| "http://localhost:9200".to_string());
+    let opensearch_index = std::env::var("OPENSEARCH_INDEX")
+        .unwrap_or_else(|_| "baram-articles".to_string());
+    let embedding_server_url = std::env::var("EMBEDDING_SERVER_URL")
+        .unwrap_or_else(|_| "http://localhost:8090".to_string());
+
+    let opensearch_config = baram::config::OpenSearchConfig {
+        url: opensearch_url.clone(),
+        index_name: opensearch_index.clone(),
+        username: std::env::var("OPENSEARCH_USER").ok(),
+        password: std::env::var("OPENSEARCH_PASSWORD").ok(),
+    };
+
+    let store = baram::embedding::VectorStore::new(&opensearch_config)
+        .context("Failed to connect to OpenSearch")?;
+
+    // Verify connectivity
+    match store.count().await {
+        Ok(count) => {
+            tracing::info!(
+                index = %opensearch_index,
+                count = count,
+                "Connected to OpenSearch"
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "OpenSearch connectivity check failed — server will start but search may not work"
+            );
+        }
+    }
+
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    let state = Arc::new(ApiServerState {
+        store,
+        embedding_server_url: embedding_server_url.clone(),
+        http_client,
+    });
+
+    let app = Router::new()
+        .route("/", get(api_root_handler))
+        .route("/api/health", get(api_health_handler))
+        .route("/api/search", get(api_search_handler))
+        .layer(TraceLayer::new_for_http())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
+        .with_state(state);
+
+    let addr = format!("{host}:{port}");
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .context(format!("Failed to bind to {addr}"))?;
+
+    tracing::info!(
+        addr = %addr,
+        opensearch = %opensearch_url,
+        embedding = %embedding_server_url,
+        "Baram API server listening"
+    );
+
+    println!("Baram API Server");
+    println!("================");
+    println!("  Listen: http://{addr}");
+    println!("  OpenSearch: {opensearch_url} (index: {opensearch_index})");
+    println!("  Embedding: {embedding_server_url}");
+    println!();
+    println!("Endpoints:");
+    println!("  GET  /              - API info");
+    println!("  GET  /api/health    - Health check");
+    println!("  GET  /api/search    - Search articles");
+    println!("    ?q=<query>            Search query (required)");
+    println!("    &mode=hybrid          hybrid (default), keyword/bm25, vector/knn");
+    println!("    &k=10                 Number of results (default: 10, max: 100)");
+    println!("    &threshold=0.5        Minimum score threshold");
+    println!("    &category=politics    Filter by category");
+    println!("    &date_from=2026-01-01 Filter by start date");
+    println!("    &date_to=2026-02-21   Filter by end date");
+    println!();
+
+    axum::serve(listener, app).await.context("API server error")?;
+
+    Ok(())
 }
 
 // ============================================================================
@@ -527,4 +920,87 @@ pub async fn coordinator_server(params: CoordinatorParams) -> Result<()> {
 
     println!("Coordinator server stopped.");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_search_mode() {
+        assert_eq!(default_search_mode(), "hybrid");
+    }
+
+    #[test]
+    fn test_default_k() {
+        assert_eq!(default_k(), 10);
+    }
+
+    #[test]
+    fn test_search_query_deserialization() {
+        let json = serde_json::json!({
+            "q": "test query",
+            "mode": "keyword",
+            "k": 5,
+            "category": "politics"
+        });
+
+        let query: SearchQuery = serde_json::from_value(json).expect("should deserialize");
+        assert_eq!(query.q, "test query");
+        assert_eq!(query.mode, "keyword");
+        assert_eq!(query.k, 5);
+        assert_eq!(query.category.as_deref(), Some("politics"));
+        assert!(query.threshold.is_none());
+        assert!(query.date_from.is_none());
+        assert!(query.date_to.is_none());
+    }
+
+    #[test]
+    fn test_search_query_defaults() {
+        let json = serde_json::json!({ "q": "test" });
+
+        let query: SearchQuery = serde_json::from_value(json).expect("should deserialize");
+        assert_eq!(query.q, "test");
+        assert_eq!(query.mode, "hybrid");
+        assert_eq!(query.k, 10);
+    }
+
+    #[test]
+    fn test_api_search_response_serialization() {
+        let response = ApiSearchResponse {
+            query: "test".to_string(),
+            mode: "hybrid".to_string(),
+            total: 0,
+            results: vec![],
+        };
+        let json = serde_json::to_value(&response).expect("should serialize");
+        assert_eq!(json["query"], "test");
+        assert_eq!(json["mode"], "hybrid");
+        assert_eq!(json["total"], 0);
+    }
+
+    #[test]
+    fn test_api_error_response_serialization() {
+        let response = ApiErrorResponse {
+            error: "not found".to_string(),
+            code: 404,
+        };
+        let json = serde_json::to_value(&response).expect("should serialize");
+        assert_eq!(json["error"], "not found");
+        assert_eq!(json["code"], 404);
+    }
+
+    #[test]
+    fn test_valid_search_modes() {
+        let valid_modes = ["keyword", "bm25", "vector", "knn", "hybrid"];
+        for mode in &valid_modes {
+            assert!(
+                matches!(
+                    *mode,
+                    "keyword" | "bm25" | "vector" | "knn" | "hybrid"
+                ),
+                "Mode '{mode}' should be valid"
+            );
+        }
+    }
 }

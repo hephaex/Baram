@@ -10,6 +10,6 @@ pub use index::index;
 pub use ontology::ontology;
 pub use search::search;
 pub use serve::{
-    coordinator_server, distributed_crawler, embedding_server, CoordinatorParams,
+    api_server, coordinator_server, distributed_crawler, embedding_server, CoordinatorParams,
     DistributedCrawlerParams,
 };

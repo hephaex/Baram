@@ -146,6 +146,17 @@ enum Commands {
         database: PathBuf,
     },
 
+    /// Start REST API server with hybrid search
+    Serve {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+
+        /// Host to bind to
+        #[arg(long, default_value = "0.0.0.0")]
+        host: String,
+    },
+
     /// Start embedding server for vector generation
     EmbeddingServer {
         /// Port to listen on
@@ -362,6 +373,15 @@ async fn main() -> Result<()> {
 
         Commands::Stats { database } => {
             commands::stats(database)?;
+        }
+
+        Commands::Serve { port, host } => {
+            tracing::info!(
+                host = %host,
+                port = %port,
+                "Starting API server"
+            );
+            commands::api_server(host, port).await?;
         }
 
         Commands::EmbeddingServer {
