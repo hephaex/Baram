@@ -6,6 +6,66 @@
 
 ---
 
+## Session: 2026-02-21 — Phase 2: Event Clustering 구현
+
+### [2026-02-21] Phase 2, Tasks 1-5: 이벤트 클러스터링 전체 구현
+| Step | Agent | Result | Details |
+|------|-------|--------|---------|
+| Gate | PM | AUTO | 순수 코드 변경, Cargo.toml 변경 없음 (기존 deps로 충분) |
+| A | PM (ref 확인) | SKIP | event-detection-clustering.md 이미 존재 |
+| B | PM 직접 | SUCCESS | FILES: clustering/{mod,engine,models,summary}.rs, commands/cluster.rs, serve.rs, embedding/mod.rs, lib.rs, main.rs |
+| C | PM 자체 리뷰 | PASS | 기존 패턴 준수, unwrap 없음, 구조 일관성 |
+| D | PM(clippy+test) | PASS | clippy 0 new warnings, 16 new tests passed |
+| E | PM(commit) | OK | 9935de7f feat: [Phase 2] Add event clustering module |
+
+**구현 내용**:
+- `src/clustering/mod.rs` — 모듈 구조 (engine, models, summary)
+- `src/clustering/engine.rs` — 코어 클러스터링 엔진 (cosine similarity, incremental centroid)
+- `src/clustering/models.rs` — EventCluster, ClusterArticle, ClusterOutput, ClusterConfig
+- `src/clustering/summary.rs` — vLLM 기반 클러스터 요약 생성
+- `src/commands/cluster.rs` — `baram cluster` CLI 커맨드
+- `src/commands/serve.rs` — GET /api/events, GET /api/events/:id 엔드포인트
+- `src/embedding/mod.rs` — VectorStore::raw_search() 메서드 추가
+
+**교훈**:
+- f32/f64 타입 추론 문제: 테스트에서 `abs()` 호출 시 타입 명시 필수 (`0.95_f32`)
+- Cargo.toml 변경 없이 cosine similarity는 기존 `embedding::vectorize` 함수 재활용 가능
+- axum 0.8에서 경로 파라미터는 `{param}` 문법 사용 (`:param` 아님)
+- search_after 페이지네이션으로 OpenSearch 대규모 조회 가능
+
+### Phase 2 최종 완료
+- cargo build --release: 성공 (5m 22s)
+- 모든 작업 완료, Phase 2 DONE
+- 대시보드 이벤트 뷰는 Phase 2+로 별도 진행 가능
+
+---
+
+## Session: 2026-02-21 — Phase 1: Hybrid Search 완료
+
+### [2026-02-21] Phase 1, Task 5: serve.rs `/api/search?mode=hybrid` API 엔드포인트
+| Step | Agent | Result | Details |
+|------|-------|--------|---------|
+| Gate | PM | AUTO | 순수 코드 변경, Cargo.toml 변경 없음 |
+| B | PM 직접 | SUCCESS | FILES: serve.rs, mod.rs, main.rs |
+| C | PM 자체 리뷰 | FIX→PASS | reqwest::Client 재사용을 위해 ApiServerState로 이동 |
+| D | PM(clippy+test) | PASS | clippy OK (기존 deprecated 경고만), 7 new tests passed |
+| E | PM(commit) | OK | a874c898 feat: Add REST API server with hybrid search endpoint |
+
+**교훈**: axum API 서버의 reqwest::Client는 State에 넣어 요청마다 재생성하지 않도록 해야 함
+
+### Phase 1 완료 상태
+- [x] OpenSearch hybrid search pipeline 생성
+- [x] search.rs — hybrid query 모드 추가
+- [x] serve.rs — `/api/search?mode=hybrid` 파라미터
+- [x] 벡터 vs 하이브리드 검색 결과 비교 검증
+- [x] 테스트 추가
+
+### Phase 1 최종 완료
+- cargo build --release: 성공 (5m 12s)
+- 모든 작업 완료, Phase 1 DONE
+
+---
+
 ## Session: 2026-02-20 — Phase 1: Hybrid Search 구현
 
 ### 파이프라인 실행 결과

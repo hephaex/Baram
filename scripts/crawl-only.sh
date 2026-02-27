@@ -1,5 +1,7 @@
 #!/bin/bash
 # Baram Crawl-Only Script (with flock)
+# NOTE: Requires GNU coreutils on Alpine: apk add coreutils
+# NOTE: Requires flock on Alpine: apk add util-linux (or apk add flock)
 set -euo pipefail
 
 export HOME="${HOME:-/home/mare}"

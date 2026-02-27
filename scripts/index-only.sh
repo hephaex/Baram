@@ -1,5 +1,6 @@
 #!/bin/bash
 # Baram Index-Only Script (with flock)
+# NOTE: Requires GNU coreutils for 'date -d'. On Alpine: apk add coreutils
 set -euo pipefail
 
 export HOME="${HOME:-/home/mare}"

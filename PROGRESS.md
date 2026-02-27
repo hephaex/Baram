@@ -3,7 +3,7 @@
 > 에이전트는 세션 시작 시 이 파일을 읽고 현재 상태를 파악합니다.
 > 작업 완료/진행 시 이 파일을 업데이트합니다.
 
-## 현재 상태: v0.1 안정화 완료, Phase 1 시작 준비
+## 현재 상태: Phase 2 완료, Phase 3 대기
 
 ---
 
@@ -61,14 +61,28 @@
 - [x] 코드 중복 제거: `parse_search_hits()`, `prepare_search_query()` 분리
 - [x] HTTP 에러 처리 일관성 수정 (`execute_search()`)
 - [x] UTF-8 경계 안전 문자열 자르기 수정
-- [ ] `src/commands/serve.rs` — `/api/search?mode=hybrid` 파라미터
+- [x] `src/commands/serve.rs` — `baram serve` CLI + `/api/search?mode=hybrid` REST API
+- [x] GET /api/search: mode=hybrid|keyword|vector, k, threshold, category, date_from, date_to
+- [x] GET /api/health: OpenSearch 연결 상태 + 문서 수 확인
+- [x] reqwest::Client 공유 (ApiServerState), 7 unit tests
+
+### 2026-02-21: Phase 2 -- Event Clustering
+- [x] `src/clustering/mod.rs` -- 모듈 구조 (engine, models, summary)
+- [x] `src/clustering/engine.rs` -- 코어 클러스터링 (cosine similarity, incremental centroid, search_after pagination)
+- [x] `src/clustering/models.rs` -- EventCluster, ClusterArticle, ClusterOutput, ClusterConfig, ClusterMetadata
+- [x] `src/clustering/summary.rs` -- vLLM 기반 이벤트 요약 생성
+- [x] `src/commands/cluster.rs` -- `baram cluster` CLI (--category, --since, --threshold, --min-size, --summarize)
+- [x] `src/commands/serve.rs` -- GET /api/events (pagination, category filter), GET /api/events/:id
+- [x] `src/embedding/mod.rs` -- VectorStore::raw_search() 추가
+- [x] 16 new tests (engine 5, models 4, summary 3, cluster 2, serve 2)
 
 ---
 
 ## 진행 중
 
-### Phase 1: Hybrid Search — API 엔드포인트 남은 작업
-- serve.rs에 `/api/search?mode=hybrid` 파라미터 추가 필요
+### Phase 2 완료 (2026-02-21)
+- 전체 구현 및 테스트 완료
+- 다음: release build + Phase 3 진행 여부 확인
 
 ---
 

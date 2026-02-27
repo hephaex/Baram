@@ -3,16 +3,16 @@
 > 에이전트는 세션 시작 시 이 파일을 읽고 다음 작업을 결정합니다.
 > 각 Phase의 세부 구현 계획은 CLAUDE.md의 Roadmap 섹션을 참조합니다.
 
-## 현재 Phase: 재인덱싱 완료 대기 → Phase 1 시작
+## 현재 Phase: Phase 2 완료 → Phase 3 대기
 
 ---
 
 ## 즉시 해야 할 일 (Next Actions)
 
-### Phase 1: Hybrid Search 진행 중
-- 재인덱싱 완료 확인됨 (125,002건)
-- ✅ hybrid-pipeline 생성, native hybrid query 구현, CLI --mode 추가
-- 남은 작업: serve.rs `/api/search?mode=hybrid` 파라미터 추가
+### Phase 2: Event Clustering 완료
+- 전체 구현 완료: clustering 모듈, CLI, vLLM 요약, API 엔드포인트
+- 16 new tests, clippy clean
+- release build 후 Phase 3 시작 가능
 
 ---
 
@@ -26,23 +26,23 @@
 - **작업 항목**:
   - [x] OpenSearch hybrid search pipeline 생성
   - [x] `src/commands/search.rs` — hybrid query 모드 추가
-  - [ ] `src/commands/serve.rs` — `/api/search?mode=hybrid` 파라미터
+  - [x] `src/commands/serve.rs` — `/api/search?mode=hybrid` 파라미터
   - [x] 벡터 vs 하이브리드 검색 결과 비교 검증
   - [x] 테스트 추가
 
-### Phase 2: 이벤트 클러스터링 [대기]
+### Phase 2: 이벤트 클러스터링 [완료]
 - **난이도**: 중간 | **영향도**: 높음
-- **예상 소요**: 3-5일
+- **예상 소요**: 3-5일 → **실제: 1일**
 - **선행 조건**: Phase 1 완료
 - **세부 계획**: CLAUDE.md → Roadmap → Phase 2
 - **작업 항목**:
-  - [ ] `src/clustering/` 모듈 생성
-  - [ ] `src/commands/cluster.rs` CLI 커맨드
-  - [ ] 임베딩 기반 cosine similarity 클러스터링
-  - [ ] vLLM 클러스터 요약 생성
-  - [ ] `./output/clusters/` JSON 출력
-  - [ ] API 엔드포인트 (`/api/events`)
-  - [ ] 대시보드 이벤트 뷰
+  - [x] `src/clustering/` 모듈 생성 (engine, models, summary)
+  - [x] `src/commands/cluster.rs` CLI 커맨드
+  - [x] 임베딩 기반 cosine similarity 클러스터링
+  - [x] vLLM 클러스터 요약 생성
+  - [x] `./output/clusters/` JSON 출력
+  - [x] API 엔드포인트 (`/api/events`, `/api/events/:id`)
+  - [ ] 대시보드 이벤트 뷰 (Phase 2+ 또는 별도 작업)
 
 ### Phase 3: GraphRAG + Neo4j [대기]
 - **난이도**: 중간 | **영향도**: 높음

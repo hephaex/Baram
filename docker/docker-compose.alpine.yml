@@ -1,0 +1,89 @@
+# =============================================================================
+# Baram Docker Compose Override - Alpine 16GB VM
+# =============================================================================
+# Use with: docker compose -f docker-compose.yml -f docker-compose.alpine.yml up -d
+#
+# Memory budget (16GB total):
+#   PostgreSQL:   2GB (shared_buffers=128MB)
+#   OpenSearch:   4GB (JVM heap=512MB, already set in base)
+#   Redis:        512MB
+#   ─────────────────
+#   Total Docker: ~6.5GB
+#   System+Rust:  ~9.5GB headroom
+# =============================================================================
+
+services:
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=512MB"
+      - "-c"
+      - "maintenance_work_mem=32MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=8MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=512kB"
+      - "-c"
+      - "min_wal_size=512MB"
+      - "-c"
+      - "max_wal_size=2GB"
+      - "-c"
+      - "log_statement=mod"
+      - "-c"
+      - "log_duration=on"
+      - "-c"
+      - "log_line_prefix=%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+
+  opensearch:
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+
+  redis:
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--appendfsync"
+      - "everysec"
+      - "--maxmemory"
+      - "128mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--tcp-backlog"
+      - "511"
+      - "--timeout"
+      - "300"
+      - "--tcp-keepalive"
+      - "60"
+      - "--loglevel"
+      - "notice"
+      - "--databases"
+      - "16"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:-changeme}"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
