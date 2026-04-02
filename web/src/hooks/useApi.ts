@@ -109,3 +109,13 @@ export function useRefreshDashboard() {
     },
   };
 }
+
+// Recent articles hook
+export function useRecentArticles(limit = 20) {
+  return useQuery({
+    queryKey: ["recentArticles", limit],
+    queryFn: () => api.getRecentArticles(limit),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}

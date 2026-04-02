@@ -10,6 +10,7 @@ import {
   Network,
   Settings,
   Database,
+  Share2,
 } from 'lucide-react';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 
@@ -20,6 +21,7 @@ export function Layout() {
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/search', icon: Search, label: t('nav.search') },
     { to: '/ontology', icon: Network, label: t('nav.ontology') },
+    { to: '/graph', icon: Share2, label: 'Knowledge Graph' },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ];
 

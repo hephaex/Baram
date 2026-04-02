@@ -37,3 +37,16 @@ output/
 logs/
 checkpoints/
 .crawl.lock
+
+# Runtime data
+config.toml
+config-docker.toml
+*.lock
+*.log
+archives/
+models/
+scripts/.ai_processed_state
+scripts/.crawl_state
+output/
+web/src/pages/*.bak
+.claude/

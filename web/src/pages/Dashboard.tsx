@@ -3,7 +3,7 @@
  * Issue #19: React Query + API Client integration
  * Issue #35: useMemo performance optimization
  */
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Newspaper,
@@ -17,6 +17,8 @@ import {
   Building2,
   MapPin,
   AlertCircle,
+  X,
+  ExternalLink,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -34,7 +36,7 @@ import {
 } from 'recharts';
 import { StatCard } from '../components/StatCard';
 import { LoadingFallback } from '../components/ErrorBoundary';
-import { useCrawlStats, useSystemStatus, useOntologyStats, useRefreshDashboard } from '../hooks/useApi';
+import { useCrawlStats, useSystemStatus, useOntologyStats, useRefreshDashboard, useRecentArticles } from '../hooks/useApi';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
@@ -44,6 +46,8 @@ export function Dashboard() {
   const { data: status, isLoading: statusLoading, error: statusError } = useSystemStatus();
   const { data: ontologyStats, isLoading: ontologyLoading } = useOntologyStats();
   const { refresh } = useRefreshDashboard();
+  const { data: recentData } = useRecentArticles(10);
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
 
   const entityTypeLabels: Record<string, string> = {
     '기관': t('dashboard:entityTypes.Organization'),
@@ -422,7 +426,99 @@ export function Dashboard() {
             </div>
           </div>
         </div>
+
+      {/* Recent Articles */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold mb-4">최근 수집 기사</h3>
+        <div className="space-y-3">
+          {recentData?.articles?.slice(0, 10).map((article) => (
+            <div
+              key={article.id}
+              className="p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+              onClick={() => setSelectedArticle(article)}
+            >
+              <h4 className="font-medium text-gray-900 mb-2 hover:text-blue-600 transition">{article.title}</h4>
+              <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                {article.content_snippet || "내용을 불러오는 중..."}
+              </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                    {article.category}
+                  </span>
+                  <span>{article.publisher}</span>
+                  <span>•</span>
+                  <span>{new Date(article.published_at).toLocaleDateString("ko-KR")}</span>
+                </div>
+                <a
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  원문 →
+                </a>
+              </div>
+            </div>
+          ))}
+          {(!recentData?.articles || recentData.articles.length === 0) && (
+            <p className="text-gray-500 text-center py-4">최근 수집된 기사가 없습니다</p>
+          )}
+        </div>
       </div>
+
+      </div>
+
+      {/* Article Detail Modal */}
+      {selectedArticle && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedArticle(null)}>
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-xl" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div className="flex items-start justify-between p-6 border-b">
+              <div className="flex-1 pr-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                    {selectedArticle.category}
+                  </span>
+                  <span className="text-sm text-gray-500">{selectedArticle.publisher}</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">{selectedArticle.title}</h2>
+                <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    {new Date(selectedArticle.published_at).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}
+                  </span>
+                  <a
+                    href={selectedArticle.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    원본 기사
+                  </a>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div className="prose prose-gray max-w-none">
+                {(selectedArticle.content || selectedArticle.content_snippet || "내용을 불러오는 중...").split("\n").map((paragraph: string, i: number) => (
+                  paragraph.trim() ? (
+                    <p key={i} className="mb-3 text-gray-700 leading-relaxed">{paragraph.trim()}</p>
+                  ) : null
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

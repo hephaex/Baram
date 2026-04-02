@@ -5,7 +5,8 @@ import type {
   SearchResult,
   OntologyStats,
   GraphData,
-  Triple
+  Triple,
+  RecentArticlesResponse
 } from '../types';
 
 const API_BASE = '/api';
@@ -76,4 +77,9 @@ export async function stopCrawl(): Promise<{ message: string }> {
   return fetchJson(`${API_BASE}/crawl/stop`, {
     method: 'POST',
   });
+}
+
+// Recent articles API
+export async function getRecentArticles(limit = 20): Promise<RecentArticlesResponse> {
+  return fetchJson<RecentArticlesResponse>(`${API_BASE}/articles/recent?limit=${limit}`);
 }

@@ -86,3 +86,19 @@ export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
+
+// Recent articles
+export interface RecentArticle {
+  content_snippet: string;
+  id: string;
+  title: string;
+  category: string;
+  publisher: string;
+  published_at: string;
+  url: string;
+}
+
+export interface RecentArticlesResponse {
+  articles: RecentArticle[];
+  total: number;
+}

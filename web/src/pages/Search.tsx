@@ -4,7 +4,7 @@
  * Issue #35: useMemo/useCallback performance optimization
  */
 import { useState, useCallback, useMemo } from 'react';
-import { Search as SearchIcon, Filter, Calendar, AlertCircle } from 'lucide-react';
+import { Search as SearchIcon, Filter, Calendar, AlertCircle, X, ExternalLink } from 'lucide-react';
 import type { SearchParams } from '../types';
 import { useSearch } from '../hooks/useApi';
 import { LoadingFallback } from '../components/ErrorBoundary';
@@ -20,6 +20,7 @@ export function Search() {
     date_to: undefined,
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<typeof results[0] | null>(null);
 
   // Use React Query for search
   const {
@@ -226,14 +227,12 @@ export function Search() {
                   </div>
 
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    <a
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-blue-600"
+                    <button
+                      onClick={() => setSelectedArticle(article)}
+                      className="text-left hover:text-blue-600 transition"
                     >
                       {highlightText(article.title, searchParams.query)}
-                    </a>
+                    </button>
                   </h3>
 
                   <p className="text-gray-600 line-clamp-2 mb-3">
@@ -260,6 +259,63 @@ export function Search() {
           )}
         </div>
       )}
+
+      {/* Article Detail Modal */}
+      {selectedArticle && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedArticle(null)}>
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-6 border-b">
+              <div className="flex-1 pr-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                    {selectedArticle.category}
+                  </span>
+                  <span className="text-sm text-gray-500">{selectedArticle.publisher}</span>
+                  {selectedArticle.author && <span className="text-sm text-gray-400">| {selectedArticle.author}</span>}
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">{selectedArticle.title}</h2>
+                <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {formatDate(selectedArticle.published_at)}
+                  </span>
+                  <a
+                    href={selectedArticle.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    원본 기사
+                  </a>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                aria-label="닫기"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div className="prose prose-gray max-w-none">
+                {selectedArticle.content.split('\n').map((paragraph: string, i: number) => (
+                  paragraph.trim() ? (
+                    <p key={i} className="mb-3 text-gray-700 leading-relaxed">
+                      {paragraph.trim()}
+                    </p>
+                  ) : null
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

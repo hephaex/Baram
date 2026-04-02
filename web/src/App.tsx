@@ -20,6 +20,9 @@ const Search = lazy(() =>
 const Ontology = lazy(() =>
   import('./pages/Ontology').then((module) => ({ default: module.Ontology }))
 );
+const GraphPage = lazy(() =>
+  import('./pages/Graph').then((module) => ({ default: module.GraphPage }))
+);
 const Settings = lazy(() =>
   import('./pages/Settings').then((module) => ({ default: module.Settings }))
 );
@@ -63,6 +66,14 @@ function App() {
                   element={
                     <ErrorBoundary>
                       <Ontology />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="graph"
+                  element={
+                    <ErrorBoundary>
+                      <GraphPage />
                     </ErrorBoundary>
                   }
                 />
